@@ -1,0 +1,75 @@
+# Performance and Pacing SLOs
+
+This document defines initial SLOs for runtime pacing, distributed synchronization,
+and rendering responsiveness.
+
+> These are initial engineering targets and may be revised with benchmark evidence.
+
+## 1) Execution profiles
+
+- **Operational profile**: near-real-time decision support
+- **Analysis profile**: higher fidelity, may be slower than real-time
+- **Throughput profile**: max simulation throughput (offline)
+
+## 2) Runtime pacing SLOs
+
+| Metric | Operational | Analysis | Throughput |
+|---|---:|---:|---:|
+| Cadence error (P95) | <= 5% target tick period | <= 15% | N/A (unpaced) |
+| Scheduler jitter (P95) | <= 10 ms | <= 30 ms | N/A |
+| Tick drift over 10 min | <= 0.5% | <= 2% | N/A |
+
+## 3) Distributed synchronization SLOs
+
+| Metric | Target |
+|---|---:|
+| Barrier commit skew (P95) | <= 20 ms |
+| Barrier timeout rate | < 0.1% ticks |
+| Deterministic retry success | >= 99.9% within policy window |
+
+## 4) Persistence SLOs
+
+| Metric | Target |
+|---|---:|
+| Tick commit persistence latency (P95) | <= 50 ms |
+| Tick commit persistence latency (P99) | <= 120 ms |
+| Idempotent duplicate-commit conflict rate | 0 tolerated semantic duplicates |
+
+## 5) Visualization SLOs
+
+| Metric | Operational | Analysis |
+|---|---:|---:|
+| Frame time (P95) | <= 33 ms (~30 FPS) | <= 100 ms (~10 FPS) |
+| Replay camera sync error | <= 1 simulation tick | <= 1 simulation tick |
+| Temporal instability alarms | none persistent > 3 s window | bounded within configured threshold |
+
+## 6) Mode-selection thresholds (initial policy)
+
+Suggested automatic mode selection:
+- choose **single-node operational** when projected partition count <= 1 and operational latency SLO is active.
+- choose **single-node throughput** when no wall-clock pacing target is required.
+- choose **distributed partitioned** when projected partition count > 1 or estimated tick budget exceeds 80% of operational target on single node.
+- choose **hybrid portfolio** when both many-run throughput and large-run partitioning are simultaneously scheduled.
+
+## 7) Backpressure policy
+
+If SLO violations persist:
+1. reduce render quality/frequency
+2. reduce non-critical telemetry sampling
+3. switch pacing mode (e.g., real-time -> slowed)
+4. controlled pause for operator action
+
+## 8) Mapping to requirements
+
+- NR-018..NR-021: rendering and ray-marching quality/perf controls
+- NR-022..NR-024: pacing and timeline-equivalence controls
+- NR-029..NR-031: distributed barrier and persistence stability
+
+## 9) Observability metrics to publish
+
+- cadence error series
+- scheduler jitter/drift
+- barrier wait/skew
+- commit latency percentiles
+- render frame-time percentiles
+- degraded-mode activation events

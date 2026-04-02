@@ -1,62 +1,99 @@
 # Verification and Validation (V&V)
 
-This document defines how `brambhand` is checked for **correct implementation**
-(verification) and **fitness for intended use** (validation).
+This document defines how high-fidelity `brambhand` requirements are verified (built right) and traced to validation evidence.
+Detailed scenario/benchmark acceptance criteria are maintained in `VALIDATION.md`.
 
-## 1) Verification strategy (build the system right)
+## 1) V&V strategy
 
-Verification uses automated tests and static checks:
+## Verification (engineering correctness)
+- Static quality gates: `ruff`, `mypy`
+- Unit tests per module
+- Coupled-solver integration tests
+- Determinism/replay consistency tests
+- Regression tests for every fixed defect
 
-- Lint/style: `ruff check .`
-- Type checks: `mypy src tests`
-- Unit/integration tests: `pytest`
+## Validation (fitness and realism)
+- Analytical benchmark comparison (where closed-form exists)
+- Reference dataset comparison (engine, structural, fluid benchmarks)
+- Scenario-level mission workflows (docking, leak, damage progression)
+- Operator workflow validation (mission-control/onboard telemetry usability)
 
-### Test categories
+## 2) Test pyramid for the target system
 
-1. Unit tests for module-level correctness
-2. Integration tests for cross-module behavior
-3. Determinism/replay tests for reproducibility
-4. Regression tests for previously fixed behavior
+1. **Unit tests**
+   - rigid-body equations, quaternion/rotation handling
+   - fluid network components and conservation checks
+   - combustion model outputs in nominal/off-nominal points
+   - FEM element and assembly checks
+   - fracture rule logic
+   - STL parsing, mesh metadata extraction, and nozzle geometry feature extraction
+   - renderer profile configuration, BVH structure integrity, and ray-march parameter validation
 
-## 2) Validation strategy (build the right system)
+2. **Domain integration tests**
+   - propulsion chain (fluid -> combustion -> thrust)
+   - docking contact -> rigid-body response
+   - structural damage -> leakage emergence
+   - FSI coupling iterations and convergence
+   - visualization pipeline (scene graph -> BVH -> render output) for deterministic replay frames
 
-Validation uses mission-representative workflows to confirm requirements are met:
+3. **System integration tests**
+   - end-to-end scenario run with persistence and replay
+   - checkpoint/restart equivalence tests
+   - distributed run consistency against single-node baseline
 
-- CLI flow: validate scenario -> run -> replay inspect
-- Orbital propagation behavior under realistic two-body setups
-- Burn execution consistency with analytical rocket equation
-- Communication delay and LOS behavior under scripted scenarios
-- Rendezvous/docking safety envelope checks
-- Scenario/replay persistence roundtrip checks
+4. **Validation suites**
+   - benchmark packs for orbit, propulsion, and structure
+   - mission-control workflow acceptance scenarios
 
-Validation artifacts are implemented as executable tests under `tests/` and CLI smoke CI workflow.
-
-## 3) Requirement -> verification/validation traceability
+## 3) Requirement traceability (V&V evidence plan)
 
 | Requirement group | Verification evidence | Validation evidence |
 |---|---|---|
-| FR-001..FR-004 | `tests/test_vector.py`, `tests/test_gravity_model.py`, `tests/test_integrator.py`, `tests/test_deterministic_replay.py` | Circular-orbit bounded behavior and deterministic replay runs |
-| FR-005..FR-008 | `tests/test_mass_model.py`, `tests/test_propulsion.py`, `tests/test_command_model.py` | Burn outcomes aligned with Tsiolkovsky equation + depletion scenarios |
-| FR-009..FR-012 | `tests/test_orbit_elements.py`, `tests/test_trajectory_predictor.py` | Roundtrip orbital conversion and forward prediction consistency |
-| FR-013..FR-015 | `tests/test_communication.py` | Delayed uplink/downlink and LOS/range gating workflows |
-| FR-016..FR-018 | `tests/test_rendezvous_metrics.py`, `tests/test_docking_scenarios.py` | Docking success/failure mission envelope scenarios |
-| FR-019..FR-021 | `tests/test_scenario_loader.py`, `tests/test_replay_log.py`, `tests/test_cli.py`, `tests/test_cli_commands.py` | End-to-end CLI validation/run/replay workflows and persistence checks |
+| FR-001..FR-005 | 6-DOF unit/integration tests, controller loop tests | closed-loop attitude/thrust maneuver scenarios |
+| FR-006..FR-010, FR-031 | fluid/combustion tests, thrust estimator tests, nozzle-geometry correction tests | engine operating-map comparisons, leak fault scenarios, contour/area-ratio sensitivity checks |
+| FR-011..FR-015 | FEM/fracture unit tests, FSI convergence tests, docking contact tests | structural damage progression and docking impact scenarios |
+| FR-016..FR-018, FR-032..FR-037 | STL importer/parser tests, mass/inertia extraction tests, collision/FEM preprocessing tests, geometry-mapping schema tests | CAD-to-simulation reproducibility checks and geometry-anchored damage/leak visualization checks |
+| FR-019..FR-021, FR-064..FR-066 | DB persistence tests, idempotent tick-commit tests, replay/checkpoint determinism tests | long-run restart and replay audit workflows |
+| FR-022..FR-024, FR-059..FR-063 | partition/sync protocol tests, barrier-commit atomicity tests, orchestration integration tests | multi-node consistency and throughput scenarios without partition replicas |
+| FR-025..FR-028 | telemetry/view-model contract tests | operator acceptance scenarios (mission-control + onboard) |
+| FR-038..FR-043 | rendering pipeline tests (scene graph, BVH update/query, ray-march quality controls, replay camera sync) | visual analysis scenarios with profile switching and frame reproducibility checks |
+| FR-044..FR-048 | simulation-clock and pacing-controller tests, multi-rate scheduler tests, replay metadata consistency tests | real-time/accelerated/offline mode scenario playback with timeline equivalence checks |
+| FR-049..FR-058 | inter-module contract tests (schema, units, frame checks), scheduler-order tests, causality/fault-propagation tests, distributed tick-barrier tests | end-to-end reconstruction and cross-module incident replay audits |
+| FR-029..FR-030 | diagnostics/metadata emission tests | reproducible run record audits |
 
-## 4) Non-functional requirement coverage (NR)
+## 4) Non-functional verification plan
+- NR-001..NR-003: validity envelope docs + convergence residual assertions + calibration tests
+- NR-004..NR-005: deterministic replay and distributed tolerance checks
+- NR-006..NR-008: scalability/load tests + ingestion durability + restart-time tests
+- NR-022..NR-024: cadence error/jitter/drift tests and pacing-mode equivalence checks
+- NR-025..NR-028: interface validation, provenance completeness, degraded-mode visibility tests
+- NR-029..NR-031: barrier commit skew, persistence commit-latency bounds, deterministic retry/idempotency tests
+- NR-009..NR-011: modular interface tests + schema version compatibility checks
+- NR-012..NR-013: alarm/error propagation tests for faults and bad configs
+- NR-014..NR-015: dashboard latency/render stress tests
+- NR-018..NR-021: rendering frame-time budgets, temporal stability checks, BVH update-cost tests, ray-march reproducibility parameter logging
+- NR-016..NR-017: docs synchronization checks + inline API doc coverage
 
-- NR-001 (stability): monitored via orbital propagation tests (`test_integrator.py`)
-- NR-002 (determinism): `test_deterministic_replay.py`, stable sorting in snapshots/replay sequencing
-- NR-003/NR-004 (modularity/extensibility): module boundaries in `src/brambhand/*`
-- NR-005 (testability): comprehensive tests across modules
-- NR-006 (performance): baseline small-scenario runs exercised in tests/CLI smoke
-- NR-007 (observability): structured events, snapshots, replay JSONL
-- NR-008 (documentation): synchronized requirements/design/V&V + inline API docs in source files
+## 5) Phase-gated acceptance criteria
 
-## 5) Definition of done (per feature)
+- **R1 gate:** 6-DOF + mechanism contact scenarios verified, deterministic replay intact
+- **R2 gate:** propulsion chain validated against reference points and leak cases
+- **R2.1 gate:** nozzle-geometry-aware thrust correction validated against geometry-derived test fixtures
+- **R3 gate:** FEM/fracture pipeline stable on benchmark structures
+- **R4 gate:** FSI coupling converges under documented residual thresholds
+- **R5 gate:** STL ingestion produces valid derived properties/meshes for target assets
+- **R6 gate:** DB-backed replay/checkpoint survives long-run test suites
+- **R7 gate:** distributed consistency/performance targets met
+- **R7.1 gate:** pacing/time-scale modes meet cadence bounds and preserve simulation timeline equivalence
+- **R7.2 gate:** inter-module/distributed contracts enforce atomic barrier commits and replay-grade persistence provenance
+- **R8 gate:** dashboard/operator workflows pass acceptance scenarios
+- **R8.1 gate:** 3D rendering pipeline meets profile-specific frame-time/quality targets with deterministic replay camera sync
 
-- Requirement linkage updated (`REQUIREMENTS.md`)
-- Design linkage updated (`DESIGN.md`)
-- Inline API docs added/updated in source code
-- Verification tests added and passing
-- Validation scenario or workflow evidence added
-- `TODO.md` updated
+## 6) Definition of done (feature level)
+- Requirement IDs linked
+- Design sections linked
+- Inline API docstrings updated
+- Verification tests added + passing
+- Validation scenario evidence added
+- Traceability row updated in this document
+- TODO sequencing updated

@@ -19,6 +19,30 @@ A scientifically accurate spaceflight sandbox.
 - asteroid trajectory modification
 - asteroid minding
 
+## Session restart checklist (read first)
+
+When starting a new agent session, do this in order:
+
+1. Read `README.md` (this file), `SKILLS.md`, and `TODO.md`.
+2. Read memory summary and recent entries:
+   - `.agent/memory/0-memory-summary.md`
+   - latest `.agent/memory/entry-*.md` files
+3. Re-read planning docs before implementation changes:
+   - `REQUIREMENTS.md`
+   - `DESIGN.md`
+   - `VERIFICATION.md`
+   - `VALIDATION.md`
+4. Re-establish environment:
+
+```bash
+source .venv/bin/activate
+ruff check .
+mypy src tests
+pytest -q
+```
+
+5. Continue from `TODO.md` roadmap sections (R1..R8.1, R7.2 etc.).
+
 ## Development quickstart
 
 ```bash
@@ -58,6 +82,9 @@ brambhand replay replay.jsonl --kind step_completed --start-time 100 --end-time 
 - Workflows: [`docs/WORKFLOWS.md`](./docs/WORKFLOWS.md)
 - Tutorials: [`docs/TUTORIALS.md`](./docs/TUTORIALS.md)
 - API reference: [`docs/API_REFERENCE.md`](./docs/API_REFERENCE.md)
+- Distributed protocol: [`docs/DISTRIBUTED_PROTOCOL.md`](./docs/DISTRIBUTED_PROTOCOL.md)
+- Performance SLOs: [`docs/PERFORMANCE_SLOS.md`](./docs/PERFORMANCE_SLOS.md)
+- Validation criteria: [`VALIDATION.md`](./VALIDATION.md)
 
 <!--
 

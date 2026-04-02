@@ -14,7 +14,7 @@ Follow this order for all substantial work:
 4. Reflect design decisions in `DESIGN.md`
 5. Update execution plan in `TODO.md`
 6. Implement code + tests
-7. Update `VERIFICATION.md` and docs as needed
+7. Update `VERIFICATION.md`, `VALIDATION.md`, and docs as needed
 
 ## Current repository structure
 
@@ -123,7 +123,8 @@ When behavior changes, update relevant docs in the same PR:
 
 - `REQUIREMENTS.md` (what the system must do)
 - `DESIGN.md` (how it is structured)
-- `VERIFICATION.md` (how it is validated)
+- `VERIFICATION.md` (verification strategy and traceability)
+- `VALIDATION.md` (benchmark/acceptance validation criteria)
 - `TODO.md` (execution tracking)
 - `README.md` (user/developer entry points)
 
@@ -151,5 +152,6 @@ Use the PR checklist in `.github/pull_request_template.md`.
 - [REQUIREMENTS.md](./REQUIREMENTS.md)
 - [DESIGN.md](./DESIGN.md)
 - [VERIFICATION.md](./VERIFICATION.md)
+- [VALIDATION.md](./VALIDATION.md)
 - [TODO.md](./TODO.md)
 - [SKILLS.md](./SKILLS.md)

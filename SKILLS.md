@@ -1,5 +1,26 @@
 # SKILLS
 
+## Session continuity (must-do at session start)
+
+Use this sequence every new session:
+
+1. Read `README.md` then `SKILLS.md` then `TODO.md`.
+2. Load memory context from:
+   - `.agent/memory/0-memory-summary.md`
+   - most recent `.agent/memory/entry-*.md` files
+3. Reconcile planning docs in order:
+   - `REQUIREMENTS.md` -> `DESIGN.md` -> `VERIFICATION.md` -> `VALIDATION.md`
+4. Run environment sanity checks:
+
+```bash
+source .venv/bin/activate
+ruff check .
+mypy src tests
+pytest -q
+```
+
+5. Continue implementation from existing roadmap in `TODO.md`.
+
 ## Agent Memory
 
 Memory system to keep track of project work progress.
@@ -19,40 +40,48 @@ Memory compaction happens every 10 entries into the running summary. So working 
 10 entries with optional tag based keyword search or regular search for looking up specific entries
 
 
-## Web search
+## Research skills (use only when needed)
 
-Use `bash` `curl` on google for searching the web. Filter out relevant items by title.
-Use the `man` command to know more about `curl`.
+These are **optional** skills. They are necessary only when local project docs/tests
+are insufficient (e.g., solver methods, physics references, standards).
 
-Follow links by opening the search result URL with curl.
+Default priority:
+1. Local project docs (`REQUIREMENTS`, `DESIGN`, `VERIFICATION`, `VALIDATION`, `TODO`)
+2. Existing code/tests in this repository
+3. External research (web/PDF/offline library)
 
-When a web page result is fetched, look for a table of contents to look for relevant items.
-Then only read the relevant section from the file.
+### Web research
 
+Use `bash` + `curl` for targeted lookups.
 
-## PDF search
+Guidelines:
+- Start with a specific query and shortlist sources by title/reputation.
+- Read table of contents/section headers first.
+- Extract only sections relevant to the active requirement.
+- Record source URL/title in notes when findings affect design/validation.
 
-Use `bash` `pdftotext` to extract text from PDFs. 
-Use the `man` command to know more about `pdftotext`.
+### PDF research
 
-Important dont extract all the text at once. Look for a table of contents. 
-Then lookup the exact section. Keep in mind the page offsets to account for
-preface and other items preceding the numbered pages.
+Use `bash` + `pdftotext` for scoped extraction from PDFs.
 
+Guidelines:
+- Do not extract full documents by default.
+- Locate TOC/chapter first, then extract only relevant pages.
+- Account for page-number offsets (front matter vs numbered chapters).
+- Capture citation details for any benchmark/validation assumption.
 
-## Offline knowledge base
+### Offline knowledge base (optional)
 
-There is a commputer on the local network reachable via SSH that contains a lot of pdf files.
+A local-network SSH host contains additional technical PDFs.
+Use only when needed for benchmarks or domain references.
 
 ```bash
 ssh arindas@192.168.1.2
-
-# goto directory containiing ebooks on the SSH remote computer
 cd ebooks
-
-# files are organized by:
-# <discipline>/<subtopic>/<specialization or document type>/<document>
-
+# layout: <discipline>/<subtopic>/<specialization-or-doc-type>/<document>
 ```
 
-Use the PDF search SKILL to search for relevant information.
+When using offline sources:
+- apply the PDF research workflow above
+- cite source metadata in design/validation notes
+- keep extracted material tightly scoped to current requirements
