@@ -1,0 +1,62 @@
+name: Bug report
+description: Report a reproducible problem in brambhand
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug report.
+        Please include a minimal reproduction and relevant logs.
+
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: Brief description of the bug
+      placeholder: e.g. Docking succeeds when closing rate is above threshold
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Provide exact steps and inputs/files used
+      placeholder: |
+        1. Run `brambhand run ...`
+        2. ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / output
+      description: Paste traceback, failing test output, CLI output, etc.
+      render: shell
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Python version, OS, and relevant dependency versions
+      placeholder: |
+        - OS:
+        - Python:
+        - uv:
+        - brambhand version/commit:

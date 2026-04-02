@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest an enhancement for brambhand
+labels: [enhancement]
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: One-line feature summary
+      placeholder: e.g. Add Lambert transfer maneuver primitive
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What user or engineering problem does this solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior and API/CLI shape you want
+    validations:
+      required: true
+
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements/design impact
+      description: Mention related FR/NR IDs and design areas if known
+      placeholder: |
+        - FR-xxx:
+        - Modules affected:
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification plan
+      description: How should this be tested/validated?
+      placeholder: Unit tests, integration scenarios, CLI examples, etc.

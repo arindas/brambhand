@@ -1,0 +1,33 @@
+name: Documentation update
+description: Report missing/unclear docs or propose doc improvements
+labels: [documentation]
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      placeholder: e.g. CONTRIBUTING still references old project structure
+    validations:
+      required: true
+
+  - type: textarea
+    id: location
+    attributes:
+      label: Affected file(s)
+      description: Which docs are affected?
+      placeholder: README.md, DESIGN.md, VERIFICATION.md, etc.
+    validations:
+      required: true
+
+  - type: textarea
+    id: issue
+    attributes:
+      label: What is wrong or missing?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed update
+      description: Suggested wording/structure

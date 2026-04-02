@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions / usage help
+    url: https://github.com/arindas/brambhand/discussions
+    about: Ask questions and discuss usage ideas here.

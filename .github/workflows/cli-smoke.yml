@@ -1,0 +1,50 @@
+name: CLI Smoke
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+jobs:
+  cli-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Sync dependencies
+        run: uv sync --extra dev
+
+      - name: Run CLI smoke flow
+        run: |
+          cat > /tmp/scenario.json <<'JSON'
+          {
+            "schema_version": "1.0",
+            "metadata": {"name": "ci-smoke"},
+            "bodies": [
+              {
+                "name": "earth",
+                "mass": 5.972e24,
+                "state": {"position": [0, 0, 0], "velocity": [0, 0, 0]}
+              },
+              {
+                "name": "sat",
+                "mass": 1000,
+                "state": {"position": [7000000, 0, 0], "velocity": [0, 7500, 0]}
+              }
+            ]
+          }
+          JSON
+
+          uv run brambhand validate /tmp/scenario.json
+          uv run brambhand run /tmp/scenario.json --dt 5 --steps 2 --replay-out /tmp/replay.jsonl
+          uv run brambhand replay /tmp/replay.jsonl --kind step_completed --start-time 0 --end-time 100
