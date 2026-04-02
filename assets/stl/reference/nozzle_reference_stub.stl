@@ -1,0 +1,91 @@
+solid nozzle_reference_stub
+  facet normal 0 0 1
+    outer loop
+      vertex 0.08 0.00 0.00
+      vertex 0.00 0.08 0.00
+      vertex -0.08 0.00 0.00
+    endloop
+  endfacet
+  facet normal 0 0 1
+    outer loop
+      vertex -0.08 0.00 0.00
+      vertex 0.00 -0.08 0.00
+      vertex 0.08 0.00 0.00
+    endloop
+  endfacet
+
+  facet normal 0.6 0.0 -0.8
+    outer loop
+      vertex 0.08 0.00 0.00
+      vertex 0.00 0.08 0.00
+      vertex 0.00 0.30 0.70
+    endloop
+  endfacet
+  facet normal 0.6 0.0 -0.8
+    outer loop
+      vertex 0.08 0.00 0.00
+      vertex 0.00 0.30 0.70
+      vertex 0.30 0.00 0.70
+    endloop
+  endfacet
+
+  facet normal -0.6 0.0 -0.8
+    outer loop
+      vertex 0.00 0.08 0.00
+      vertex -0.08 0.00 0.00
+      vertex -0.30 0.00 0.70
+    endloop
+  endfacet
+  facet normal -0.6 0.0 -0.8
+    outer loop
+      vertex 0.00 0.08 0.00
+      vertex -0.30 0.00 0.70
+      vertex 0.00 0.30 0.70
+    endloop
+  endfacet
+
+  facet normal -0.6 0.0 0.8
+    outer loop
+      vertex -0.08 0.00 0.00
+      vertex 0.00 -0.08 0.00
+      vertex 0.00 -0.30 0.70
+    endloop
+  endfacet
+  facet normal -0.6 0.0 0.8
+    outer loop
+      vertex -0.08 0.00 0.00
+      vertex 0.00 -0.30 0.70
+      vertex -0.30 0.00 0.70
+    endloop
+  endfacet
+
+  facet normal 0.6 0.0 0.8
+    outer loop
+      vertex 0.00 -0.08 0.00
+      vertex 0.08 0.00 0.00
+      vertex 0.30 0.00 0.70
+    endloop
+  endfacet
+  facet normal 0.6 0.0 0.8
+    outer loop
+      vertex 0.00 -0.08 0.00
+      vertex 0.30 0.00 0.70
+      vertex 0.00 -0.30 0.70
+    endloop
+  endfacet
+
+  facet normal 0 0 -1
+    outer loop
+      vertex 0.30 0.00 0.70
+      vertex 0.00 0.30 0.70
+      vertex -0.30 0.00 0.70
+    endloop
+  endfacet
+  facet normal 0 0 -1
+    outer loop
+      vertex -0.30 0.00 0.70
+      vertex 0.00 -0.30 0.70
+      vertex 0.30 0.00 0.70
+    endloop
+  endfacet
+endsolid nozzle_reference_stub

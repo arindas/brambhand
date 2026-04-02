@@ -1,0 +1,55 @@
+{
+  "version": 2,
+  "idealized": [
+    {
+      "name": "cube_1m",
+      "path": "assets/stl/idealized/cube_1m.stl",
+      "purpose": "mass/inertia extraction sanity checks",
+      "notes": "unit cube fixture"
+    },
+    {
+      "name": "cylinder_r0p5_h1",
+      "path": "assets/stl/idealized/cylinder_r0p5_h1.stl",
+      "purpose": "axisymmetric geometry extraction and inertia sanity tests",
+      "notes": "closed cylinder fixture"
+    },
+    {
+      "name": "cone_r0p5_h1",
+      "path": "assets/stl/idealized/cone_r0p5_h1.stl",
+      "purpose": "converging geometry extraction tests",
+      "notes": "closed cone fixture"
+    },
+    {
+      "name": "frustum_r0p2_r0p5_h1",
+      "path": "assets/stl/idealized/frustum_r0p2_r0p5_h1.stl",
+      "purpose": "frustum geometry extraction tests",
+      "notes": "closed frustum fixture"
+    },
+    {
+      "name": "nozzle_frustum_idealized",
+      "path": "assets/stl/idealized/nozzle_frustum_idealized.stl",
+      "purpose": "nozzle geometry extraction and shape-sensitivity tests",
+      "notes": "simple frustum-like nozzle approximation"
+    },
+    {
+      "name": "de_laval_nozzle_idealized",
+      "path": "assets/stl/idealized/de_laval_nozzle_idealized.stl",
+      "purpose": "de Laval contour extraction and throat/exit ratio tests",
+      "notes": "piecewise converging-diverging idealized fixture"
+    }
+  ],
+  "reference": [
+    {
+      "name": "nozzle_reference_stub",
+      "path": "assets/stl/reference/nozzle_reference_stub.stl",
+      "purpose": "reference-like nozzle fixture for thrust correction regression",
+      "provenance": "stub fixture; replace with benchmark-derived geometry"
+    },
+    {
+      "name": "docking_ring_reference_stub",
+      "path": "assets/stl/reference/docking_ring_reference_stub.stl",
+      "purpose": "contact and docking geometry regression fixture",
+      "provenance": "stub fixture; replace with benchmark-derived geometry"
+    }
+  ]
+}
