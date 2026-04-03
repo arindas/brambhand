@@ -82,14 +82,23 @@ Guidelines:
 
 ### Offline knowledge base (optional)
 
-A local-network SSH host contains additional technical PDFs.
+An optional SSH-accessible knowledge-base host may contain additional technical PDFs.
 Use only when needed for benchmarks or domain references.
 
+Connection parameters should come from environment variables:
+
 ```bash
-ssh arindas@192.168.1.2
-cd ebooks
-# layout: <discipline>/<subtopic>/<specialization-or-doc-type>/<document>
+# expected environment variables
+# KB_SSH_USER
+# KB_SSH_HOST
+# KB_ROOT_DIR
+
+ssh "${KB_SSH_USER}@${KB_SSH_HOST}"
+cd "${KB_ROOT_DIR}"
+# expected layout: <discipline>/<subtopic>/<specialization-or-doc-type>/<document>
 ```
+
+If any parameter is missing, ask interactively before accessing the host.
 
 When using offline sources:
 - apply the PDF research workflow above
