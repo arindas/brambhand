@@ -39,7 +39,7 @@ Follow this order for all substantial work:
 ├── RELEASE_NOTES.md
 ├── CONTRIBUTING.md
 ├── SKILLS.md
-├── .agent/memory/README.md  # memory entry/compaction protocol
+├── docs/AGENT_MEMORY.md     # canonical memory entry/compaction protocol
 ├── src/
 │   └── brambhand/
 │       ├── cli.py

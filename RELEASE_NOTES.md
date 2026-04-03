@@ -39,7 +39,7 @@
 - Agent/developer process clarity improvements:
   - added `AGENT.md` as canonical agent runbook (startup order, memory protocol, done checklist)
   - added `CLAUDE.md` as Claude-oriented mirror of agent runbook
-  - added `.agent/memory/README.md` with memory read/write/compaction rules
+  - added `docs/AGENT_MEMORY.md` with memory read/write/compaction rules for new environments
   - clarified root `README.md`, `SKILLS.md`, `CONTRIBUTING.md`, and `docs/README.md` to point agents to canonical process docs
 - Architectural decoupling parity extension:
   - added FR-115..FR-117 and NR-047..NR-048 for solver-module decomposition, backend-neutral adapter boundaries, and centralized frame/time conversion integrity

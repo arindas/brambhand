@@ -24,3 +24,4 @@ Current implementation includes baseline R1 dynamics, R2/R2.1 propulsion modules
 - [`CONTRIBUTING.md`](../CONTRIBUTING.md)
 - [`AGENT.md`](../AGENT.md)
 - [`CLAUDE.md`](../CLAUDE.md)
+- [`AGENT_MEMORY.md`](./AGENT_MEMORY.md)

@@ -23,13 +23,13 @@ A scientifically accurate spaceflight sandbox.
 organized as modular physics/operations domains under `src/brambhand/`.
 
 Today, the project combines:
-- **Core simulation primitives**: deterministic integration, event bus, state snapshots
-- **Mission-continuity baseline**: scenario load/save, replay logs, CLI workflows
-- **Spacecraft/operations stack**: mass/propulsion command modeling, rendezvous and docking screens
-- **Communication stack**: LOS/occlusion checks and finite-speed delay channels
-- **Structural analysis stack (R3)**: 2D and 3D linear-static FEM with backend-selectable solvers
+- core simulation: deterministic integration, event bus, state snapshots
+- mission baseline: scenario load/save, replay logs, CLI workflows
+- spacecraft operations: mass/propulsion commands, rendezvous and docking screens
+- communication: LOS/occlusion checks and delay channels
+- structures (R3): 2D/3D linear-static FEM with selectable solver backends
 
-Key design priorities are deterministic replay, explicit solver telemetry, and requirement-to-verification traceability.
+Design priorities: deterministic replay, explicit solver telemetry, and requirement-to-verification traceability.
 
 ## Roadmap
 
@@ -37,10 +37,10 @@ Source of truth: [`TODO.md`](./TODO.md)
 
 ### Completed
 
-- R1 complete: 6-DOF dynamics, mechanisms, docking contact baseline, and control interfaces
-- R2 complete: propulsion fluid network, combustion model, thrust estimator, leakage model
-- R2.1 complete: nozzle geometry-aware thrust correction (area ratio and contour loss)
-- R3 foundations complete:
+- R1: 6-DOF dynamics, mechanisms, docking contact baseline, and control interfaces
+- R2: propulsion fluid network, combustion model, thrust estimator, leakage model
+- R2.1: nozzle geometry-aware thrust correction (area ratio and contour loss)
+- R3 foundations:
   - 2D FEM baseline with validity envelopes
   - 3D tetrahedral solid FEM baseline
   - sparse assembly and backend-selectable solves
@@ -49,7 +49,7 @@ Source of truth: [`TODO.md`](./TODO.md)
 
 ### In progress
 
-- R3 completion work:
+- R3 remaining work:
   - backend-equivalence and determinism-tolerance tests
   - structural latency/memory benchmark suite (2D vs 3D profiles)
   - fracture initiation/propagation baseline

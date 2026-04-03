@@ -26,7 +26,7 @@ pytest -q
 ## Agent Memory
 
 Memory system to keep track of project work progress.
-See `.agent/memory/README.md` for the exact read/write/compaction protocol.
+See `docs/AGENT_MEMORY.md` for the exact read/write/compaction protocol.
 
 ```
 .agent/
