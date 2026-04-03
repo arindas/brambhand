@@ -2,6 +2,8 @@
 
 ## Session continuity (must-do at session start)
 
+`AGENT.md` is the canonical, strict runbook. This file is supporting detail.
+
 Use this sequence every new session:
 
 1. Read `README.md` then `SKILLS.md` then `TODO.md`.
@@ -24,6 +26,7 @@ pytest -q
 ## Agent Memory
 
 Memory system to keep track of project work progress.
+See `.agent/memory/README.md` for the exact read/write/compaction protocol.
 
 ```
 .agent/
@@ -35,9 +38,16 @@ Memory system to keep track of project work progress.
 
 `0-memory-summary.md` keeps a running summary.
 
-`entry-N.md` logs individual memory entiries. Each memory entry is prefaced with a set of tags to faciliate searching
-Memory compaction happens every 10 entries into the running summary. So working memory should be summary and last
-10 entries with optional tag based keyword search or regular search for looking up specific entries
+`entry-N.md` logs individual memory entries. Each entry should start with:
+
+```text
+tags: <comma-separated-tags>
+```
+
+Memory compaction policy:
+- keep active context as: summary + last 10 entries
+- every 10 new entries, merge key outcomes into `0-memory-summary.md`
+- keep entries concise and implementation-focused (what changed, where, evidence)
 
 
 ## Research skills (use only when needed)

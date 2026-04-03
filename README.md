@@ -2,8 +2,6 @@
 
 A scientifically accurate spaceflight sandbox.
 
-<!-- Read this README at the start of every session for project context. -->
-
 `brambhand` aims to simulate the following:
 - orbital dynamics
 - spacecraft control and dynamics
@@ -19,31 +17,56 @@ A scientifically accurate spaceflight sandbox.
 - asteroid trajectory modification
 - asteroid minding
 
-## Session restart checklist (read first)
+## Overview
 
-When starting a new agent session, do this in order:
+`brambhand` is a deterministic simulation platform for mission and vehicle analysis,
+organized as modular physics/operations domains under `src/brambhand/`.
 
-1. Read `README.md` (this file), `SKILLS.md`, and `TODO.md`.
-2. Read memory summary and recent entries:
-   - `.agent/memory/0-memory-summary.md`
-   - latest `.agent/memory/entry-*.md` files
-3. Re-read planning docs before implementation changes:
-   - `REQUIREMENTS.md`
-   - `DESIGN.md`
-   - `VERIFICATION.md`
-   - `VALIDATION.md`
-4. Re-establish environment:
+Today, the project combines:
+- **Core simulation primitives**: deterministic integration, event bus, state snapshots
+- **Mission-continuity baseline**: scenario load/save, replay logs, CLI workflows
+- **Spacecraft/operations stack**: mass/propulsion command modeling, rendezvous and docking screens
+- **Communication stack**: LOS/occlusion checks and finite-speed delay channels
+- **Structural analysis stack (R3)**: 2D and 3D linear-static FEM with backend-selectable solvers
 
-```bash
-source .venv/bin/activate
-ruff check .
-mypy src tests
-pytest -q
-```
+Key design priorities are deterministic replay, explicit solver telemetry, and requirement-to-verification traceability.
 
-5. Continue from `TODO.md` roadmap sections (R1..R8.1, R7.2 etc.).
+## Roadmap
 
-## Development quickstart
+Source of truth: [`TODO.md`](./TODO.md)
+
+### Completed
+
+- R1 complete: 6-DOF dynamics, mechanisms, docking contact baseline, and control interfaces
+- R2 complete: propulsion fluid network, combustion model, thrust estimator, leakage model
+- R2.1 complete: nozzle geometry-aware thrust correction (area ratio and contour loss)
+- R3 foundations complete:
+  - 2D FEM baseline with validity envelopes
+  - 3D tetrahedral solid FEM baseline
+  - sparse assembly and backend-selectable solves
+  - matrix-free (2D) path and convergence telemetry
+  - model-selection helpers (2D vs 3D)
+
+### In progress
+
+- R3 completion work:
+  - backend-equivalence and determinism-tolerance tests
+  - structural latency/memory benchmark suite (2D vs 3D profiles)
+  - fracture initiation/propagation baseline
+  - damage-state propagation to mass/stiffness/contact behavior
+
+### Planned
+
+- R4: fluid-structure interaction coupling
+- R5: STL import and geometry-to-subsystem pipeline
+- R6: persistence, checkpointing, and replay durability workflow
+- R7/R7.1/R7.2: distributed runtime, pacing/time-scale control, and orchestration contracts
+- R8/R8.1: operator dashboards and 3D rendering core
+- R9+: debris-risk modeling, docking lifecycle logistics, trajectory optimization, mission-analysis parity extensions
+
+## Getting started
+
+### Quickstart
 
 ```bash
 uv venv .venv
@@ -54,7 +77,7 @@ ruff check .
 mypy src tests
 ```
 
-## CLI runner
+### CLI
 
 Validate a scenario file:
 
@@ -86,18 +109,15 @@ brambhand replay replay.jsonl --kind step_completed --start-time 100 --end-time 
 - Performance SLOs: [`docs/PERFORMANCE_SLOS.md`](./docs/PERFORMANCE_SLOS.md)
 - Validation criteria: [`VALIDATION.md`](./VALIDATION.md)
 
-<!--
+## Contributing
 
-For the files mentioned below, always check contents before overwriting.
+- Human contributor guide: [`CONTRIBUTING.md`](./CONTRIBUTING.md)
+- Engineering planning and traceability:
+  - [`REQUIREMENTS.md`](./REQUIREMENTS.md)
+  - [`DESIGN.md`](./DESIGN.md)
+  - [`VERIFICATION.md`](./VERIFICATION.md)
+  - [`VALIDATION.md`](./VALIDATION.md)
+  - [`TODO.md`](./TODO.md)
 
-See agent skills in ./SKILLS.md
+For automation/agent runbooks, see [`AGENT.md`](./AGENT.md) and [`CLAUDE.md`](./CLAUDE.md).
 
-See todo list in ./TODO.md. Avoid creating additional files for tracking action items.
-
-Ensure you see SKILLS and TODO before requirements. Ensure that SKILLS are completely supported before anything else.
-
-See requirements in ./REQUIREMENTS.md.
-
-Manage project developement workflow and project structure in ./CONTRIBUTING.md.
-
--->

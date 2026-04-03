@@ -43,7 +43,15 @@ and rendering responsiveness.
 | Replay camera sync error | <= 1 simulation tick | <= 1 simulation tick |
 | Temporal instability alarms | none persistent > 3 s window | bounded within configured threshold |
 
-## 6) Mode-selection thresholds (initial policy)
+## 6) Structural solver SLOs (initial)
+
+| Metric | 2D baseline (operational) | 3D coarse (operational) | 3D analysis |
+|---|---:|---:|---:|
+| Structural solve latency per update (P95) | <= 20 ms | <= 60 ms | <= 250 ms |
+| Structural memory growth target | nnz-based sparse scaling | nnz-based sparse scaling | nnz-based sparse scaling |
+| Backend switch determinism drift | <= configured tolerance | <= configured tolerance | <= configured tolerance |
+
+## 7) Mode-selection thresholds (initial policy)
 
 Suggested automatic mode selection:
 - choose **single-node operational** when projected partition count <= 1 and operational latency SLO is active.
@@ -51,7 +59,7 @@ Suggested automatic mode selection:
 - choose **distributed partitioned** when projected partition count > 1 or estimated tick budget exceeds 80% of operational target on single node.
 - choose **hybrid portfolio** when both many-run throughput and large-run partitioning are simultaneously scheduled.
 
-## 7) Backpressure policy
+## 8) Backpressure policy
 
 If SLO violations persist:
 1. reduce render quality/frequency
@@ -59,13 +67,14 @@ If SLO violations persist:
 3. switch pacing mode (e.g., real-time -> slowed)
 4. controlled pause for operator action
 
-## 8) Mapping to requirements
+## 9) Mapping to requirements
 
 - NR-018..NR-021: rendering and ray-marching quality/perf controls
 - NR-022..NR-024: pacing and timeline-equivalence controls
 - NR-029..NR-031: distributed barrier and persistence stability
+- NR-032..NR-036: structural solver scalability/determinism/fallback observability, including production matrix-free stability expectations
 
-## 9) Observability metrics to publish
+## 10) Observability metrics to publish
 
 - cadence error series
 - scheduler jitter/drift
@@ -73,3 +82,5 @@ If SLO violations persist:
 - commit latency percentiles
 - render frame-time percentiles
 - degraded-mode activation events
+- structural iterative convergence series (iterations/residuals)
+- matrix-free mode stability/failure-rate metrics by profile

@@ -51,7 +51,41 @@ Spacecraft control is split into:
 - `PropulsionSystem` (thrust, mass flow, delta-v)
 - `CommandModel` (time-window burn execution)
 
-## 7) Communication model
+## 7) R1 dynamics contracts
+
+R1 introduces rigid-body and docking-focused dynamics primitives:
+
+- `RigidBody6DoFState`, `RigidBodyProperties`, `UnitQuaternion`
+- frame-aware `Wrench` application (`INERTIAL` and `BODY` frames)
+- deterministic 6-DOF baseline integrator with gyroscopic coupling
+- mechanism joint contracts with limit clamping
+- docking contact classification with impulse/restitution baseline
+
+These provide deterministic contracts now and are designed to plug into higher-fidelity solvers later.
+
+## 8) R2 propulsion chain
+
+R2 introduces a reduced-order propulsion chain:
+
+- feed network (`tank -> valve -> line`) mass-flow propagation
+- ideal-gas combustion chamber pressure update
+- thrust decomposition (momentum + pressure)
+- leakage model for pressure-driven compartment mass loss
+
+R2.1 extends thrust with optional nozzle-geometry corrections (area ratio + contour loss factors).
+
+## 9) R3 structural baseline and scaling path
+
+R3 currently provides deterministic linear-static FEM baselines for both 2D and 3D structural evaluation.
+
+Scaling path status:
+- 2D validity envelopes are implemented (plane-stress/plane-strain assumptions)
+- sparse/backend-selectable solve paths are implemented for current 2D baseline (dense, sparse direct, sparse iterative, matrix-free)
+- 3D tetrahedral solid baseline is implemented with dense/sparse direct/sparse iterative backends
+- 2D-vs-3D model-selection policy helpers are implemented (out-of-plane span/load/constraint thresholds)
+- solve telemetry is implemented (backend identity, residuals, iterations, relative residuals, termination reason, nnz/reference-delta fields)
+
+## 10) Communication model
 
 Communication currently provides:
 
@@ -59,7 +93,7 @@ Communication currently provides:
 - link availability and light-time delay
 - delayed delivery channels for uplink/downlink modeling
 
-## 8) Operations layer
+## 11) Operations layer
 
 Operations APIs handle mission-level behavior:
 
@@ -68,7 +102,7 @@ Operations APIs handle mission-level behavior:
 - satellite constellation grouping
 - orbital station docking/resource interfaces
 
-## 9) Scenario model
+## 12) Scenario model
 
 Scenarios are versioned JSON documents (`schema_version = "1.0"`) with:
 

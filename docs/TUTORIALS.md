@@ -150,3 +150,44 @@ station, _ = station.dock("cargo-1", "cargo")
 station, delivered = station.transfer_resource("propellant", 100.0)
 print(constellation.member_names(), delivered)
 ```
+
+---
+
+## Tutorial 5: Nozzle geometry-aware thrust estimate (R2.1)
+
+### Goal
+Compare baseline and geometry-corrected thrust predictions.
+
+```python
+from brambhand.propulsion.thrust_estimator import (
+    NozzleGeometryCorrection,
+    NozzleParams,
+    estimate_nozzle_thrust,
+)
+
+nozzle = NozzleParams(
+    exit_area_m2=0.06,
+    ambient_pressure_pa=101_325.0,
+    exhaust_velocity_mps=2600.0,
+)
+
+baseline = estimate_nozzle_thrust(
+    chamber_pressure_pa=2_000_000.0,
+    mass_flow_kgps=10.0,
+    nozzle=nozzle,
+)
+
+geometry = NozzleGeometryCorrection(
+    throat_area_m2=0.02,
+    contour_loss_factor=0.95,
+)
+
+corrected = estimate_nozzle_thrust(
+    chamber_pressure_pa=2_000_000.0,
+    mass_flow_kgps=10.0,
+    nozzle=nozzle,
+    geometry=geometry,
+)
+
+print(baseline.thrust_n, corrected.thrust_n)
+```

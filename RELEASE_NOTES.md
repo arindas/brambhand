@@ -1,5 +1,50 @@
 # Release Notes
 
+## Unreleased
+
+### Added
+
+- R1 dynamics verification expansion:
+  - gyroscopic coupling test coverage for non-spherical inertia in `dynamics/rigid_body_6dof.py`
+  - docking threshold boundary coverage in `dynamics/contact_docking.py`
+- R2.1 nozzle geometry-aware thrust correction baseline:
+  - `NozzleGeometryCorrection` input contract
+  - area-ratio efficiency factor and contour-loss scaling in thrust estimates
+  - backward-compatible optional geometry input in `estimate_nozzle_thrust(...)`
+- R2.1 sensitivity tests in `tests/test_propulsion_r2_contracts.py` for:
+  - area-ratio influence on thrust
+  - contour-loss impact on thrust
+- R3 structural FEM baseline:
+  - added deterministic linear static 2D triangular FEM solver (canonical path: `structures/fem/solver.py`)
+  - added `tests/test_structures_r3_contracts.py` for solve behavior, linearity, and element stress outputs
+  - added sparse assembly path (COO->CSR) and structural `nnz` telemetry in solve results
+  - added solver backend abstraction for reduced systems (`dense_direct`, `sparse_direct`, `sparse_iterative`)
+  - added preconditioned sparse-iterative solve path (Jacobi/none) with convergence telemetry
+  - added matrix-free iterative operator prototype backend for reduced-system structural solves
+  - hardened matrix-free mode with residual safeguards, optional sparse-direct consistency checks, and robustness protections
+  - added advanced matrix-free block-Jacobi preconditioning and benchmark utility for convergence comparison
+  - added explicit structural solver termination reason telemetry across dense/sparse/matrix-free backends
+  - added matrix-free acceptance-threshold definitions/evaluators for operational and analysis profiles
+  - refactored structural FEM implementation into modular components (`fem/contracts.py`, `fem/geometry.py`, `fem/backends.py`, orchestration facade in `fem/solver.py`)
+  - added 3D tetrahedral solid FEM baseline (`FEMModel3D`, `solve_linear_static_fem_3d(...)`) with dense/sparse direct/sparse iterative backend support
+  - added 2D-vs-3D model-selection policy helpers (`select_structural_model_dimension(...)`) with out-of-plane span/load/constraint thresholds
+  - completed structural FEM migration to canonical `brambhand.structures.fem.*` namespace (`contracts`, `geometry`, `backends`, `solver`, `selection`) and removed legacy `fem_*` shim modules
+- Documentation/traceability update for structural scaling:
+  - added structural solver scalability requirements (FR-074..FR-079, NR-032..NR-035)
+  - updated R3 TODO roadmap for sparse backends, matrix-free path, and 2D/3D performance validation
+  - updated V&V and performance SLO docs for structural latency/memory targets and evidence plans
+- Documentation/roadmap expansion for mission-analysis parity:
+  - added FR-103..FR-114 and NR-041..NR-046 for OD, uncertainty/dispersion, operational constraints, mission products, and interactive analysis reproducibility
+  - added adapter-oriented R11/R12 design and TODO planning with OSS-library integration surfaces and in-house fallback strategy
+- Agent/developer process clarity improvements:
+  - added `AGENT.md` as canonical agent runbook (startup order, memory protocol, done checklist)
+  - added `CLAUDE.md` as Claude-oriented mirror of agent runbook
+  - added `.agent/memory/README.md` with memory read/write/compaction rules
+  - clarified root `README.md`, `SKILLS.md`, `CONTRIBUTING.md`, and `docs/README.md` to point agents to canonical process docs
+- Architectural decoupling parity extension:
+  - added FR-115..FR-117 and NR-047..NR-048 for solver-module decomposition, backend-neutral adapter boundaries, and centralized frame/time conversion integrity
+  - updated design/TODO/V&V linkage for coupling-mitigation implementation policy
+
 ## v0.1.0 (2026-04-02)
 
 `v0.1.0` is the first integrated release of **brambhand** with core simulation,

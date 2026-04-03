@@ -33,7 +33,12 @@ src/brambhand/
     nozzle_geometry.py            # nozzle shape factors from geometry assets
     leakage_model.py              # leak path + mass loss model
   structures/
-    fem_solver.py                 # stress/strain solving
+    fem/
+      contracts.py                # FEM contracts and configuration types (2D/3D)
+      geometry.py                 # element geometry, constitutive laws, assembly utilities
+      backends.py                 # linear solver backend implementations
+      solver.py                   # 2D/3D solve orchestration + telemetry
+      selection.py                # 2D-vs-3D model-selection policy helpers
     fracture_model.py             # crack initiation/propagation
     structural_state.py           # stiffness/mass degradation state
   coupling/
@@ -58,6 +63,34 @@ src/brambhand/
     partitioner.py                # workload decomposition
     sync_protocol.py              # inter-worker state sync
     orchestrator_client.py        # job lifecycle integration
+  mission/
+    docking_lifecycle.py          # approach/capture/dock/undock state machine
+    transfer_logistics.py         # booster payload transfer mission phases
+    soi_handoff.py                # planetary sphere-of-influence handoff metadata/contracts
+  trajectory/
+    optimizer_contracts.py        # backend-agnostic optimization interfaces
+    trajectory_problem.py         # mission-phase trajectory problem definitions
+    ephemeris_provider.py         # pluggable ephemeris/frame provider contracts
+    transfer_analysis.py          # Lambert/Hohmann/gravity-assist workflow adapters
+    campaign_runner.py            # batch window sweep/trade-study orchestration
+    dispersion.py                 # Monte Carlo/dispersion campaign helpers
+    constraints.py                # mission operational constraint evaluation contracts
+    adapters/                     # OSS backend adapters (swappable)
+      scipy_adapter.py
+      pykep_adapter.py
+      tudat_adapter.py
+      orekit_adapter.py
+  navigation/
+    od_contracts.py               # orbit-determination abstraction interfaces
+    covariance_propagation.py     # covariance/uncertainty propagation contracts
+    tracking_models.py            # measurement model adapters
+  mission_products/
+    report_generator.py           # maneuver/nav/constraint report products
+    product_schema.py             # versioned ops-product schemas
+  debris/
+    debris_population.py          # debris entity catalog + propagation state
+    debris_fragmentation.py       # impact/separation fragment generation models
+    accretion_predictor.py        # compounding debris-risk growth prediction
   visualization/
     telemetry_api.py              # dashboard backend API
     mission_control_view_model.py
@@ -79,7 +112,10 @@ src/brambhand/
    - propagate rigid-body/mechanism states
    - solve propulsion fluid/combustion subsystem
    - execute FSI + structural updates (iterative if required)
-   - compute thrust/torque, contacts, and damage/leak updates
+   - compute thrust/torque, contacts, and damage/leak/topology-change updates
+   - update debris population/fragment propagation and accretion-risk state
+   - process mission-phase logistics (dock/undock lifecycle, booster transfer phases, planetary handoff states)
+   - evaluate communication LOS/range and delayed channel deliveries
    - emit diagnostics/events/telemetry snapshots
    - persist state and optional checkpoint
 4. Apply pacing controller policy (wall-clock synchronization, throttle mode, or max-throughput).
@@ -156,14 +192,21 @@ Write semantics:
 |---|---|
 | FR-001..FR-005 | `dynamics/*`, `core/*` |
 | FR-006..FR-010, FR-031 | `propulsion/*`, `geometry/nozzle_extractor.py` |
-| FR-011..FR-015 | `coupling/*`, `structures/*`, `dynamics/contact_docking.py` |
-| FR-016..FR-018, FR-032..FR-037 | `geometry/*`, `structures/*`, `dynamics/*`, `visualization/*`, `scenario/*`, `persistence/assets` |
+| FR-011..FR-015, FR-072..FR-073, FR-081 | `coupling/*`, `structures/*`, `dynamics/contact_docking.py` (current: 2D + 3D FEM baselines with model selection; planned: fracture/topology-separation progression) |
+| FR-074..FR-080 | `structures/fem/*` (contracts/geometry/backends/solver/selection), solver telemetry channels, runtime config/profile selectors |
+| FR-016..FR-018, FR-032..FR-037, FR-082 | `geometry/*`, `structures/*`, `dynamics/*`, `visualization/*`, `scenario/*`, `persistence/assets` |
 | FR-019..FR-021, FR-064..FR-066 | `scenario/*`, `persistence/*`, `core/state_snapshot.py`, replay metadata contracts |
 | FR-022..FR-024, FR-059..FR-063 | `distributed/*`, `core/scheduler.py`, barrier commit protocol |
 | FR-025..FR-028 | `visualization/telemetry_api.py`, `mission_control_view_model.py`, `onboard_view_model.py`, `damage_overlay_model.py` |
-| FR-038..FR-043 | `visualization/scene_graph.py`, `bvh_acceleration.py`, `raymarch_pipeline.py`, `renderer_profiles.py`, `replay_camera_sync.py` |
+| FR-038..FR-043, FR-083 | `visualization/scene_graph.py`, `bvh_acceleration.py`, `raymarch_pipeline.py`, `renderer_profiles.py`, `replay_camera_sync.py` |
+| FR-084..FR-085 | `debris/*`, `dynamics/*`, `scenario/*`, `persistence/*`, `visualization/*` |
+| FR-086..FR-090 | `operations/*`, `guidance/*`, `dynamics/contact_docking.py`, transfer/orchestration workflows, scenario/replay mission-phase metadata |
+| FR-091..FR-102 | `trajectory/*`, `mission/*`, `guidance/*`, scenario mission-phase DSL/contracts, persistence provenance for optimization campaigns |
+| FR-103..FR-114 | `navigation/*`, `trajectory/*`, `mission_products/*`, constraint/dispersion services, benchmark-validation harnesses, interactive analysis session metadata |
+| FR-115..FR-118 | `structures/fem/*` decomposition boundaries and namespace policy, `trajectory/*` adapter contracts, shared frame/time provider services across trajectory/navigation/mission modules |
 | FR-044..FR-048 | `core/simulation_clock.py`, `core/pacing_controller.py`, `core/scheduler.py`, replay/persistence metadata |
 | FR-049..FR-058 | `core/scheduler.py`, `core/simulation_runtime.py`, contract schemas, unit/frame validators, distributed sync protocol, replay metadata |
+| FR-067..FR-071 | `physics/*`, `communication/*`, `guidance/*`, `operations/*`, `scenario/*`, `cli.py`, regression test suites |
 | FR-029..FR-030 | diagnostics emitted by all solver domains + run metadata persistence |
 
 ## Geometry dependency matrix (STL influence)
@@ -175,7 +218,8 @@ Write semantics:
 | Propulsion nozzle model | Throat area, exit area, area ratio, contour loss factors |
 | Structures/FEM/fracture | Surface/volume mesh inputs, region tagging |
 | Leakage/fault propagation | Damage/leak location anchors and local geometry parameters |
-| Visualization | 3D meshes + damage/leak overlays registered to geometry |
+| Debris/fragmentation | Break/split surfaces and fragment seed regions for post-failure debris generation |
+| Visualization | 3D meshes + crack/fracture/leak overlays and topology-change states registered to geometry |
 
 ## Clock-linked subsystem policy
 All time-dependent subsystems are clock-linked through the runtime scheduler:
@@ -211,12 +255,61 @@ Selection policy (runtime/orchestrator):
 | Visualization | decoupled multi-rate from physics | concurrent render/update pipelines with interpolation | frame output tied to committed sim state |
 
 ## Latency and backpressure control
-- Pacing controller monitors cadence error, scheduler lag, and persistence latency.
+- Pacing controller monitors cadence error, scheduler lag, persistence latency, and structural solver pressure.
 - Backpressure policy order:
   1. reduce non-critical visualization quality/frequency,
   2. reduce telemetry sampling rate (within policy bounds),
-  3. pause/slow simulation when commit safety at risk.
+  3. reduce structural solve cadence/fidelity by policy (e.g., backend switch dense->sparse iterative, optional coarse mesh mode),
+  4. pause/slow simulation when commit safety at risk.
 - Persistence writes remain idempotent and commit-ordered; ingestion lag must not reorder replay semantics.
+
+## Trajectory optimization and mission-analysis adapter strategy (adopt-first)
+
+Adopt open-source trajectory/mission-analysis libraries behind stable contracts,
+with in-house fallback implementations remaining possible without scenario-schema churn.
+
+Adapter-oriented design:
+- `trajectory/optimizer_contracts.py`
+  - defines problem/constraint/objective and solve-result contracts
+- `trajectory/ephemeris_provider.py`
+  - defines ephemeris/frame provider interface and validation hooks
+- `trajectory/transfer_analysis.py`
+  - defines Hohmann/Lambert/gravity-assist workflow APIs independent of backend
+- `trajectory/campaign_runner.py`
+  - batch trade-study orchestration and provenance capture
+- `navigation/od_contracts.py`
+  - defines orbit-determination estimation contracts and covariance outputs
+- `trajectory/constraints.py`
+  - operational-constraint evaluation interfaces (eclipse/pointing/keep-out windows)
+- `mission_products/report_generator.py`
+  - standardized maneuver/nav/constraint analysis product generation
+
+Candidate OSS backends (through adapters, not hard-coupled):
+- Python-first:
+  - `scipy` optimization stack for constrained solves and baseline campaigns
+  - `poliastro` utilities for astrodynamics workflows where suitable
+  - `spiceypy`/`jplephem` for ephemeris support
+  - `filterpy`/SciPy-based estimation blocks for OD baseline workflows
+- C++-backed (via Python bindings/adapters):
+  - `pykep`/`pagmo` for trajectory optimization and Lambert/flyby workflows
+  - `tudatpy` (Tudat) for higher-fidelity astrodynamics propagation/analysis
+  - Orekit Python integrations for operational mission-analysis and OD workflows where adopted
+  - CSPICE-backed services (via wrappers) for production ephemeris/time/frame support
+
+Contract rules:
+- scenario DSL references abstract trajectory backend IDs/config, not library-specific options
+- runtime performs unit/frame normalization before/after adapter calls
+- persisted outputs include backend/provenance metadata for replay and audits
+- adapter swap must preserve tolerance-bounded equivalence on benchmark scenarios
+
+Coupling-mitigation implementation policy:
+- split high-complexity solver modules (e.g., structural solver stack) into:
+  1) contracts/types,
+  2) assembly/preprocessing,
+  3) backend execution,
+  4) acceptance/diagnostics utilities.
+- prohibit backend-specific classes from crossing `trajectory/*`, `navigation/*`, and `mission/*` public interfaces.
+- route all frame/time conversions through shared provider services (no adapter-local divergent conversion logic).
 
 ## Remaining design decisions to refine
 - Initial latency/SLO targets are documented in `docs/PERFORMANCE_SLOS.md`; refine with benchmark data.
@@ -237,6 +330,33 @@ Selection policy (runtime/orchestrator):
 - **R7.2: Inter-module orchestration contracts and audit-grade replay provenance**
 - **R8: Mission-control + onboard dashboard stack**
 - **R8.1: 3D rendering core (scene graph, BVH, ray-marching, replay camera sync)**
+- **R9: Space debris environment + compounding accretion prediction**
+- **R10: Docking lifecycle + booster payload transfer logistics + interplanetary SOI handoff**
+- **R11: Trajectory optimization + interplanetary mission-analysis adapters (Hohmann/Lambert/gravity-assist + campaign orchestration)**
+- **R12: Advanced mission-analysis parity extensions (OD/covariance/dispersion/ops constraints/mission products/benchmark cross-validation)**
+
+## Current implementation status snapshot
+- R1 baseline implemented in `dynamics/*` with expanded rigid-body/docking contract tests.
+- R2 baseline implemented in `propulsion/*` (fluid network, combustion, thrust estimate, leakage).
+- R2.1 baseline implemented in `propulsion/thrust_estimator.py` with geometry-aware area-ratio and contour-loss correction.
+- R3 baseline provides linear static 2D and 3D FEM evaluation in `structures/fem/solver.py`.
+- Structural solver stack is modularized under `structures/fem/*`: contracts (`contracts.py`), geometry/assembly (`geometry.py`), backend solvers (`backends.py`), selection policy (`selection.py`), and orchestration facade (`solver.py`).
+- R3 now enforces 2D validity envelopes (plane-stress/plane-strain mode selection, thickness/span guardrails, out-of-plane rejection, small-strain guard).
+- R3 now uses sparse assembly (COO->CSR) for 2D baseline stiffness with `nnz` telemetry emission.
+- R3 now provides structural solver backend abstraction for reduced systems (dense direct, sparse direct, sparse iterative).
+- R3 sparse-iterative path now supports configurable preconditioning (Jacobi/none) with convergence telemetry (iterations/residual).
+- R3 includes matrix-free iterative reduced-system solves for large-mesh pressure scenarios.
+- Matrix-free mode includes hardening safeguards: residual guardrails, optional consistency-check against sparse-direct reference, and non-finite/operator protections.
+- Matrix-free path includes advanced preconditioning beyond Jacobi (node-wise block-Jacobi) and benchmark utility hooks for convergence comparison.
+- Structural telemetry now includes explicit solver termination reason codes across dense/sparse/matrix-free backends.
+- Matrix-free acceptance thresholds are now defined/validated for operational and analysis profiles via telemetry-based evaluators.
 
 ## Design -> Verification linkage
 `VERIFICATION.md` defines V&V evidence per requirement group and per roadmap phase.
+
+## Non-functional linkage note
+This design primarily maps functional requirement IDs to architecture surfaces.
+Non-functional requirement realization is tracked through:
+- `docs/PERFORMANCE_SLOS.md` (latency/cadence/render/structural scalability targets)
+- `docs/DISTRIBUTED_PROTOCOL.md` (commit, retry, durability, determinism semantics)
+- `VERIFICATION.md` (NR-specific evidence plan and acceptance checks).

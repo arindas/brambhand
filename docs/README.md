@@ -2,6 +2,8 @@
 
 This directory contains user and developer documentation for the current system.
 
+Current implementation includes baseline R1 dynamics, R2/R2.1 propulsion modules, and an expanded R3 FEM structural baseline (validity envelopes, sparse/matrix-free backends, and acceptance telemetry); roadmap tracking remains in `TODO.md`.
+
 ## Start here
 
 1. [Quickstart](./QUICKSTART.md) — install, run, validate, replay
@@ -20,3 +22,5 @@ This directory contains user and developer documentation for the current system.
 - [`VERIFICATION.md`](../VERIFICATION.md)
 - [`VALIDATION.md`](../VALIDATION.md)
 - [`CONTRIBUTING.md`](../CONTRIBUTING.md)
+- [`AGENT.md`](../AGENT.md)
+- [`CLAUDE.md`](../CLAUDE.md)

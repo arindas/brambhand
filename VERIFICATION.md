@@ -51,14 +51,21 @@ Detailed scenario/benchmark acceptance criteria are maintained in `VALIDATION.md
 |---|---|---|
 | FR-001..FR-005 | 6-DOF unit/integration tests, controller loop tests | closed-loop attitude/thrust maneuver scenarios |
 | FR-006..FR-010, FR-031 | fluid/combustion tests, thrust estimator tests, nozzle-geometry correction tests | engine operating-map comparisons, leak fault scenarios, contour/area-ratio sensitivity checks |
-| FR-011..FR-015 | FEM/fracture unit tests, FSI convergence tests, docking contact tests | structural damage progression and docking impact scenarios |
-| FR-016..FR-018, FR-032..FR-037 | STL importer/parser tests, mass/inertia extraction tests, collision/FEM preprocessing tests, geometry-mapping schema tests | CAD-to-simulation reproducibility checks and geometry-anchored damage/leak visualization checks |
+| FR-011..FR-015, FR-072..FR-073, FR-081 | FEM/fracture unit tests, dimensional-validity envelope checks (2D assumption guardrails), 3D-vs-2D model-selection tests, severe-separation/topology-change propagation tests, FSI convergence tests, docking contact tests | structural damage progression, severe separation, and docking impact scenarios |
+| FR-016..FR-018, FR-032..FR-037, FR-082 | STL importer/parser tests, mass/inertia extraction tests, collision/FEM preprocessing tests, geometry-mapping schema tests, crack/fracture/leak overlay contract tests | CAD-to-simulation reproducibility checks and geometry-anchored crack/fracture/leak visualization checks |
 | FR-019..FR-021, FR-064..FR-066 | DB persistence tests, idempotent tick-commit tests, replay/checkpoint determinism tests | long-run restart and replay audit workflows |
 | FR-022..FR-024, FR-059..FR-063 | partition/sync protocol tests, barrier-commit atomicity tests, orchestration integration tests | multi-node consistency and throughput scenarios without partition replicas |
 | FR-025..FR-028 | telemetry/view-model contract tests | operator acceptance scenarios (mission-control + onboard) |
-| FR-038..FR-043 | rendering pipeline tests (scene graph, BVH update/query, ray-march quality controls, replay camera sync) | visual analysis scenarios with profile switching and frame reproducibility checks |
+| FR-038..FR-043, FR-083 | rendering pipeline tests (scene graph, BVH update/query, ray-march quality controls, replay camera sync, topology-discontinuity rendering contracts) | visual analysis scenarios with profile switching, severe-failure geometry-change playback, and frame reproducibility checks |
 | FR-044..FR-048 | simulation-clock and pacing-controller tests, multi-rate scheduler tests, replay metadata consistency tests | real-time/accelerated/offline mode scenario playback with timeline equivalence checks |
 | FR-049..FR-058 | inter-module contract tests (schema, units, frame checks), scheduler-order tests, causality/fault-propagation tests, distributed tick-barrier tests | end-to-end reconstruction and cross-module incident replay audits |
+| FR-067..FR-071 | baseline regression tests for gravity/orbit propagation, communication LOS occlusion, link delay channel behavior, scenario/replay CLI workflows | continuity scenarios proving baseline mission workflows remain valid while high-fidelity/distributed features evolve |
+| FR-074..FR-080 | sparse assembly/backend tests, preconditioner convergence tests, matrix-free operator checks, backend-equivalence/determinism tolerance tests, solver telemetry contract tests, matrix-free robustness/failure-path tests | latency/memory benchmark scenarios across 2D/3D structural profiles with matrix-free acceptance thresholds |
+| FR-084..FR-085 | debris population/fragmentation tests, compounding accretion predictor tests, debris-impact coupling tests | debris-growth risk scenarios and asteroid-impact fragment-cloud evolution scenarios |
+| FR-086..FR-090 | rendezvous/dock/undock lifecycle tests, booster payload-transfer mission-phase tests, sphere-of-influence handoff propagation tests, Hohmann-transfer workflow tests, gravity-assist encounter/deflection tests | end-to-end payload transfer scenarios (launch->UEO assembly->boost->handoff to destination planetary influence) plus Hohmann and gravity-assist mission validations |
+| FR-091..FR-102 | optimizer-contract tests, ephemeris/frame-provider adapter tests, Hohmann/Lambert adapter tests, gravity-assist adapter tests, campaign-orchestration determinism/provenance tests, cross-backend tolerance benchmark tests | trajectory-optimization and interplanetary trade-study validation packs with backend-swap reproducibility evidence |
+| FR-103..FR-114 | orbit-determination estimator tests, covariance propagation tests, Monte Carlo/dispersion workflow tests, operational-constraint loop tests, finite-burn targeting realism tests, stationkeeping workflow tests, mission-product generation contract tests, reference cross-validation harness tests, interactive-session reproducibility tests | advanced mission-analysis validation suites comparing OD/dispersion/constraint workflows to trusted references and mission-ops product acceptance criteria |
+| FR-115..FR-118 | module-boundary decomposition tests, FEM namespace migration/completeness tests, adapter type-leakage guard tests, shared frame/time-provider contract tests | architecture-integrity scenarios demonstrating backend swaps, canonical public API path stability after migration, and cross-module frame/time consistency |
 | FR-029..FR-030 | diagnostics/metadata emission tests | reproducible run record audits |
 
 ## 4) Non-functional verification plan
@@ -66,6 +73,8 @@ Detailed scenario/benchmark acceptance criteria are maintained in `VALIDATION.md
 - NR-004..NR-005: deterministic replay and distributed tolerance checks
 - NR-006..NR-008: scalability/load tests + ingestion durability + restart-time tests
 - NR-022..NR-024: cadence error/jitter/drift tests and pacing-mode equivalence checks
+- NR-032..NR-036: structural `nnz` memory scaling checks, dimensional latency-profile tests (2D/3D), backend-switch determinism tolerance, fallback visibility tests, and matrix-free convergence stability characterization
+- NR-037..NR-049: trajectory/mission-analysis adapter swap stability, frame/time validation diagnostics, campaign reproducibility ordering, external-vs-in-house tolerance equivalence, OD convergence/uncertainty stability, operational-constraint auditability, mission-product reproducibility, interactive-session replay integrity, adapter type-leakage rejection, centralized conversion-drift bounds, and FEM-namespace migration/completeness parity checks on canonical import paths
 - NR-025..NR-028: interface validation, provenance completeness, degraded-mode visibility tests
 - NR-029..NR-031: barrier commit skew, persistence commit-latency bounds, deterministic retry/idempotency tests
 - NR-009..NR-011: modular interface tests + schema version compatibility checks
@@ -89,7 +98,38 @@ Detailed scenario/benchmark acceptance criteria are maintained in `VALIDATION.md
 - **R8 gate:** dashboard/operator workflows pass acceptance scenarios
 - **R8.1 gate:** 3D rendering pipeline meets profile-specific frame-time/quality targets with deterministic replay camera sync
 
-## 6) Definition of done (feature level)
+## 6) Current evidence snapshot (2026-04-02)
+
+- R1 dynamics evidence: `tests/test_dynamics_r1_contracts.py`
+  - frame-aware wrench behavior
+  - gyroscopic coupling checks for non-spherical inertia
+  - docking impulse/rebound and threshold boundary outcomes
+- R2 propulsion evidence: `tests/test_propulsion_r2_contracts.py`
+  - feed/combustion/thrust/leakage baseline checks
+  - nozzle geometry sensitivity checks (area ratio + contour loss)
+- Communication continuity evidence: `tests/test_communication.py`
+  - LOS occlusion screening
+  - one-way light-time delay checks
+  - deterministic delay-channel integration behavior
+- R3 structural baseline evidence: `tests/test_structures_r3_contracts.py`
+  - linear-static FEM solve behavior
+  - load-to-displacement linear scaling checks
+  - validity-envelope enforcement checks (plane-stress thickness guard, plane-strain mode path, out-of-plane rejection)
+  - sparse assembly/telemetry checks (`sparse_coo_csr`, `nnz` metrics)
+  - solver-backend consistency checks (dense direct vs sparse direct vs sparse iterative vs matrix-free iterative)
+  - preconditioned iterative convergence telemetry checks (preconditioner id, iterations, residual)
+  - explicit solver termination reason code checks across all structural backends
+  - advanced matrix-free preconditioning checks (block-Jacobi) and benchmark result reporting
+  - matrix-free robustness safeguards verified (residual guardrails, consistency checks, non-finite protections)
+  - matrix-free acceptance-threshold evaluation verified for operational/analysis profiles (with strict-threshold failure-path checks)
+  - FEM namespace migration-completeness check (tests/imports/docs use canonical `brambhand.structures.fem.*` paths)
+  - element stress metric and model-validation checks
+- Quality gates currently passing:
+  - `ruff check .`
+  - `mypy src tests`
+  - `pytest -q`
+
+## 7) Definition of done (feature level)
 - Requirement IDs linked
 - Design sections linked
 - Inline API docstrings updated

@@ -58,7 +58,31 @@ brambhand replay replay.jsonl --kind step_completed --start-time 100 --end-time 
 2. Save scenario snapshots in source control.
 3. Record mission events using `ReplayLog` for reproducibility/regression checks.
 
-## G. Contributor workflow
+## G. Propulsion geometry-sensitivity workflow (R2.1)
+
+1. Build `NozzleParams` baseline inputs (exit area, ambient pressure, exhaust velocity).
+2. Optionally provide `NozzleGeometryCorrection` (throat area, contour loss factor).
+3. Estimate thrust via `estimate_nozzle_thrust(...)` with/without geometry correction.
+4. Validate expected sensitivity:
+   - increasing area ratio should increase thrust estimate (within model bounds)
+   - decreasing contour-loss factor should reduce thrust estimate
+5. Add or update tests in `tests/test_propulsion_r2_contracts.py`.
+
+## H. Structural solver workflow (R3 scaling)
+
+1. Start from a structural case and classify it as:
+   - 2D validity envelope candidate, or
+   - 3D required case (`select_structural_model_dimension(...)`).
+2. Build either `FEMModel2D` or `FEMModel3D` and select structural backend profile (`dense`, `sparse_direct`, `sparse_iterative`, matrix-free for 2D when available).
+3. Execute solve (`solve_linear_static_fem(...)` or `solve_linear_static_fem_3d(...)`) and capture telemetry:
+   - assembly time
+   - solve time
+   - iterations/residuals
+   - matrix nonzero metrics (`nnz`).
+4. Validate output equivalence/tolerance against reference backend for the same case.
+5. Add/update deterministic and performance tests for selected dimensionality/profile.
+
+## I. Contributor workflow
 
 1. Start from `TODO.md` milestone/action items.
 2. Implement with tests in the same change.

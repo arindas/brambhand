@@ -6,6 +6,9 @@ This guide reflects the current repository layout, Python tooling, and developme
 
 ## Project workflow
 
+For human and AI contributors, `AGENT.md` defines the canonical session runbook
+(memory handling, planning order, execution loop, and closeout checklist).
+
 Follow this order for all substantial work:
 
 1. Review project context in `README.md`
@@ -20,48 +23,37 @@ Follow this order for all substantial work:
 
 ```text
 .
+├── .agent/                # memory summary + session entries
 ├── .github/               # issue templates, PR template, CI workflows
+├── assets/                # STL fixtures and metadata manifests
 ├── docs/                  # quickstart, concepts, workflows, tutorials, API reference
 ├── pyproject.toml
 ├── README.md
+├── AGENT.md             # canonical agent runbook (session + memory protocol)
+├── CLAUDE.md            # Claude-facing mirror of AGENT.md
 ├── REQUIREMENTS.md
 ├── DESIGN.md
 ├── VERIFICATION.md
+├── VALIDATION.md
 ├── TODO.md
+├── RELEASE_NOTES.md
 ├── CONTRIBUTING.md
 ├── SKILLS.md
+├── .agent/memory/README.md  # memory entry/compaction protocol
 ├── src/
 │   └── brambhand/
 │       ├── cli.py
 │       ├── core/
-│       │   ├── event_bus.py
-│       │   └── state_snapshot.py
 │       ├── physics/
-│       │   ├── vector.py
-│       │   ├── body.py
-│       │   ├── gravity_model.py
-│       │   └── integrator.py
 │       ├── spacecraft/
-│       │   ├── mass_model.py
-│       │   ├── propulsion.py
-│       │   └── command_model.py
 │       ├── guidance/
-│       │   ├── orbit_elements.py
-│       │   └── trajectory_predictor.py
 │       ├── communication/
-│       │   ├── visibility.py
-│       │   ├── link_model.py
-│       │   └── delay_channel.py
 │       ├── operations/
-│       │   ├── rendezvous_metrics.py
-│       │   ├── docking_model.py
-│       │   └── constellation.py
 │       ├── infrastructure/
-│       │   └── station.py
+│       ├── dynamics/      # R1: rigid-body 6-DOF, mechanisms, docking contact
+│       ├── propulsion/    # R2/R2.1: fluids, combustion, thrust, leakage, geometry correction
+│       ├── structures/    # R3: baseline FEM structural evaluation
 │       └── scenario/
-│           ├── scenario_schema.py
-│           ├── scenario_loader.py
-│           └── replay_log.py
 └── tests/
 ```
 
