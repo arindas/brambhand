@@ -108,3 +108,67 @@ def test_docking_contact_contract_screening_and_impulse() -> None:
     assert contact.outcome == DockingContactOutcome.CONTACT
     assert contact.impulse_ns > 0.0
     assert contact.post_contact_relative_speed_mps < 0.0
+
+
+def test_rigid_body_gyroscopic_coupling_updates_non_spherical_body() -> None:
+    state = RigidBody6DoFState(
+        position_m=Vector3(0.0, 0.0, 0.0),
+        velocity_mps=Vector3(0.0, 0.0, 0.0),
+        attitude=UnitQuaternion(1.0, 0.0, 0.0, 0.0),
+        angular_velocity_radps=Vector3(0.0, 1.0, 1.0),
+    )
+    props = RigidBodyProperties(mass_kg=100.0, inertia_diag_kgm2=(2.0, 3.0, 4.0))
+    wrench = Wrench(force_n=Vector3(0.0, 0.0, 0.0), torque_nm=Vector3(0.0, 0.0, 0.0))
+
+    dt_s = 0.01
+    next_state = integrate_rigid_body_euler(state, props, wrench, dt_s=dt_s)
+
+    # With tau=0 and w=(0,1,1), gyro = w x (Iw) = (1,0,0),
+    # so w_dot = -I^{-1}*gyro = (-0.5, 0, 0).
+    assert math.isclose(
+        next_state.angular_velocity_radps.x,
+        -0.5 * dt_s,
+        rel_tol=0.0,
+        abs_tol=1e-12,
+    )
+    assert math.isclose(next_state.angular_velocity_radps.y, 1.0, rel_tol=0.0, abs_tol=1e-12)
+    assert math.isclose(next_state.angular_velocity_radps.z, 1.0, rel_tol=0.0, abs_tol=1e-12)
+
+
+def test_docking_contact_threshold_boundaries() -> None:
+    params = DockingContactParams(
+        capture_distance_m=0.2,
+        max_capture_speed_mps=0.1,
+        contact_distance_m=1.0,
+        restitution=0.4,
+        effective_mass_kg=50.0,
+        hard_impact_speed_mps=0.8,
+    )
+
+    at_contact_boundary = evaluate_docking_contact(
+        relative_distance_m=params.contact_distance_m,
+        relative_speed_mps=0.2,
+        params=params,
+    )
+    assert at_contact_boundary.outcome == DockingContactOutcome.CONTACT
+
+    outside_contact_boundary = evaluate_docking_contact(
+        relative_distance_m=params.contact_distance_m + 1e-9,
+        relative_speed_mps=0.2,
+        params=params,
+    )
+    assert outside_contact_boundary.outcome == DockingContactOutcome.NO_CONTACT
+
+    at_capture_boundary = evaluate_docking_contact(
+        relative_distance_m=params.capture_distance_m,
+        relative_speed_mps=params.max_capture_speed_mps,
+        params=params,
+    )
+    assert at_capture_boundary.outcome == DockingContactOutcome.CAPTURED
+
+    at_hard_impact_boundary = evaluate_docking_contact(
+        relative_distance_m=0.5,
+        relative_speed_mps=params.hard_impact_speed_mps,
+        params=params,
+    )
+    assert at_hard_impact_boundary.outcome == DockingContactOutcome.CONTACT

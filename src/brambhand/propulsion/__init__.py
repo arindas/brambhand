@@ -18,6 +18,7 @@ from brambhand.propulsion.leakage_model import (
     apply_leakage,
 )
 from brambhand.propulsion.thrust_estimator import (
+    NozzleGeometryCorrection,
     NozzleParams,
     ThrustEstimate,
     estimate_nozzle_thrust,
@@ -30,6 +31,7 @@ __all__ = [
     "FluidNetworkState",
     "LeakagePath",
     "LineState",
+    "NozzleGeometryCorrection",
     "NozzleParams",
     "TankState",
     "ThrustEstimate",

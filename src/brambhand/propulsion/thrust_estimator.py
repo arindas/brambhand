@@ -6,6 +6,7 @@ Why this module exists:
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 
@@ -35,18 +36,63 @@ class ThrustEstimate:
     pressure_thrust_n: float
 
 
+@dataclass(frozen=True)
+class NozzleGeometryCorrection:
+    """Geometry-aware correction inputs for baseline thrust estimation.
+
+    The correction model approximates first-order geometry effects:
+    - throat/exit area ratio impact on expansion performance
+    - contour losses from non-ideal nozzle shaping
+    """
+
+    throat_area_m2: float
+    contour_loss_factor: float = 1.0
+
+    def __post_init__(self) -> None:
+        if self.throat_area_m2 <= 0.0:
+            raise ValueError("throat_area_m2 must be positive.")
+        if not 0.0 < self.contour_loss_factor <= 1.0:
+            raise ValueError("contour_loss_factor must be in (0, 1].")
+
+
+def _expansion_efficiency(area_ratio: float) -> float:
+    """Return bounded expansion efficiency from nozzle area ratio."""
+    if area_ratio < 1.0:
+        raise ValueError("Nozzle area ratio must be >= 1.0.")
+    # Slow logarithmic gain with clipping for reduced-order stability.
+    return min(1.15, max(0.85, 0.9 + 0.08 * math.log(area_ratio)))
+
+
 def estimate_nozzle_thrust(
     chamber_pressure_pa: float,
     mass_flow_kgps: float,
     nozzle: NozzleParams,
+    geometry: NozzleGeometryCorrection | None = None,
 ) -> ThrustEstimate:
-    """Estimate thrust as momentum + pressure terms."""
+    """Estimate thrust as momentum + pressure terms.
+
+    When `geometry` is provided, apply reduced-order corrections for
+    nozzle area-ratio expansion behavior and contour losses.
+    """
     if chamber_pressure_pa < 0.0:
         raise ValueError("chamber_pressure_pa cannot be negative.")
     if mass_flow_kgps < 0.0:
         raise ValueError("mass_flow_kgps cannot be negative.")
 
-    momentum = mass_flow_kgps * nozzle.exhaust_velocity_mps
-    pressure = (chamber_pressure_pa - nozzle.ambient_pressure_pa) * nozzle.exit_area_m2
+    geometry_factor = 1.0
+    if geometry is not None:
+        area_ratio = nozzle.exit_area_m2 / geometry.throat_area_m2
+        geometry_factor = _expansion_efficiency(area_ratio) * geometry.contour_loss_factor
+
+    momentum = mass_flow_kgps * nozzle.exhaust_velocity_mps * geometry_factor
+    pressure = (
+        (chamber_pressure_pa - nozzle.ambient_pressure_pa)
+        * nozzle.exit_area_m2
+        * geometry_factor
+    )
     total = momentum + pressure
-    return ThrustEstimate(thrust_n=total, momentum_thrust_n=momentum, pressure_thrust_n=pressure)
+    return ThrustEstimate(
+        thrust_n=total,
+        momentum_thrust_n=momentum,
+        pressure_thrust_n=pressure,
+    )

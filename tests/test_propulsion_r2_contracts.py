@@ -13,7 +13,11 @@ from brambhand.propulsion.fluid_network import (
     step_fluid_network,
 )
 from brambhand.propulsion.leakage_model import CompartmentState, LeakagePath, apply_leakage
-from brambhand.propulsion.thrust_estimator import NozzleParams, estimate_nozzle_thrust
+from brambhand.propulsion.thrust_estimator import (
+    NozzleGeometryCorrection,
+    NozzleParams,
+    estimate_nozzle_thrust,
+)
 
 
 def test_fluid_network_delivers_mass_and_depletes_tank() -> None:
@@ -63,6 +67,57 @@ def test_thrust_estimator_matches_momentum_plus_pressure_term() -> None:
 
     expected = 12.0 * 2500.0 + (2_000_000.0 - 101_325.0) * 0.05
     assert math.isclose(estimate.thrust_n, expected)
+
+
+def test_nozzle_geometry_area_ratio_influences_thrust() -> None:
+    nozzle = NozzleParams(
+        exit_area_m2=0.06,
+        ambient_pressure_pa=101_325.0,
+        exhaust_velocity_mps=2600.0,
+    )
+
+    low_ratio = NozzleGeometryCorrection(throat_area_m2=0.03, contour_loss_factor=1.0)
+    high_ratio = NozzleGeometryCorrection(throat_area_m2=0.01, contour_loss_factor=1.0)
+
+    low = estimate_nozzle_thrust(
+        chamber_pressure_pa=2_000_000.0,
+        mass_flow_kgps=10.0,
+        nozzle=nozzle,
+        geometry=low_ratio,
+    )
+    high = estimate_nozzle_thrust(
+        chamber_pressure_pa=2_000_000.0,
+        mass_flow_kgps=10.0,
+        nozzle=nozzle,
+        geometry=high_ratio,
+    )
+
+    assert high.thrust_n > low.thrust_n
+
+
+def test_nozzle_geometry_contour_loss_reduces_thrust() -> None:
+    nozzle = NozzleParams(
+        exit_area_m2=0.06,
+        ambient_pressure_pa=101_325.0,
+        exhaust_velocity_mps=2600.0,
+    )
+    ideal = NozzleGeometryCorrection(throat_area_m2=0.02, contour_loss_factor=1.0)
+    lossy = NozzleGeometryCorrection(throat_area_m2=0.02, contour_loss_factor=0.9)
+
+    ideal_estimate = estimate_nozzle_thrust(
+        chamber_pressure_pa=2_000_000.0,
+        mass_flow_kgps=10.0,
+        nozzle=nozzle,
+        geometry=ideal,
+    )
+    lossy_estimate = estimate_nozzle_thrust(
+        chamber_pressure_pa=2_000_000.0,
+        mass_flow_kgps=10.0,
+        nozzle=nozzle,
+        geometry=lossy,
+    )
+
+    assert lossy_estimate.thrust_n < ideal_estimate.thrust_n
 
 
 def test_leakage_reduces_mass_and_pressure() -> None:
