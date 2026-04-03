@@ -131,9 +131,13 @@
 ### R10 — Docking lifecycle and booster payload transfer logistics
 - [ ] Implement explicit dock/undock lifecycle state machine (approach/capture/hard-dock/detach/clearance)
 - [ ] Define approach safety-zone/hold-point/collision-avoidance contracts in docking lifecycle flows
+- [ ] Implement hold-point authority/permission gating and proceed/abort command semantics
+- [ ] Implement collision-avoidance trigger and escape-maneuver contract path from each critical approach segment
 - [ ] Implement mission-phase event contracts for payload transfer operations (assembly, burn staging, separation)
+- [ ] Persist lifecycle transition/event provenance in replay artifacts (capture/latch/hard-dock/detach/clearance)
 - [ ] Implement booster-to-payload transfer guidance/control workflow hooks for UEO/interplanetary missions
 - [ ] Implement planetary sphere-of-influence handoff propagation metadata and replay reconstruction checks
+- [ ] Add dock/undock lifecycle causal-ordering tests (including hold-point/abort/escape paths)
 - [ ] Add end-to-end transfer scenario (launch -> UEO docking/assembly -> boost out of origin SOI -> destination SOI insertion)
 
 ### R11 — Trajectory optimization and interplanetary mission-analysis adapters

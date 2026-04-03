@@ -64,7 +64,7 @@ src/brambhand/
     sync_protocol.py              # inter-worker state sync
     orchestrator_client.py        # job lifecycle integration
   mission/
-    docking_lifecycle.py          # approach/capture/dock/undock state machine + safety-zone/hold-point contracts
+    docking_lifecycle.py          # approach/capture/dock/undock state machine + safety-zone/hold-point/abort contracts
     transfer_logistics.py         # booster payload transfer mission phases
     soi_handoff.py                # planetary sphere-of-influence handoff metadata/contracts
   trajectory/
@@ -116,7 +116,7 @@ src/brambhand/
    - execute FSI + structural updates (iterative if required)
    - compute thrust/torque, contacts, and damage/leak/topology-change updates
    - update debris population/fragment propagation and accretion-risk state
-   - process mission-phase logistics (dock/undock lifecycle, booster transfer phases, planetary handoff states)
+   - process mission-phase logistics (dock/undock lifecycle with hold-point authority and abort/escape paths, booster transfer phases, planetary handoff states)
    - evaluate communication LOS/range and delayed channel deliveries
    - emit diagnostics/events/telemetry snapshots
    - persist state and optional checkpoint
