@@ -51,8 +51,9 @@
 ### R4 — Fluid-structure interaction coupling
 - [ ] Implement two-way FSI coupler with convergence residuals
 - [ ] Implement coupling controller (iteration budget, thresholds, fallback)
+- [ ] Define initial coupling policy: partitioned baseline with explicit criteria for monolithic escalation
 - [ ] Add convergence diagnostics and residual telemetry channels
-- [ ] Add FSI benchmark tests for coupled stability
+- [ ] Add FSI benchmark tests for coupled stability (including failure/recovery paths)
 
 ### R5 — Geometry pipeline (STL import)
 - [x] Add idealized/reference STL fixture sets and manifest for geometry-dependent tests
@@ -125,6 +126,7 @@
 - [ ] Implement compounding debris accretion/risk-growth predictor (secondary fragment generation feedback)
 - [ ] Implement debris-impact coupling hooks into structural damage/leak creation workflows
 - [ ] Add debris-centric end-to-end scenarios (including asteroid strike -> fragment cloud evolution)
+- [ ] Add breakup-assumption sensitivity and casualty-risk uncertainty-band benchmark scenarios
 
 ### R10 — Docking lifecycle and booster payload transfer logistics
 - [ ] Implement explicit dock/undock lifecycle state machine (approach/capture/hard-dock/detach/clearance)
@@ -142,6 +144,7 @@
 - [ ] Add adapter integration for selected OSS backends (Python-first + C++-backed bindings)
 - [ ] Enforce backend-neutral adapter boundaries with integration guards against backend-specific type leakage
 - [ ] Add backend-equivalence benchmark scenarios and tolerance envelopes (external vs in-house)
+- [ ] Add seed-sensitivity and convergence-basin benchmark scenarios (Lambert-seeded and non-seeded initializations)
 
 ### R12 — Advanced mission-analysis parity extensions
 - [ ] Implement centralized frame/time provider service used by trajectory/navigation/mission modules and adapters

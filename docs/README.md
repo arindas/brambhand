@@ -13,6 +13,7 @@ Current implementation includes baseline R1 dynamics, R2/R2.1 propulsion modules
 5. [API reference](./API_REFERENCE.md) — inline-doc source-of-truth index
 6. [Distributed protocol](./DISTRIBUTED_PROTOCOL.md) — tick/barrier/commit semantics
 7. [Performance SLOs](./PERFORMANCE_SLOS.md) — pacing/render/persistence targets
+8. [Research notes](./RESEARCH_NOTES.md) — external reference scan and roadmap comparison notes
 
 ## Related root docs
 

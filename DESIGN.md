@@ -316,6 +316,7 @@ Coupling-mitigation implementation policy:
 - Initial mode-selection thresholds are documented in `docs/PERFORMANCE_SLOS.md`; tune with production workload evidence.
 - Initial persistence durability policy is documented in `docs/DISTRIBUTED_PROTOCOL.md`; finalize per deployment tier.
 - Initial fallback/degraded-mode hierarchy is documented in `docs/DISTRIBUTED_PROTOCOL.md`; refine with coupling stress tests.
+- FSI coupling policy needs explicit first-cut criteria for partitioned baseline operation vs monolithic escalation under instability/additional-mass sensitivity.
 
 ## Incremental implementation roadmap
 - **R1: 6-DOF core + mechanisms + docking contact baseline**

@@ -52,6 +52,7 @@ Validation covers:
 - Structural latency/memory envelope scenarios by profile (operational vs analysis)
 - Fracture initiation/propagation mission consequences
 - FSI coupled stability and plausibility scenarios
+- FSI failure/recovery scenarios (partitioned coupling instability triggers and controlled fallback/escalation)
 - End-to-end impact-fault scenario: stray asteroid impact -> localized structural damage -> leak-path creation -> unintended leak thrust/moment contribution -> crew-cabin depressurization progression and alarms
 
 ## R5 (geometry pipeline)
@@ -83,6 +84,7 @@ Validation covers:
 ## R9 (debris and compounding accretion prediction)
 - Debris population and fragment-cloud evolution scenarios
 - Secondary-collision/fragment feedback scenarios for compounding risk growth
+- Breakup-assumption sensitivity scenarios with casualty-risk uncertainty bands
 - Asteroid-impact -> leak/depressurization -> debris-evolution end-to-end scenarios
 
 ## R10 / R11 / R12 (transfer logistics + trajectory optimization + advanced mission analysis)
@@ -90,8 +92,9 @@ Validation covers:
 - Hohmann/Lambert transfer workflow validation scenarios
 - Gravity-assist encounter/deflection validation scenarios
 - Adapter-backend swap reproducibility scenarios (same mission intent across different OSS/in-house backends)
+- Seed-sensitivity and convergence-basin scenarios (Lambert-seeded vs alternate initializations)
 - Campaign/window-sweep trade-study validation with provenance checks
-- Orbit-determination/covariance/dispersion validation scenarios
+- Orbit-determination/covariance/dispersion validation scenarios (including covariance-consistency checks)
 - Operational-constraint and finite-burn realism validation scenarios
 - Mission-analysis product acceptance and interactive-session reproducibility scenarios
 

@@ -42,7 +42,23 @@ Use the canonical memory guide:
 
 At end of meaningful work, add one new memory entry and include test/lint/type-check evidence.
 
-## 4) Done criteria
+## 4) Research loop (optional)
+
+Do not run research every session.
+
+Run research only when needed, for example:
+- local docs/tests are insufficient for a design or validation decision
+- a new roadmap area starts (new physics domain, coupling strategy, or benchmark policy)
+- assumptions need external cross-checks
+
+Workflow:
+1. use env-configured knowledge-base access from `SKILLS.md`
+2. extract only relevant sections (no full-document dumps)
+3. record findings in `docs/RESEARCH_NOTES.md`
+4. compare against `REQUIREMENTS.md`, `DESIGN.md`, `TODO.md`, `VERIFICATION.md`, `VALIDATION.md`
+5. convert actionable deltas into explicit doc/TODO updates
+
+## 5) Done criteria
 
 A task is done when all are true:
 - code + tests updated
