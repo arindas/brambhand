@@ -88,7 +88,7 @@ Validation covers:
 - Asteroid-impact -> leak/depressurization -> debris-evolution end-to-end scenarios
 
 ## R10 / R11 / R12 (transfer logistics + trajectory optimization + advanced mission analysis)
-- Dock/undock lifecycle and booster transfer mission-phase scenarios
+- Dock/undock lifecycle and booster transfer mission-phase scenarios (including safety-zone/hold-point and collision-avoidance cases)
 - Hohmann/Lambert transfer workflow validation scenarios
 - Gravity-assist encounter/deflection validation scenarios
 - Adapter-backend swap reproducibility scenarios (same mission intent across different OSS/in-house backends)
@@ -135,10 +135,10 @@ Validation suites in this document cover the following requirement groups:
 - FR-086..FR-090: dock/undock lifecycle, booster-assisted payload transfer, planetary handoff mission phases, Hohmann-transfer, and gravity-assist workflows
 - FR-091..FR-102: trajectory optimization + interplanetary mission-analysis adapter workflows and campaign orchestration
 - FR-103..FR-114: OD/uncertainty/dispersion/ops-constraint/mission-product/interactive-analysis parity workflows
-- FR-115..FR-117: architecture decoupling integrity and shared frame/time service consistency workflows
+- FR-115..FR-118: architecture decoupling integrity and shared frame/time service consistency workflows
 - FR-029..FR-030: diagnostics and reproducibility metadata channels
 
-Non-functional validation intent in this document aligns with NR-001..NR-048, with specific SLO-aligned targets governed by `docs/PERFORMANCE_SLOS.md`.
+Non-functional validation intent in this document aligns with NR-001..NR-049, with specific SLO-aligned targets governed by `docs/PERFORMANCE_SLOS.md`.
 
 ## 7) Current validation-progress snapshot (2026-04-02)
 

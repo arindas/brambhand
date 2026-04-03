@@ -130,6 +130,7 @@
 
 ### R10 — Docking lifecycle and booster payload transfer logistics
 - [ ] Implement explicit dock/undock lifecycle state machine (approach/capture/hard-dock/detach/clearance)
+- [ ] Define approach safety-zone/hold-point/collision-avoidance contracts in docking lifecycle flows
 - [ ] Implement mission-phase event contracts for payload transfer operations (assembly, burn staging, separation)
 - [ ] Implement booster-to-payload transfer guidance/control workflow hooks for UEO/interplanetary missions
 - [ ] Implement planetary sphere-of-influence handoff propagation metadata and replay reconstruction checks
@@ -137,6 +138,7 @@
 
 ### R11 — Trajectory optimization and interplanetary mission-analysis adapters
 - [ ] Define backend-agnostic trajectory optimization contracts (problem/constraints/objectives/results)
+- [ ] Implement trajectory initial-guess generator utilities (Lambert/Hohmann/shape-based seeds)
 - [ ] Implement pluggable ephemeris/frame provider contracts with unit/frame validation
 - [ ] Implement Hohmann/Lambert workflow adapters behind abstract interfaces
 - [ ] Implement gravity-assist encounter/deflection workflow adapters behind abstract interfaces
@@ -149,6 +151,7 @@
 ### R12 — Advanced mission-analysis parity extensions
 - [ ] Implement centralized frame/time provider service used by trajectory/navigation/mission modules and adapters
 - [ ] Implement orbit-determination abstraction and estimator adapters (batch LS + sequential filter baseline)
+- [ ] Define estimator initialization/process-noise tuning policy and covariance-consistency checks for OD workflows
 - [ ] Implement covariance/uncertainty propagation services across burns/flybys/phase transitions
 - [ ] Implement Monte Carlo and injection-dispersion campaign workflows with scalable orchestration
 - [ ] Implement operational constraint packs for optimization loops (eclipse, comm windows, pointing, keep-out, power/thermal)

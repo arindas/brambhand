@@ -64,12 +64,13 @@ src/brambhand/
     sync_protocol.py              # inter-worker state sync
     orchestrator_client.py        # job lifecycle integration
   mission/
-    docking_lifecycle.py          # approach/capture/dock/undock state machine
+    docking_lifecycle.py          # approach/capture/dock/undock state machine + safety-zone/hold-point contracts
     transfer_logistics.py         # booster payload transfer mission phases
     soi_handoff.py                # planetary sphere-of-influence handoff metadata/contracts
   trajectory/
     optimizer_contracts.py        # backend-agnostic optimization interfaces
     trajectory_problem.py         # mission-phase trajectory problem definitions
+    initial_guess.py              # Lambert/Hohmann/shape-based initial guess generators
     ephemeris_provider.py         # pluggable ephemeris/frame provider contracts
     transfer_analysis.py          # Lambert/Hohmann/gravity-assist workflow adapters
     campaign_runner.py            # batch window sweep/trade-study orchestration
@@ -82,6 +83,7 @@ src/brambhand/
       orekit_adapter.py
   navigation/
     od_contracts.py               # orbit-determination abstraction interfaces
+    od_tuning_policy.py           # estimator initialization/process-noise tuning policy contracts
     covariance_propagation.py     # covariance/uncertainty propagation contracts
     tracking_models.py            # measurement model adapters
   mission_products/

@@ -130,7 +130,7 @@ This revision formalizes the **next requirement set** focused on:
 - FR-085: The simulator shall support compounding debris accretion prediction use cases, including iterative risk growth from secondary fragment generation and collision probability updates over time.
 
 ## N. Rendezvous/docking lifecycle and payload transfer logistics
-- FR-086: The simulator shall support full docking lifecycle workflows including approach, capture, hard-dock, undock/detach, and post-detach clearance operations with causal event sequencing.
+- FR-086: The simulator shall support full docking lifecycle workflows including approach, capture, hard-dock, undock/detach, and post-detach clearance operations with causal event sequencing, safety-zone/hold-point constraints, and collision-avoidance maneuver availability contracts.
 - FR-087: The simulator shall support orbital booster-assisted payload transfer workflows (e.g., launch-to-UEO assembly, booster docking to payload, staged burns, and transfer continuation after separation).
 - FR-088: The simulator shall support interplanetary handoff mission phases where payload trajectories are propagated from one planetary sphere of influence to another with mission-event traceability.
 - FR-089: The simulator shall support Hohmann-transfer mission design/execution workflows (co-planar baseline), including transfer-window parameters, maneuver sequencing, and replay-traceable burn events.

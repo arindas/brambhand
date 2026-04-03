@@ -41,6 +41,9 @@
   - added `CLAUDE.md` as Claude-oriented mirror of agent runbook
   - added `docs/AGENT_MEMORY.md` with memory read/write/compaction rules for new environments
   - clarified root `README.md`, `SKILLS.md`, `CONTRIBUTING.md`, and `docs/README.md` to point agents to canonical process docs
+- Research-to-planning synchronization updates:
+  - added free-flow research session notes in `docs/RESEARCH_NOTES.md`
+  - synchronized `REQUIREMENTS`/`DESIGN`/`TODO`/`VERIFICATION`/`VALIDATION` on docking safety-zone contracts, trajectory initial-guess utilities, and OD process-noise/covariance-consistency planning
 - Architectural decoupling parity extension:
   - added FR-115..FR-117 and NR-047..NR-048 for solver-module decomposition, backend-neutral adapter boundaries, and centralized frame/time conversion integrity
   - updated design/TODO/V&V linkage for coupling-mitigation implementation policy

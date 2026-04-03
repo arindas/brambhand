@@ -151,3 +151,102 @@ Against `VALIDATION.md`:
 
 3. In R9 validation planning, add one benchmark category for:
    - breakup model sensitivity and casualty-risk uncertainty bands
+
+---
+
+## E) Free-flow curiosity session (2026-04-03)
+
+Goal:
+- run an exploratory, curiosity-driven scan (not tied to one immediate TODO item)
+- capture ideas that may de-risk upcoming roadmap phases
+
+Curiosity list:
+1. Which FSI coupling patterns are most robust for early implementation (partitioned vs monolithic)?
+2. Which iterative-solver patterns matter most for the next structural scalability step?
+3. What docking-lifecycle constraints are typically missed in early state-machine designs?
+4. What makes trajectory NLP convergence brittle, and how should we structure seed generation?
+5. For debris/risk workflows, where should uncertainty treatment become first-class?
+6. For OD extensions, what should be explicit around covariance and process-noise policy?
+
+Deep-dive findings:
+
+### E1) FSI coupling robustness
+References:
+- `aerospace/simulation/computational-fluid-dynamics-and-fluid-structure-interaction/computational-fluid-structure-interaction.pdf`
+
+Signals:
+- clear split between loosely-coupled (staggered/partitioned) and strongly-coupled (monolithic)
+- staggered methods are practical/reusable but can face convergence problems in added-mass-sensitive settings
+- block-iterative coupling and pre-FSI preparation are emphasized as practical convergence aids
+
+Project implications:
+- supports our R4 direction: start partitioned, instrument residuals, define escalation criteria to monolithic path
+- reinforces need for explicit failure/recovery benchmarks (already added)
+
+### E2) Iterative solver scaling for FEM
+References:
+- `aerospace/simulation/computational-fluid-dynamics-and-fluid-structure-interaction/finite-elements-and-fast-iterative-solvers.pdf`
+
+Signals:
+- preconditioning is treated as necessary for large systems, not optional tuning
+- practical target: mesh refinement should not explode iteration count
+- iterative methods become central in large/high-dimensional regimes where direct sparse methods become impractical
+
+Project implications:
+- validates focus on backend-equivalence and latency/memory profiling in R3
+- suggests future benchmark reporting should include iteration-growth trend vs mesh refinement class
+
+### E3) Docking lifecycle realism details
+References:
+- `aerospace/series/cambridge-aeospace-series/automated-rendezvous-and-docking-of-spacecraft.pdf`
+
+Signals:
+- mission naturally decomposes into launch/phasing/far-range/close-range/final-approach/capture/structural-latch stages
+- safety zones, approach corridors, and hold points are operationally central
+- collision avoidance maneuver availability is treated as a hard requirement along approach segments
+
+Project implications:
+- R10 should explicitly model safety-zone/hold-point/collision-avoidance contracts (added to TODO)
+
+### E4) Trajectory optimization convergence behavior
+References:
+- `aerospace/series/cambridge-aeospace-series/spacecraft-trajectory-optimization.pdf`
+
+Signals:
+- direct transcription/collocation + NLP is practical, but initial guess quality remains critical
+- Lambert/Hohmann or other known structures are useful seed generators
+- robustness and local-minimum behavior are tightly linked to initialization choices
+
+Project implications:
+- seed-sensitivity benchmarks are important (already added)
+- implementation should include initial-guess generator utilities as first-class components (added to TODO)
+
+### E5) Debris risk and uncertainty
+References:
+- `aerospace/simulation/papers/next-generation-reentry-aerothermodynamic-modelling-of-space-debris.pdf`
+
+Signals:
+- breakup assumptions and primitive decomposition strongly influence risk outputs
+- high-fidelity methods are expensive; probabilistic risk workflows demand staged-fidelity strategy
+- uncertainty quantification is explicitly called out as necessary future work in practical pipelines
+
+Project implications:
+- reinforces R9 sensitivity/uncertainty benchmark direction (already added)
+
+### E6) OD covariance/process-noise policy
+References:
+- `aerospace/series/american-institute-of-aeronautics-and-astronautics/kalman-filtering-a-practical-approach.pdf`
+
+Signals:
+- batch and recursive formulations are connected; covariance handling is core output behavior
+- process-noise choice and initial covariance are major practical tuning levers and can prevent divergence
+
+Project implications:
+- R12 needs explicit estimator initialization/process-noise policy and covariance-consistency checks (added to TODO)
+
+Cross-doc comparison (quick):
+- `REQUIREMENTS.md`: findings are consistent with current FR/NR direction
+- `DESIGN.md`: aligns with adapter/coupling strategy and observability-first architecture
+- `TODO.md`: now updated with docking safety contracts, trajectory seed-generator utilities, and OD tuning-policy task
+- `VERIFICATION.md`: already includes key FSI/seed-sensitivity/covariance-consistency test directions
+- `VALIDATION.md`: already includes failure/recovery and uncertainty-band scenario categories
