@@ -3,7 +3,7 @@
 [<img alt="github" src="https://img.shields.io/badge/github-arindas/brambhand-8da0cb?style=for-the-badge&amp;labelColor=555555&amp;logo=github" height="20">](https://github.com/arindas/brambhand)
 [<img alt="tests status" src="https://img.shields.io/github/actions/workflow/status/arindas/brambhand/ci.yml?branch=main&amp;style=for-the-badge&amp;label=tests" height="20">](https://github.com/arindas/brambhand/actions/workflows/ci.yml)
 [<img alt="command check status" src="https://img.shields.io/github/actions/workflow/status/arindas/brambhand/cli-smoke.yml?branch=main&amp;style=for-the-badge&amp;label=command-check" height="20">](https://github.com/arindas/brambhand/actions/workflows/cli-smoke.yml)
-[<img alt="coverage" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Farindas%2Fbrambhand%2Fmain%2Fbadges%2Fcoverage.json&amp;style=for-the-badge&amp;cacheSeconds=300" height="20">](https://github.com/arindas/brambhand/actions/workflows/coverage.yml)
+[<img alt="coverage" src="https://raw.githubusercontent.com/arindas/brambhand/main/badges/coverage.svg" height="20">](https://github.com/arindas/brambhand/actions/workflows/coverage.yml)
 
 A scientifically accurate spaceflight sandbox.
 
