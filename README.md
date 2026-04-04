@@ -1,5 +1,8 @@
 # brambhand
 
+[![CI](https://github.com/arindas/brambhand/actions/workflows/ci.yml/badge.svg)](https://github.com/arindas/brambhand/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/arindas/brambhand/graph/badge.svg)](https://codecov.io/gh/arindas/brambhand)
+
 A scientifically accurate spaceflight sandbox.
 
 `brambhand` aims to simulate the following:
