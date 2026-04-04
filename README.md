@@ -1,8 +1,9 @@
 # brambhand
 
-[![Tests](https://img.shields.io/github/actions/workflow/status/arindas/brambhand/ci.yml?branch=main&style=flat&label=tests)](https://github.com/arindas/brambhand/actions/workflows/ci.yml)
-[![Command Check](https://img.shields.io/github/actions/workflow/status/arindas/brambhand/cli-smoke.yml?branch=main&style=flat&label=command-check)](https://github.com/arindas/brambhand/actions/workflows/cli-smoke.yml)
-[![Coverage](https://raw.githubusercontent.com/arindas/brambhand/main/badges/coverage.svg)](https://github.com/arindas/brambhand/actions/workflows/coverage.yml)
+[<img alt="github" src="https://img.shields.io/badge/github-arindas/brambhand-8da0cb?style=for-the-badge&labelColor=555555&logo=github" height="20">](https://github.com/arindas/brambhand)
+[<img alt="tests status" src="https://img.shields.io/github/actions/workflow/status/arindas/brambhand/ci.yml?branch=main&style=for-the-badge&label=tests" height="20">](https://github.com/arindas/brambhand/actions/workflows/ci.yml)
+[<img alt="command check status" src="https://img.shields.io/github/actions/workflow/status/arindas/brambhand/cli-smoke.yml?branch=main&style=for-the-badge&label=command-check" height="20">](https://github.com/arindas/brambhand/actions/workflows/cli-smoke.yml)
+[<img alt="coverage status" src="https://img.shields.io/github/actions/workflow/status/arindas/brambhand/coverage.yml?branch=main&style=for-the-badge&label=coverage" height="20">](https://github.com/arindas/brambhand/actions/workflows/coverage.yml)
 
 A scientifically accurate spaceflight sandbox.
 
