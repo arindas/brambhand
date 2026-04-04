@@ -1,7 +1,8 @@
 # brambhand
 
 [![CI](https://github.com/arindas/brambhand/actions/workflows/ci.yml/badge.svg)](https://github.com/arindas/brambhand/actions/workflows/ci.yml)
-[![Coverage](https://codecov.io/gh/arindas/brambhand/graph/badge.svg)](https://codecov.io/gh/arindas/brambhand)
+[![CLI Smoke](https://github.com/arindas/brambhand/actions/workflows/cli-smoke.yml/badge.svg)](https://github.com/arindas/brambhand/actions/workflows/cli-smoke.yml)
+[![Coverage](https://github.com/arindas/brambhand/actions/workflows/coverage.yml/badge.svg)](https://github.com/arindas/brambhand/actions/workflows/coverage.yml)
 
 A scientifically accurate spaceflight sandbox.
 
