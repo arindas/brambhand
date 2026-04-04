@@ -1,11 +1,16 @@
 """R2 propulsion domain primitives (fluids, combustion, thrust, leakage)."""
 
-from brambhand.propulsion.chamber_flow import (
+from brambhand.fluid.reduced.chamber_flow import (
     ChamberFlowDiagnostics,
     ChamberFlowParams,
     ChamberFlowState,
     ChamberFlowStepResult,
     step_chamber_flow,
+)
+from brambhand.fluid.reduced.leak_jet_dynamics import (
+    LeakJetPath,
+    LeakJetState,
+    evaluate_leak_jet,
 )
 from brambhand.propulsion.combustion_model import (
     CombustionChamberParams,
@@ -43,6 +48,8 @@ __all__ = [
     "CompartmentState",
     "FluidNetworkState",
     "LeakagePath",
+    "LeakJetPath",
+    "LeakJetState",
     "LineState",
     "ChamberThrustCouplingParams",
     "NozzleGeometryCorrection",
@@ -52,6 +59,7 @@ __all__ = [
     "ValveState",
     "apply_leakage",
     "estimate_nozzle_thrust",
+    "evaluate_leak_jet",
     "estimate_nozzle_thrust_from_chamber_flow",
     "step_chamber_flow",
     "step_combustion_chamber",

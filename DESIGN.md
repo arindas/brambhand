@@ -33,19 +33,23 @@ src/brambhand/
     ascent_events.py              # liftoff/max-q/staging/MECO/atmospheric-exit event sequencing
     ascent_prediction.py          # atmospheric-exit and apogee predictors
     ascent_guidance.py            # launch/ascent attitude-profile control workflows
+  fluid/
+    contracts.py                  # backend-neutral fluid boundary/load contracts
+    reduced/
+      chamber_flow.py             # injector-to-throat internal flow/combustion field baseline
+      slosh_model.py              # reduced-order slosh state + force/torque coupling
+      leak_jet_dynamics.py        # leak jet momentum/thermal state and force coupling
+    cfd/
+      contracts.py                # optional CFD provider contracts
+      adapters/
+        openfoam_adapter.py
+        su2_adapter.py
   propulsion/
     fluid_network.py              # tanks/lines/valves/injectors
     combustion_model.py           # chamber dynamics
-    chamber_flow.py               # injector-to-throat internal flow/combustion field baseline
-    slosh_model.py                # reduced-order slosh state + force/torque coupling
-    thrust_estimator.py           # force/torque from engine state
+    thrust_estimator.py           # force/torque from engine/fluid state
     nozzle_geometry.py            # nozzle shape factors from geometry assets
     leakage_model.py              # leak path + mass loss model
-    leak_jet_dynamics.py          # leak jet momentum/thermal state and force coupling
-    cfd_adapters/                 # optional CFD solver adapter contracts
-      contracts.py
-      openfoam_adapter.py
-      su2_adapter.py
   structures/
     fem/
       contracts.py                # FEM contracts and configuration types (2D/3D)
@@ -155,8 +159,8 @@ src/brambhand/
 To avoid integration ambiguity, the following coupling sequence is explicit:
 1. `structures/*` emits damage/fracture/topology transitions (including region IDs and separation events).
 2. `mission/assembly_topology.py` resolves attachment graph updates and affected interfaces.
-3. `propulsion/*` resolves leak-path/slosh/chamber boundary disturbances for affected regions.
-4. `coupling/fsi_coupler.py` ingests structural + propulsion boundary updates and computes coupled residuals.
+3. `fluid/reduced/*` (reduced-order) or `fluid/cfd/*` (optional CFD) resolves leak-path/slosh/chamber boundary disturbances for affected regions via a shared boundary-provider contract.
+4. `coupling/fsi_coupler.py` ingests structural + propulsion boundary updates through that shared contract and computes coupled residuals.
 5. `dynamics/*` consumes resulting coupled force/torque updates (including leak-jet/slosh contributions).
 6. telemetry/persistence records residuals, fallback mode, and provenance for replay.
 
@@ -244,7 +248,7 @@ Write semantics:
 | FR-115..FR-118 | `structures/fem/*` decomposition boundaries and namespace policy, `trajectory/*` adapter contracts, shared frame/time provider services across trajectory/navigation/mission modules |
 | FR-119..FR-124 | `atmosphere/*`, `dynamics/aerodynamic_loads.py`, `launch/*`, `structures/buckling_screen.py`, `structures/fatigue_model.py`, coupling into `dynamics/*` + `structures/fracture_model.py` |
 | FR-125..FR-131 | `structures/fem/nonlinear.py`, `structures/fem/materials.py`, `structures/fem/transient.py`, `structures/fem/buckling.py`, `structures/fem/adaptivity.py`, `structures/fem/thermal_coupling.py`, `structures/fracture_model.py`, `geometry/mesh_pipeline.py`, runtime profile/fallback selectors |
-| FR-132..FR-137 | `propulsion/chamber_flow.py`, `propulsion/slosh_model.py`, `propulsion/leak_jet_dynamics.py`, `propulsion/cfd_adapters/*`, `mission/assembly_topology.py`, `coupling/*`, `dynamics/*`, `structures/*`, replay/persistence topology provenance |
+| FR-132..FR-137 | `fluid/reduced/*`, `fluid/cfd/*`, `fluid/contracts.py`, `propulsion/*`, `mission/assembly_topology.py`, `coupling/*`, `dynamics/*`, `structures/*`, replay/persistence topology provenance |
 | FR-044..FR-048 | `core/simulation_clock.py`, `core/pacing_controller.py`, `core/scheduler.py`, replay/persistence metadata |
 | FR-049..FR-058 | `core/scheduler.py`, `core/simulation_runtime.py`, contract schemas, unit/frame validators, distributed sync protocol, replay metadata |
 | FR-067..FR-071 | `physics/*`, `communication/*`, `guidance/*`, `operations/*`, `scenario/*`, `cli.py`, regression test suites |
@@ -358,18 +362,21 @@ Adopt optional external CFD solvers behind stable propulsion adapter contracts,
 with reduced-order chamber/slosh/leak models as the default operational path.
 
 Adapter-oriented design (proposed):
-- `propulsion/cfd_adapters/contracts.py`
-  - mesh/boundary-condition/field-exchange contract definitions
-  - provenance/metadata contracts for replay/audit
-- `propulsion/cfd_adapters/openfoam_adapter.py`
-- `propulsion/cfd_adapters/su2_adapter.py`
+- `fluid/contracts.py`
+  - backend-neutral fluid boundary/load exchange contracts consumed by propulsion/FSI
+- `fluid/cfd/contracts.py`
+  - mesh/boundary-condition/field-exchange and provenance contracts for CFD providers
+- `fluid/cfd/adapters/openfoam_adapter.py`
+- `fluid/cfd/adapters/su2_adapter.py`
 
 Candidate external packages (through adapters):
 - OpenFOAM (via file/IPC/service adapter boundaries)
 - SU2 (via Python/service wrappers)
 
 Contract rules:
-- no CFD backend types cross `propulsion/*` public interfaces
+- no CFD backend types cross `fluid/*`/`propulsion/*` public interfaces
+- CFD adapters implement the same FSI-facing boundary-provider contract used by reduced-order fluid models
+- R4 owns coupling/controller logic; R4.1 must extend fluid providers only (no duplicate FSI coupler/controller stack)
 - CFD mode is profile-gated and optional; reduced-order mode remains canonical fallback
 - cadence guard must trigger deterministic fallback (`CFD -> reduced-order`) when budgets are exceeded
 - persisted run artifacts include adapter/backend/version/config provenance for replay

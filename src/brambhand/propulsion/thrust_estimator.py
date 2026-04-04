@@ -9,7 +9,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from brambhand.propulsion.chamber_flow import ChamberFlowState
+from brambhand.fluid.reduced.chamber_flow import ChamberFlowState
 
 
 @dataclass(frozen=True)

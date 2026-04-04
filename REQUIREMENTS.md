@@ -194,7 +194,7 @@ This revision formalizes the **next requirement set** focused on:
 - FR-134: The simulator shall maintain an explicit assembly-topology state model (attachment graph and interfaces) and simulate topology transitions from fracture separation and dock/undock operations, propagating changes to mass properties, constraints, contacts, and control authority.
 - FR-135: The propulsion stack shall simulate propellant slosh effects (reduced-order baseline with geometry-aware parameterization where available) and propagate slosh-induced force/torque and center-of-mass shifts into 6-DOF vehicle dynamics.
 - FR-136: The fluid/combustion stack shall support optional CFD-coupled execution via adapter contracts to external solver packages, while preserving reduced-order fallback modes and deterministic replay metadata/provenance.
-- FR-137: The FSI coupling stack shall consume topology-transition updates and propulsion boundary disturbances (leak-jet/slosh/pressure-field effects where configured) through versioned exchange contracts, and propagate coupled load responses back to dynamics/structures with convergence residual telemetry.
+- FR-137: The FSI coupling stack shall consume topology-transition updates and propulsion boundary disturbances (leak-jet/slosh/pressure-field effects where configured) through versioned exchange contracts, and propagate coupled load responses back to dynamics/structures with convergence residual telemetry. This contract shall be backend-neutral across reduced-order and optional CFD fluid providers.
 
 ---
 

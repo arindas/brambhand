@@ -1,10 +1,12 @@
 import math
 
-from brambhand.propulsion.chamber_flow import (
+from brambhand.fluid.reduced.chamber_flow import (
     ChamberFlowParams,
     ChamberFlowState,
     step_chamber_flow,
 )
+from brambhand.fluid.reduced.leak_jet_dynamics import LeakJetPath, evaluate_leak_jet
+from brambhand.physics.vector import Vector3
 from brambhand.propulsion.combustion_model import (
     CombustionChamberParams,
     CombustionChamberState,
@@ -369,6 +371,52 @@ def test_thrust_coupling_from_chamber_flow_respects_geometry_correction() -> Non
     assert lossy_estimate.thrust_n < ideal_estimate.thrust_n
 
 
+def test_leak_jet_dynamics_produces_reaction_force_and_torque() -> None:
+    path = LeakJetPath(
+        area_m2=2e-4,
+        discharge_coefficient=0.8,
+        fluid_density_kgpm3=1.2,
+        external_pressure_pa=101_325.0,
+        jet_direction_body=Vector3(1.0, 0.0, 0.0),
+        lever_arm_body_m=Vector3(0.0, 0.5, 0.0),
+    )
+
+    state = evaluate_leak_jet(
+        path=path,
+        compartment_pressure_pa=300_000.0,
+        compartment_temperature_k=320.0,
+        ambient_temperature_k=280.0,
+    )
+
+    assert state.mass_flow_kgps > 0.0
+    assert state.exit_velocity_mps > 0.0
+    assert state.reaction_force_body_n.x < 0.0
+    assert state.reaction_torque_body_nm.z > 0.0
+
+
+def test_leak_jet_dynamics_zero_delta_p_returns_zero_wrench() -> None:
+    path = LeakJetPath(
+        area_m2=2e-4,
+        discharge_coefficient=0.8,
+        fluid_density_kgpm3=1.2,
+        external_pressure_pa=101_325.0,
+        jet_direction_body=Vector3(0.0, 1.0, 0.0),
+    )
+
+    state = evaluate_leak_jet(
+        path=path,
+        compartment_pressure_pa=90_000.0,
+        compartment_temperature_k=320.0,
+        ambient_temperature_k=280.0,
+    )
+
+    assert state.mass_flow_kgps == 0.0
+    assert state.exit_velocity_mps == 0.0
+    assert state.reaction_force_body_n == Vector3(0.0, 0.0, 0.0)
+    assert state.reaction_torque_body_nm == Vector3(0.0, 0.0, 0.0)
+    assert state.jet_temperature_k == 280.0
+
+
 def test_chamber_flow_validation_rejects_bad_inputs() -> None:
     try:
         ChamberFlowParams(
@@ -423,3 +471,16 @@ def test_chamber_flow_validation_rejects_bad_inputs() -> None:
         assert "throat_area_m2 must be positive" in str(exc)
     else:
         raise AssertionError("Expected thrust-coupling validation failure")
+
+    try:
+        LeakJetPath(
+            area_m2=1e-4,
+            discharge_coefficient=0.8,
+            fluid_density_kgpm3=1.2,
+            external_pressure_pa=0.0,
+            jet_direction_body=Vector3(0.0, 0.0, 0.0),
+        )
+    except ValueError as exc:
+        assert "jet_direction_body cannot be zero" in str(exc)
+    else:
+        raise AssertionError("Expected leak-jet validation failure")

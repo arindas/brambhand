@@ -17,7 +17,7 @@
 ### R2.2 — Internal chamber-flow and leak-jet dynamics coupling
 - [x] Implement reduced-order injector-to-throat chamber-flow state model with diagnostics (pressure/temperature/mixing proxies)
 - [x] Couple chamber-flow state to thrust estimator/nozzle correction path with deterministic contracts
-- [ ] Implement leak-jet dynamics model (mass/momentum/thermal state) for propulsion and structural leak paths
+- [x] Implement leak-jet dynamics model (mass/momentum/thermal state) for propulsion and structural leak paths
 - [ ] Define versioned leak-jet boundary exchange payload consumed by FSI coupling
 - [ ] Propagate leak-jet forces/torques into 6-DOF rigid-body dynamics
 - [ ] Add analytical/consistency tests for chamber-flow + leak-jet force coupling and conservation envelopes
@@ -73,6 +73,7 @@
 ### R4 — Fluid-structure interaction coupling
 - [ ] Implement two-way FSI coupler with convergence residuals
 - [ ] Implement coupling controller (iteration budget, thresholds, fallback)
+- [ ] Define backend-neutral FSI fluid-boundary provider contract (shared by reduced-order and optional CFD providers)
 - [ ] Integrate topology-transition + leak-jet + slosh boundary payloads into FSI exchange contracts
 - [ ] Define initial coupling policy: partitioned baseline with explicit criteria for monolithic escalation
 - [ ] Add convergence diagnostics and residual telemetry channels
@@ -162,9 +163,9 @@
 - [ ] Add rendering V&V scenarios for nominal engine plume and off-nominal leak plume visualization (ray-marching profiles)
 
 ### R4.1 — Optional CFD-coupled fluid/combustion adapter integration (post-R8.5)
-- [ ] Define CFD adapter contracts (mesh/boundary conditions/field exchange/provenance metadata)
+- [ ] Define CFD adapter contracts (mesh/boundary conditions/field exchange/provenance metadata) implementing the R4 backend-neutral fluid-boundary provider contract
 - [ ] Add first external CFD adapter integration behind contracts (candidate: OpenFOAM or SU2)
-- [ ] Implement cadence-safe co-simulation policy via existing R4 coupling-controller interfaces (no duplicate controller stack)
+- [ ] Implement cadence-safe co-simulation policy via existing R4 coupling-controller interfaces (no duplicate coupler/controller stack)
 - [ ] Add profile-gated performance benchmarks for CFD-coupled mode and fallback-trigger tests
 - [ ] Add backend-swap determinism/provenance tests for CFD adapters vs reduced-order baseline envelopes
 
