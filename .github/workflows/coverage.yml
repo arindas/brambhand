@@ -91,16 +91,40 @@ jobs:
             coverage.xml
             badges/coverage.json
 
-      - name: Commit coverage badge
+      - name: Publish coverage badge to badges branch
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          if git diff --quiet -- badges/coverage.json; then
-            echo "No coverage badge changes"
-            exit 0
-          fi
+          set -euo pipefail
+
+          BADGE_BRANCH="badges"
+          WORKTREE_DIR="$(mktemp -d)"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add badges/coverage.json
-          git commit -m "ci: update coverage badge [skip ci]"
-          git push origin HEAD:${GITHUB_REF_NAME}
+
+          if git fetch origin "${BADGE_BRANCH}"; then
+            git worktree add "${WORKTREE_DIR}" "FETCH_HEAD"
+          else
+            git worktree add --detach "${WORKTREE_DIR}"
+            (
+              cd "${WORKTREE_DIR}"
+              git checkout --orphan "${BADGE_BRANCH}"
+              git rm -rf . || true
+            )
+          fi
+
+          mkdir -p "${WORKTREE_DIR}/badges"
+          cp badges/coverage.json "${WORKTREE_DIR}/badges/coverage.json"
+
+          (
+            cd "${WORKTREE_DIR}"
+            git add badges/coverage.json
+            if git diff --cached --quiet; then
+              echo "No coverage badge changes"
+              exit 0
+            fi
+            git commit -m "ci: update coverage badge [skip ci]"
+            git push origin "HEAD:${BADGE_BRANCH}"
+          )
+
+          git worktree remove "${WORKTREE_DIR}" --force
