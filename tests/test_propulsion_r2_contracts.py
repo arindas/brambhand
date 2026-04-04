@@ -1,5 +1,10 @@
 import math
 
+from brambhand.propulsion.chamber_flow import (
+    ChamberFlowParams,
+    ChamberFlowState,
+    step_chamber_flow,
+)
 from brambhand.propulsion.combustion_model import (
     CombustionChamberParams,
     CombustionChamberState,
@@ -14,9 +19,11 @@ from brambhand.propulsion.fluid_network import (
 )
 from brambhand.propulsion.leakage_model import CompartmentState, LeakagePath, apply_leakage
 from brambhand.propulsion.thrust_estimator import (
+    ChamberThrustCouplingParams,
     NozzleGeometryCorrection,
     NozzleParams,
     estimate_nozzle_thrust,
+    estimate_nozzle_thrust_from_chamber_flow,
 )
 
 
@@ -214,3 +221,205 @@ def test_leakage_reduces_mass_and_pressure() -> None:
     assert leaked > 0.0
     assert next_state.mass_kg < state.mass_kg
     assert next_state.pressure_pa < state.pressure_pa
+
+
+def test_chamber_flow_step_updates_state_and_emits_diagnostics() -> None:
+    params = ChamberFlowParams(
+        volume_m3=0.2,
+        gas_constant_jpkgk=300.0,
+        stoichiometric_of_ratio=3.0,
+        min_temperature_k=1200.0,
+        max_temperature_k=3200.0,
+        thermal_relaxation_time_constant_s=0.5,
+    )
+    state = ChamberFlowState(
+        gas_mass_kg=1.0,
+        pressure_pa=1_000_000.0,
+        temperature_k=1500.0,
+        fuel_mass_fraction=0.3,
+    )
+
+    result = step_chamber_flow(
+        state=state,
+        params=params,
+        inflow_fuel_kgps=0.8,
+        inflow_oxidizer_kgps=2.4,
+        throat_outflow_kgps=2.0,
+        dt_s=0.1,
+    )
+
+    assert result.state.gas_mass_kg > 0.0
+    assert result.state.pressure_pa > 0.0
+    assert params.min_temperature_k <= result.state.temperature_k <= params.max_temperature_k
+    assert 0.0 <= result.diagnostics.mixing_quality <= 1.0
+    assert result.diagnostics.injector_mass_flow_kgps == 3.2
+    assert result.diagnostics.throat_mass_flow_kgps == 2.0
+
+
+def test_chamber_flow_mixing_quality_worsens_for_off_stoich_input() -> None:
+    params = ChamberFlowParams(
+        volume_m3=0.2,
+        gas_constant_jpkgk=300.0,
+        stoichiometric_of_ratio=3.0,
+        min_temperature_k=1200.0,
+        max_temperature_k=3200.0,
+        thermal_relaxation_time_constant_s=0.5,
+    )
+    state = ChamberFlowState(
+        gas_mass_kg=0.5,
+        pressure_pa=500_000.0,
+        temperature_k=1400.0,
+        fuel_mass_fraction=0.25,
+    )
+
+    near_stoich = step_chamber_flow(
+        state=state,
+        params=params,
+        inflow_fuel_kgps=0.4,
+        inflow_oxidizer_kgps=1.2,
+        throat_outflow_kgps=1.0,
+        dt_s=0.1,
+    )
+    fuel_rich = step_chamber_flow(
+        state=state,
+        params=params,
+        inflow_fuel_kgps=0.9,
+        inflow_oxidizer_kgps=0.2,
+        throat_outflow_kgps=1.0,
+        dt_s=0.1,
+    )
+
+    assert near_stoich.diagnostics.mixing_quality > fuel_rich.diagnostics.mixing_quality
+
+
+def test_thrust_coupling_from_chamber_flow_matches_proxy_mass_flow() -> None:
+    chamber_state = ChamberFlowState(
+        gas_mass_kg=1.2,
+        pressure_pa=1_800_000.0,
+        temperature_k=2200.0,
+        fuel_mass_fraction=0.25,
+    )
+    nozzle = NozzleParams(
+        exit_area_m2=0.05,
+        ambient_pressure_pa=101_325.0,
+        exhaust_velocity_mps=2550.0,
+    )
+    coupling = ChamberThrustCouplingParams(
+        gas_constant_jpkgk=300.0,
+        throat_area_m2=0.012,
+        throat_discharge_coefficient=0.92,
+    )
+
+    coupled = estimate_nozzle_thrust_from_chamber_flow(
+        chamber_state=chamber_state,
+        nozzle=nozzle,
+        coupling=coupling,
+    )
+
+    proxy_mass_flow = (
+        coupling.throat_discharge_coefficient
+        * coupling.throat_area_m2
+        * chamber_state.pressure_pa
+        / math.sqrt(coupling.gas_constant_jpkgk * chamber_state.temperature_k)
+    )
+    direct = estimate_nozzle_thrust(
+        chamber_pressure_pa=chamber_state.pressure_pa,
+        mass_flow_kgps=proxy_mass_flow,
+        nozzle=nozzle,
+    )
+
+    assert math.isclose(coupled.thrust_n, direct.thrust_n)
+    assert math.isclose(coupled.momentum_thrust_n, direct.momentum_thrust_n)
+    assert math.isclose(coupled.pressure_thrust_n, direct.pressure_thrust_n)
+
+
+def test_thrust_coupling_from_chamber_flow_respects_geometry_correction() -> None:
+    chamber_state = ChamberFlowState(
+        gas_mass_kg=1.0,
+        pressure_pa=2_000_000.0,
+        temperature_k=2300.0,
+        fuel_mass_fraction=0.25,
+    )
+    nozzle = NozzleParams(
+        exit_area_m2=0.06,
+        ambient_pressure_pa=101_325.0,
+        exhaust_velocity_mps=2600.0,
+    )
+    coupling = ChamberThrustCouplingParams(
+        gas_constant_jpkgk=300.0,
+        throat_area_m2=0.015,
+        throat_discharge_coefficient=1.0,
+    )
+    ideal = NozzleGeometryCorrection(throat_area_m2=0.015, contour_loss_factor=1.0)
+    lossy = NozzleGeometryCorrection(throat_area_m2=0.015, contour_loss_factor=0.9)
+
+    ideal_estimate = estimate_nozzle_thrust_from_chamber_flow(
+        chamber_state=chamber_state,
+        nozzle=nozzle,
+        coupling=coupling,
+        geometry=ideal,
+    )
+    lossy_estimate = estimate_nozzle_thrust_from_chamber_flow(
+        chamber_state=chamber_state,
+        nozzle=nozzle,
+        coupling=coupling,
+        geometry=lossy,
+    )
+
+    assert lossy_estimate.thrust_n < ideal_estimate.thrust_n
+
+
+def test_chamber_flow_validation_rejects_bad_inputs() -> None:
+    try:
+        ChamberFlowParams(
+            volume_m3=0.2,
+            gas_constant_jpkgk=300.0,
+            stoichiometric_of_ratio=0.0,
+            min_temperature_k=1200.0,
+            max_temperature_k=3200.0,
+            thermal_relaxation_time_constant_s=0.5,
+        )
+    except ValueError as exc:
+        assert "stoichiometric_of_ratio" in str(exc)
+    else:
+        raise AssertionError("Expected chamber-flow parameter validation failure")
+
+    params = ChamberFlowParams(
+        volume_m3=0.2,
+        gas_constant_jpkgk=300.0,
+        stoichiometric_of_ratio=3.0,
+        min_temperature_k=1200.0,
+        max_temperature_k=3200.0,
+        thermal_relaxation_time_constant_s=0.5,
+    )
+    state = ChamberFlowState(
+        gas_mass_kg=1.0,
+        pressure_pa=1_000_000.0,
+        temperature_k=1500.0,
+        fuel_mass_fraction=0.3,
+    )
+
+    try:
+        step_chamber_flow(
+            state=state,
+            params=params,
+            inflow_fuel_kgps=-1.0,
+            inflow_oxidizer_kgps=0.0,
+            throat_outflow_kgps=0.0,
+            dt_s=0.1,
+        )
+    except ValueError as exc:
+        assert "must be non-negative" in str(exc)
+    else:
+        raise AssertionError("Expected chamber-flow step validation failure")
+
+    try:
+        ChamberThrustCouplingParams(
+            gas_constant_jpkgk=300.0,
+            throat_area_m2=0.0,
+            throat_discharge_coefficient=1.0,
+        )
+    except ValueError as exc:
+        assert "throat_area_m2 must be positive" in str(exc)
+    else:
+        raise AssertionError("Expected thrust-coupling validation failure")

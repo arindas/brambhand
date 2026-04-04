@@ -15,11 +15,21 @@
 - [x] Complete R2/R2.1 implementation + validation tests (including nozzle geometry sensitivity)
 
 ### R2.2 — Internal chamber-flow and leak-jet dynamics coupling
-- [ ] Implement reduced-order injector-to-throat chamber-flow state model with diagnostics (pressure/temperature/mixing proxies)
-- [ ] Couple chamber-flow state to thrust estimator/nozzle correction path with deterministic contracts
+- [x] Implement reduced-order injector-to-throat chamber-flow state model with diagnostics (pressure/temperature/mixing proxies)
+- [x] Couple chamber-flow state to thrust estimator/nozzle correction path with deterministic contracts
 - [ ] Implement leak-jet dynamics model (mass/momentum/thermal state) for propulsion and structural leak paths
+- [ ] Define versioned leak-jet boundary exchange payload consumed by FSI coupling
 - [ ] Propagate leak-jet forces/torques into 6-DOF rigid-body dynamics
 - [ ] Add analytical/consistency tests for chamber-flow + leak-jet force coupling and conservation envelopes
+- [ ] Add R2.2 latency/cadence benchmark checks against operational profile budgets with explicit reduced-order fallback behavior
+
+### R2.3 — Reduced-order propellant slosh simulation and 6-DOF coupling
+- [ ] Implement tank slosh state model baseline (lumped pendulum/spring-mass equivalent) with deterministic integration
+- [ ] Define versioned slosh load export payload consumed by FSI/coupling controller
+- [ ] Propagate slosh-induced force/torque and effective CoM offsets into rigid-body 6-DOF updates
+- [ ] Add geometry-aware slosh parameter hooks for STL-derived tank descriptors (with non-STL parameter fallback)
+- [ ] Add slosh coupling tests (attitude disturbance response + conservation/energy sanity envelopes)
+- [ ] Add R2.3 latency/cadence benchmark checks against operational profile budgets with explicit degraded-mode controls
 
 ### R3 — Structural FEM and fracture
 - [x] Implement FEM structural evaluation baseline for chassis components
@@ -47,7 +57,8 @@
 - [ ] Implement assembly-topology state graph (attachments/interfaces between rigid bodies/modules)
 - [ ] Implement fracture-driven topology split transitions into distinct rigid bodies with deterministic IDs/provenance
 - [ ] Implement baseline dock/undock attach/detach topology transitions with constraint/contact handoff (lifecycle mission semantics remain in R10)
-- [ ] Propagate topology transitions to mass properties, constraints, contact manifolds, and control authority surfaces
+- [ ] Define versioned topology-transition payload for FSI/leak-boundary consumers
+- [ ] Propagate topology transitions to mass properties, constraints, contact manifolds, and control authority surfaces (graph-level topology effects; material damage-state evolution remains in R3)
 - [ ] Add determinism/conservation tests for topology transitions and replay reconstruction
 
 ### R8.0 — Replay/trajectory quicklook
@@ -62,16 +73,18 @@
 ### R4 — Fluid-structure interaction coupling
 - [ ] Implement two-way FSI coupler with convergence residuals
 - [ ] Implement coupling controller (iteration budget, thresholds, fallback)
+- [ ] Integrate topology-transition + leak-jet + slosh boundary payloads into FSI exchange contracts
 - [ ] Define initial coupling policy: partitioned baseline with explicit criteria for monolithic escalation
 - [ ] Add convergence diagnostics and residual telemetry channels
 - [ ] Add FSI benchmark tests for coupled stability (including failure/recovery paths)
+- [ ] Add integrated chain test: `fracture/topology update -> leak/slosh boundary update -> FSI residual convergence/fallback -> 6-DOF response`
 
-### R8.1 — Dashboard view-model contracts (headless)
+### R8.1 — Dashboard data contracts and headless view-models
 - [ ] Define versioned mission-control view-model schema (telemetry cards, alarms, timeline, command status)
 - [ ] Define versioned onboard view-model schema (flight instruments, subsystem health, cautions/warnings)
-- [ ] Implement view-model builders from committed simulation state + replay metadata
+- [ ] Implement headless view-model builders from committed simulation state + replay metadata
 - [ ] Add schema compatibility tests and deterministic serialization tests
-- [ ] Freeze baseline mission-control/onboard layout contracts for R8.1 implementation (revise later via backward-compatible schema evolution)
+- [ ] Freeze baseline mission-control/onboard layout contracts for downstream UI realization
 
 ### R5 — Geometry pipeline (STL import)
 - [x] Add idealized/reference STL fixture sets and manifest for geometry-dependent tests
@@ -131,9 +144,9 @@
 - [ ] Add integration tests for causal ordering and audit-grade replay reconstruction
 
 ### R8.4 — Visualization and dashboards (full UI realization after R8.0..R8.3 contracts)
-- [ ] Implement mission-control dashboard backend/view models
-- [ ] Implement onboard spacecraft dashboard backend/view models
-- [ ] Implement 3D state/damage/leak overlays and event timeline integration
+- [ ] Implement mission-control dashboard UI consuming R8.1 schemas/view-model builders (no duplicate backend contract logic)
+- [ ] Implement onboard spacecraft dashboard UI consuming R8.1 schemas/view-model builders (no duplicate backend contract logic)
+- [ ] Implement 3D state/damage/leak overlays and event timeline integration consuming R8.2 overlay schemas
 - [ ] Implement explicit crack/fracture-path and leak-source visualization overlays
 - [ ] Implement topology-discontinuity visualization support for severe failures (e.g., structural separation/snapping)
 - [ ] Add operator workflow acceptance tests (latency + usability gates)
@@ -147,6 +160,13 @@
 - [ ] Implement deterministic replay camera/timeline synchronization
 - [ ] Add rendering V&V tests (frame-time budgets, temporal stability, BVH update costs)
 - [ ] Add rendering V&V scenarios for nominal engine plume and off-nominal leak plume visualization (ray-marching profiles)
+
+### R4.1 — Optional CFD-coupled fluid/combustion adapter integration (post-R8.5)
+- [ ] Define CFD adapter contracts (mesh/boundary conditions/field exchange/provenance metadata)
+- [ ] Add first external CFD adapter integration behind contracts (candidate: OpenFOAM or SU2)
+- [ ] Implement cadence-safe co-simulation policy via existing R4 coupling-controller interfaces (no duplicate controller stack)
+- [ ] Add profile-gated performance benchmarks for CFD-coupled mode and fallback-trigger tests
+- [ ] Add backend-swap determinism/provenance tests for CFD adapters vs reduced-order baseline envelopes
 
 ### R9 — Space debris and compounding accretion prediction
 - [ ] Implement debris population state model and scenario integration

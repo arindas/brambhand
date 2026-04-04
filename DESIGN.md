@@ -37,10 +37,15 @@ src/brambhand/
     fluid_network.py              # tanks/lines/valves/injectors
     combustion_model.py           # chamber dynamics
     chamber_flow.py               # injector-to-throat internal flow/combustion field baseline
+    slosh_model.py                # reduced-order slosh state + force/torque coupling
     thrust_estimator.py           # force/torque from engine state
     nozzle_geometry.py            # nozzle shape factors from geometry assets
     leakage_model.py              # leak path + mass loss model
     leak_jet_dynamics.py          # leak jet momentum/thermal state and force coupling
+    cfd_adapters/                 # optional CFD solver adapter contracts
+      contracts.py
+      openfoam_adapter.py
+      su2_adapter.py
   structures/
     fem/
       contracts.py                # FEM contracts and configuration types (2D/3D)
@@ -145,6 +150,18 @@ src/brambhand/
 7. Stream telemetry/events and rendered states to mission-control and onboard dashboards.
 8. Optionally distribute subsystems across workers with sync barriers.
 
+## Explicit cross-domain coupling chain (failure-aware)
+
+To avoid integration ambiguity, the following coupling sequence is explicit:
+1. `structures/*` emits damage/fracture/topology transitions (including region IDs and separation events).
+2. `mission/assembly_topology.py` resolves attachment graph updates and affected interfaces.
+3. `propulsion/*` resolves leak-path/slosh/chamber boundary disturbances for affected regions.
+4. `coupling/fsi_coupler.py` ingests structural + propulsion boundary updates and computes coupled residuals.
+5. `dynamics/*` consumes resulting coupled force/torque updates (including leak-jet/slosh contributions).
+6. telemetry/persistence records residuals, fallback mode, and provenance for replay.
+
+Contract requirement: each step uses versioned schemas and deterministic ordering at tick boundaries.
+
 ## Fidelity strategy
 - **F0:** Reduced-order, fast mission planning (current baseline extended).
 - **F1:** Intermediate engineering mode (lumped fluids + simplified structures).
@@ -227,7 +244,7 @@ Write semantics:
 | FR-115..FR-118 | `structures/fem/*` decomposition boundaries and namespace policy, `trajectory/*` adapter contracts, shared frame/time provider services across trajectory/navigation/mission modules |
 | FR-119..FR-124 | `atmosphere/*`, `dynamics/aerodynamic_loads.py`, `launch/*`, `structures/buckling_screen.py`, `structures/fatigue_model.py`, coupling into `dynamics/*` + `structures/fracture_model.py` |
 | FR-125..FR-131 | `structures/fem/nonlinear.py`, `structures/fem/materials.py`, `structures/fem/transient.py`, `structures/fem/buckling.py`, `structures/fem/adaptivity.py`, `structures/fem/thermal_coupling.py`, `structures/fracture_model.py`, `geometry/mesh_pipeline.py`, runtime profile/fallback selectors |
-| FR-132..FR-134 | `propulsion/chamber_flow.py`, `propulsion/leak_jet_dynamics.py`, `mission/assembly_topology.py`, `dynamics/*`, `structures/*`, replay/persistence topology provenance |
+| FR-132..FR-137 | `propulsion/chamber_flow.py`, `propulsion/slosh_model.py`, `propulsion/leak_jet_dynamics.py`, `propulsion/cfd_adapters/*`, `mission/assembly_topology.py`, `coupling/*`, `dynamics/*`, `structures/*`, replay/persistence topology provenance |
 | FR-044..FR-048 | `core/simulation_clock.py`, `core/pacing_controller.py`, `core/scheduler.py`, replay/persistence metadata |
 | FR-049..FR-058 | `core/scheduler.py`, `core/simulation_runtime.py`, contract schemas, unit/frame validators, distributed sync protocol, replay metadata |
 | FR-067..FR-071 | `physics/*`, `communication/*`, `guidance/*`, `operations/*`, `scenario/*`, `cli.py`, regression test suites |
@@ -335,6 +352,28 @@ Coupling-mitigation implementation policy:
 - prohibit backend-specific classes from crossing `trajectory/*`, `navigation/*`, and `mission/*` public interfaces.
 - route all frame/time conversions through shared provider services (no adapter-local divergent conversion logic).
 
+## Fluid/combustion CFD adapter strategy (post-core, cadence-guarded)
+
+Adopt optional external CFD solvers behind stable propulsion adapter contracts,
+with reduced-order chamber/slosh/leak models as the default operational path.
+
+Adapter-oriented design (proposed):
+- `propulsion/cfd_adapters/contracts.py`
+  - mesh/boundary-condition/field-exchange contract definitions
+  - provenance/metadata contracts for replay/audit
+- `propulsion/cfd_adapters/openfoam_adapter.py`
+- `propulsion/cfd_adapters/su2_adapter.py`
+
+Candidate external packages (through adapters):
+- OpenFOAM (via file/IPC/service adapter boundaries)
+- SU2 (via Python/service wrappers)
+
+Contract rules:
+- no CFD backend types cross `propulsion/*` public interfaces
+- CFD mode is profile-gated and optional; reduced-order mode remains canonical fallback
+- cadence guard must trigger deterministic fallback (`CFD -> reduced-order`) when budgets are exceeded
+- persisted run artifacts include adapter/backend/version/config provenance for replay
+
 ## Interleaved visualization delivery design (R8.0..R8.5)
 
 To provide operator-visible feedback earlier, visualization is decomposed into explicitly ordered milestones interleaved with core physics/runtime delivery.
@@ -428,7 +467,7 @@ These are initial layout contracts to unblock backend/view-model design before f
 ## Incremental implementation roadmap
 
 Execution policy:
-- **Core delivery lane (anti-derailment):** `R2.2 -> R3 -> R3.1 -> R8.0 -> R4 -> R8.1 -> R5 -> R8.2 -> R6 -> R7 -> R7.1 -> R8.3 -> R7.2 -> R8.4 -> R8.5`.
+- **Core delivery lane (anti-derailment):** `R2.2 -> R2.3 -> R3 -> R3.1 -> R8.0 -> R4 -> R8.1 -> R5 -> R8.2 -> R6 -> R7 -> R7.1 -> R8.3 -> R7.2 -> R8.4 -> R8.5`.
 - Do not pull post-core milestones forward unless explicitly prioritized.
 - Core lane focuses on simulation correctness/coupling/replay determinism and only minimal operator-feedback surfaces needed for validation.
 
@@ -436,6 +475,7 @@ Execution policy:
 - **R2: Propulsion fluid network + combustion + thrust estimation + leakage**
 - **R2.1: Nozzle geometry-aware thrust corrections (with STL-derived parameters)**
 - **R2.2: Internal thrust-chamber flow and leak-jet dynamics coupling baseline**
+- **R2.3: Reduced-order propellant slosh simulation and 6-DOF coupling baseline**
 - **R3: FEM structural solver + fracture pipeline**
 - **R3.1: Topology-transition simulation baseline (fracture separation + dock/undock attach/detach graph propagation)**
 - **R8.0 (interleaved after R3): replay/trajectory quicklook for early visual feedback**
@@ -450,6 +490,7 @@ Execution policy:
 - **R7.2: Inter-module orchestration contracts and audit-grade replay provenance**
 - **R8.4: Mission-control + onboard dashboard stack**
 - **R8.5: 3D rendering core (scene graph, BVH, ray-marching, replay camera sync)**
+- **R4.1: Optional CFD-coupled fluid/combustion adapter integration (deferred post-R8.5, cadence-guarded)**
 - **R9: Space debris environment + compounding accretion prediction**
 - **R10: Docking lifecycle + booster payload transfer logistics + interplanetary SOI handoff**
 - **R11: Trajectory optimization + interplanetary mission-analysis adapters**

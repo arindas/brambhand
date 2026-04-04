@@ -57,6 +57,7 @@ Source of truth: [`TODO.md`](./TODO.md)
 ### In progress (core delivery lane)
 
 - R2.2: chamber-flow + leak-jet dynamics coupling baseline
+- R2.3: reduced-order propellant slosh simulation + 6-DOF coupling baseline
 - R3 remaining work:
   - fracture initiation/propagation baseline
   - damage-state propagation to mass/stiffness/contact behavior
@@ -68,6 +69,7 @@ Source of truth: [`TODO.md`](./TODO.md)
 - Complete core lane through R8.5:
   - R4, R8.1, R5, R8.2, R6, R7, R7.1, R8.3, R7.2, R8.4, R8.5
 - Post-core lane (kept from derailing core execution):
+  - R4.1: optional CFD-coupled fluid/combustion adapters (profile-gated, fallback-safe)
   - R9: debris-risk modeling
   - R10: docking lifecycle logistics and transfer workflows
   - R11/R12: trajectory optimization and advanced mission-analysis parity extensions

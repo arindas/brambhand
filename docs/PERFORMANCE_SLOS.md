@@ -51,6 +51,14 @@ and rendering responsiveness.
 | Structural memory growth target | nnz-based sparse scaling | nnz-based sparse scaling | nnz-based sparse scaling |
 | Backend switch determinism drift | <= configured tolerance | <= configured tolerance | <= configured tolerance |
 
+## 6.1) Propulsion flow/slosh SLOs (initial)
+
+| Metric | Reduced-order operational | Reduced-order analysis | CFD-coupled analysis (optional) |
+|---|---:|---:|---:|
+| Chamber/flow+slosh update latency per tick (P95) | <= 10 ms | <= 30 ms | <= 150 ms |
+| Cadence-guard fallback trigger | N/A | N/A | required (`CFD -> reduced-order`) |
+| Coupling determinism drift (fallback transition) | <= configured tolerance | <= configured tolerance | <= configured tolerance |
+
 ## 7) Mode-selection thresholds (initial policy)
 
 Suggested automatic mode selection:
@@ -73,6 +81,7 @@ If SLO violations persist:
 - NR-022..NR-024: pacing and timeline-equivalence controls
 - NR-029..NR-031: distributed barrier and persistence stability
 - NR-032..NR-036: structural solver scalability/determinism/fallback observability, including production matrix-free stability expectations
+- NR-058: slosh/CFD cadence-budget controls and explicit fallback behavior
 
 ## 10) Observability metrics to publish
 
@@ -84,3 +93,5 @@ If SLO violations persist:
 - degraded-mode activation events
 - structural iterative convergence series (iterations/residuals)
 - matrix-free mode stability/failure-rate metrics by profile
+- propulsion chamber/slosh update latency percentiles by profile
+- CFD-coupled fallback activation counts and transition durations

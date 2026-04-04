@@ -78,6 +78,19 @@
   - relabeled advanced/niche mission-analysis phases as post-core to reduce planning drift
 - R8.0 scope refinement:
   - un-deferred minimal severity styling for quicklook markers using an extensible deterministic baseline contract (`info|warning|critical` + 3-color mapping)
+- R2.2 chamber-flow baseline:
+  - added `propulsion/chamber_flow.py` reduced-order injector-to-throat chamber-flow state model
+  - added chamber diagnostics (`pressure`, `temperature`, `mixing_quality`, stoichiometric error, chamber O/F proxy)
+  - exported chamber-flow contracts via `brambhand.propulsion`
+  - added deterministic coupling contract `ChamberThrustCouplingParams` and `estimate_nozzle_thrust_from_chamber_flow(...)` in `propulsion/thrust_estimator.py`
+  - coupled chamber-flow state into nozzle thrust path (including geometry-correction compatibility)
+  - added propulsion contract tests for chamber-flow dynamics, off-stoich quality degradation, thrust-coupling determinism, and input validation
+- Slosh + CFD planning extension with performance safeguards:
+  - added requirements `FR-135` (propellant slosh simulation), `FR-136` (optional CFD-coupled adapter contracts), and `FR-137` (FSI integration of topology/leak/slosh boundary exchanges) plus `NR-058` (latency/cadence/fallback safeguards)
+  - added design roadmap milestones `R2.3` (reduced-order slosh, core lane) and `R4.1` (optional CFD adapters, post-R8.5)
+  - updated `TODO.md` interleaving with `R2.3` before `R3` and `R4.1` between `R8.5` and `R9`
+  - extended `VERIFICATION.md`/`VALIDATION.md` for slosh and CFD-coupled evidence plans
+  - updated `docs/PERFORMANCE_SLOS.md` with propulsion flow/slosh SLOs and CFD fallback observability metrics
 
 ## v0.1.0 (2026-04-02)
 

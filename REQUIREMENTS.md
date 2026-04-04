@@ -192,6 +192,9 @@ This revision formalizes the **next requirement set** focused on:
 - FR-132: The propulsion stack shall simulate thrust-chamber internal flow/combustion state evolution (injector-to-throat reduced-order baseline, extensible to CFD-coupled workflows) and expose physically meaningful chamber-field diagnostics for coupling/analysis.
 - FR-133: The leakage/fault stack shall simulate leak-jet dynamics (mass, momentum, and thermal state) and propagate leak-jet forces/torques into 6-DOF vehicle dynamics.
 - FR-134: The simulator shall maintain an explicit assembly-topology state model (attachment graph and interfaces) and simulate topology transitions from fracture separation and dock/undock operations, propagating changes to mass properties, constraints, contacts, and control authority.
+- FR-135: The propulsion stack shall simulate propellant slosh effects (reduced-order baseline with geometry-aware parameterization where available) and propagate slosh-induced force/torque and center-of-mass shifts into 6-DOF vehicle dynamics.
+- FR-136: The fluid/combustion stack shall support optional CFD-coupled execution via adapter contracts to external solver packages, while preserving reduced-order fallback modes and deterministic replay metadata/provenance.
+- FR-137: The FSI coupling stack shall consume topology-transition updates and propulsion boundary disturbances (leak-jet/slosh/pressure-field effects where configured) through versioned exchange contracts, and propagate coupled load responses back to dynamics/structures with convergence residual telemetry.
 
 ---
 
@@ -269,6 +272,7 @@ This revision formalizes the **next requirement set** focused on:
 - NR-055: Advanced structural model outputs shall be benchmarked against trusted structural references with tolerance-governed acceptance thresholds per profile class.
 - NR-056: Thermo-structural coupling workflows shall provide deterministic temperature/material-property provenance and bounded sensitivity drift across repeated runs.
 - NR-057: Topology-transition and leak-jet force propagation workflows shall be deterministic, conservation-consistent (mass/momentum within configured tolerances), and fully traceable in replay metadata.
+- NR-058: Slosh and CFD-coupled fluid workflows shall respect profile-specific latency budgets and cadence safeguards, with explicit degraded-mode fallback to reduced-order models when runtime pressure exceeds configured thresholds.
 
 ---
 

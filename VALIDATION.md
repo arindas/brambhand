@@ -40,12 +40,14 @@ Validation covers:
 - Contact/capture/rejection envelope scenarios
 - Mechanism limit and rate behavior in mission sequences
 
-## R2 / R2.1 / R2.2 (propulsion + nozzle geometry + chamber/leak-jet fidelity)
+## R2 / R2.1 / R2.2 / R2.3 (propulsion + nozzle geometry + chamber/leak-jet/slosh fidelity)
 - Feed/combustion/thrust chain scenarios
 - Nozzle shape sensitivity scenarios (throat/exit/area-ratio/contour)
 - Chamber internal-flow plausibility scenarios (injector-to-throat state evolution and thrust coupling)
 - Leak fault impact on delivered thrust and mission outcomes
 - Leak-jet disturbance scenarios (unintended force/moment and trajectory/attitude impact)
+- Slosh-induced attitude disturbance scenarios (maneuver transients and damping behavior)
+- Propulsion/slosh latency-budget and fallback-trigger scenarios by profile
 
 ## R3 / R3.1 / R4 (structures + topology transitions + FSI)
 - Structural loading progression scenarios
@@ -93,6 +95,11 @@ Validation covers:
 - Geometry-change visualization acceptance for damage/deformation overlays after impact events
 - Crack/fracture/leak-source visualization acceptance under evolving structural damage
 - Volumetric plume/leak acceptance for nominal engine exhaust and off-nominal leak emissions
+
+## R4.1 (optional CFD-coupled fluid/combustion adapters, post-R8.5)
+- CFD-coupled plausibility scenarios against reduced-order baselines and references
+- Cadence-guard/fallback scenarios (`CFD-coupled -> reduced-order`) under runtime pressure
+- CFD adapter provenance/replay reconstruction scenarios
 
 ## R9 (debris and compounding accretion prediction)
 - Debris population and fragment-cloud evolution scenarios
@@ -153,7 +160,7 @@ Each validation scenario must define:
 
 Validation suites in this document cover the following requirement groups:
 - FR-001..FR-005, FR-067..FR-071: dynamics/control and baseline mission continuity
-- FR-006..FR-010, FR-031, FR-132..FR-133: propulsion/combustion/nozzle behavior, chamber-internal flow, and leak-jet dynamics
+- FR-006..FR-010, FR-031, FR-132..FR-133, FR-135..FR-137: propulsion/combustion/nozzle behavior, chamber-internal flow, leak-jet/slosh dynamics, FSI-linked boundary exchange, and optional CFD-coupled workflows
 - FR-011..FR-015, FR-072..FR-073, FR-074..FR-080, FR-081..FR-083, FR-134: structures/fracture/FSI, severe topology-change events, assembly-topology transitions, and structural scalability paths (including matrix-free acceptance)
 - FR-016..FR-018, FR-032..FR-037: geometry ingestion and geometry-to-physics consistency
 - FR-019..FR-021, FR-064..FR-066: persistence/checkpoint/replay auditability

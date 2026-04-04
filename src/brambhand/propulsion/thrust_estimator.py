@@ -9,6 +9,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from brambhand.propulsion.chamber_flow import ChamberFlowState
+
 
 @dataclass(frozen=True)
 class NozzleParams:
@@ -55,6 +57,23 @@ class NozzleGeometryCorrection:
             raise ValueError("contour_loss_factor must be in (0, 1].")
 
 
+@dataclass(frozen=True)
+class ChamberThrustCouplingParams:
+    """Contract for coupling chamber-flow state into thrust estimation."""
+
+    gas_constant_jpkgk: float
+    throat_area_m2: float
+    throat_discharge_coefficient: float = 1.0
+
+    def __post_init__(self) -> None:
+        if self.gas_constant_jpkgk <= 0.0:
+            raise ValueError("gas_constant_jpkgk must be positive.")
+        if self.throat_area_m2 <= 0.0:
+            raise ValueError("throat_area_m2 must be positive.")
+        if self.throat_discharge_coefficient <= 0.0:
+            raise ValueError("throat_discharge_coefficient must be positive.")
+
+
 def _expansion_efficiency(area_ratio: float) -> float:
     """Return bounded expansion efficiency from nozzle area ratio."""
     if area_ratio < 1.0:
@@ -95,4 +114,39 @@ def estimate_nozzle_thrust(
         thrust_n=total,
         momentum_thrust_n=momentum,
         pressure_thrust_n=pressure,
+    )
+
+
+def estimate_nozzle_thrust_from_chamber_flow(
+    chamber_state: ChamberFlowState,
+    nozzle: NozzleParams,
+    coupling: ChamberThrustCouplingParams,
+    geometry: NozzleGeometryCorrection | None = None,
+) -> ThrustEstimate:
+    """Estimate nozzle thrust by deriving throat flow from chamber-flow state.
+
+    Reduced-order throat flow proxy:
+    `m_dot = Cd * A_t * p_c / sqrt(R * T)`.
+    """
+    if chamber_state.pressure_pa == 0.0:
+        return estimate_nozzle_thrust(
+            chamber_pressure_pa=0.0,
+            mass_flow_kgps=0.0,
+            nozzle=nozzle,
+            geometry=geometry,
+        )
+
+    temperature = max(chamber_state.temperature_k, 1e-9)
+    mass_flow_kgps = (
+        coupling.throat_discharge_coefficient
+        * coupling.throat_area_m2
+        * chamber_state.pressure_pa
+        / math.sqrt(coupling.gas_constant_jpkgk * temperature)
+    )
+
+    return estimate_nozzle_thrust(
+        chamber_pressure_pa=chamber_state.pressure_pa,
+        mass_flow_kgps=mass_flow_kgps,
+        nozzle=nozzle,
+        geometry=geometry,
     )
