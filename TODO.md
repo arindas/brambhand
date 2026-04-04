@@ -41,8 +41,8 @@
 - [x] Implement 3D solid FEM baseline for chassis components and define model-selection policy (2D vs 3D)
 - [x] Reorganize structural FEM implementation into dedicated `structures/fem/` namespace
 - [x] Remove legacy structural FEM shim modules (`fem_solver`, `fem_contracts`, `fem_geometry`, `fem_backends`) and migrate all imports/docs/tests to canonical `structures.fem.*` paths
-- [ ] Add backend-equivalence and determinism tolerance tests (dense vs sparse modes)
-- [ ] Add structural latency/memory benchmark suite for 2D vs 3D profiles
+- [x] Add backend-equivalence and determinism tolerance tests (dense vs sparse modes)
+- [x] Add structural latency/memory benchmark suite for 2D vs 3D profiles
 - [ ] Implement fracture initiation/propagation baseline model
 - [ ] Implement damage state propagation to mass/stiffness/contact behavior
 - [ ] Add structural failure scenario tests (including leak path creation)
@@ -164,6 +164,27 @@
 - [ ] Implement mission-analysis product generation (maneuver plans, nav summaries, constraint violation reports)
 - [ ] Add cross-validation harness against trusted astrodynamics references with tolerance-governed pass/fail criteria
 - [ ] Add human-in-the-loop interactive trade-study session capture/replay metadata support
+
+### R13 — Atmospheric launch/ascent and aero-structural behavior (deferred to avoid derailing active R3-R12 delivery)
+- [ ] Implement atmospheric profile subsystem (density/pressure/temperature/speed-of-sound) with validity-envelope checks
+- [ ] Implement aerodynamic load model baseline (drag + extensible lift/side-force) coupled into 6-DOF rigid-body dynamics
+- [ ] Implement launch/ascent event sequencer (liftoff/max-q/staging/MECO/atmospheric-exit) with deterministic replay provenance
+- [ ] Implement ascent atmospheric-exit and apogee prediction utilities with tolerance-governed propagated-truth checks
+- [ ] Implement ascent guidance/attitude-profile control hooks (gravity-turn/profile-following baseline)
+- [ ] Implement launch-load buckling risk screening and cyclic fatigue accumulation hooks into fracture-initiation workflows
+- [ ] Add integrated launch scenario tests covering drag-loaded ascent, max-q region behavior, atmospheric exit, and apogee prediction
+- [ ] Add fatigue/buckling-to-fracture progression scenarios and alarm/event propagation tests
+
+### R14 — Advanced structural fidelity stack (deferred post-R13 to protect R3-R13 delivery cadence)
+- [ ] Implement nonlinear structural solve baseline (geometric nonlinearity) with convergence diagnostics/termination telemetry
+- [ ] Implement material nonlinearity hook contracts (yield/plastic response baseline) with profile-aware model selection
+- [ ] Implement transient structural dynamics workflows (modal/direct integration baseline) and replay-compatible state serialization
+- [ ] Implement explicit buckling analysis workflows (eigenvalue baseline + post-buckling progression policy)
+- [ ] Extend fatigue modeling from threshold hooks to mission-phase fatigue accumulation and crack-growth coupling
+- [ ] Implement adaptive refinement/remeshing policy interfaces around structural hot-spots with deterministic remesh provenance
+- [ ] Implement thermo-structural coupling hooks (temperature-dependent material properties + thermal-load coupling into stress/buckling/fatigue/fracture workflows)
+- [ ] Add advanced structural benchmark suite against trusted references with tolerance-governed acceptance per profile
+- [ ] Add degraded-mode/fallback policy tests for advanced structural fidelity under compute-pressure constraints
 
 ## Design, verification, and validation documentation gaps (reviewed)
 - [x] Finalize initial numeric latency/SLO targets per deployment/render profile (`docs/PERFORMANCE_SLOS.md`)

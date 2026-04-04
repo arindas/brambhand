@@ -22,6 +22,7 @@ from brambhand.structures.fem.solver import (
     StructuralSolverConfig,
     StructuralSolverTerminationReason,
     benchmark_matrix_free_preconditioners,
+    benchmark_structural_latency_memory_profiles,
     evaluate_matrix_free_acceptance,
     select_structural_model_dimension,
     solve_linear_static_fem,
@@ -279,6 +280,70 @@ def test_fem_solver_backends_produce_consistent_displacements() -> None:
         assert math.isclose(dense[1], matrix_free[1], rel_tol=1e-9, abs_tol=1e-15)
 
 
+def test_fem_2d_dense_vs_sparse_backends_are_repeatably_deterministic_within_tolerance() -> None:
+    dense_first = solve_linear_static_fem(
+        _build_plate_model(load_scale=1.0, backend=StructuralSolverBackend.DENSE_DIRECT)
+    )
+    dense_second = solve_linear_static_fem(
+        _build_plate_model(load_scale=1.0, backend=StructuralSolverBackend.DENSE_DIRECT)
+    )
+    sparse_direct_first = solve_linear_static_fem(
+        _build_plate_model(load_scale=1.0, backend=StructuralSolverBackend.SPARSE_DIRECT)
+    )
+    sparse_direct_second = solve_linear_static_fem(
+        _build_plate_model(load_scale=1.0, backend=StructuralSolverBackend.SPARSE_DIRECT)
+    )
+    sparse_iterative_first = solve_linear_static_fem(
+        _build_plate_model(
+            load_scale=1.0,
+            backend=StructuralSolverBackend.SPARSE_ITERATIVE,
+            preconditioner=StructuralIterativePreconditioner.JACOBI,
+        )
+    )
+    sparse_iterative_second = solve_linear_static_fem(
+        _build_plate_model(
+            load_scale=1.0,
+            backend=StructuralSolverBackend.SPARSE_ITERATIVE,
+            preconditioner=StructuralIterativePreconditioner.JACOBI,
+        )
+    )
+
+    for dense_a, dense_b, sparse_a, sparse_b, iter_a, iter_b in zip(
+        dense_first.displacements_m,
+        dense_second.displacements_m,
+        sparse_direct_first.displacements_m,
+        sparse_direct_second.displacements_m,
+        sparse_iterative_first.displacements_m,
+        sparse_iterative_second.displacements_m,
+        strict=True,
+    ):
+        # determinism: repeat same backend and model gives numerically identical
+        # displacement outputs within tight tolerance
+        assert math.isclose(dense_a[0], dense_b[0], rel_tol=0.0, abs_tol=1e-18)
+        assert math.isclose(dense_a[1], dense_b[1], rel_tol=0.0, abs_tol=1e-18)
+        assert math.isclose(sparse_a[0], sparse_b[0], rel_tol=0.0, abs_tol=1e-18)
+        assert math.isclose(sparse_a[1], sparse_b[1], rel_tol=0.0, abs_tol=1e-18)
+        assert math.isclose(iter_a[0], iter_b[0], rel_tol=0.0, abs_tol=1e-18)
+        assert math.isclose(iter_a[1], iter_b[1], rel_tol=0.0, abs_tol=1e-18)
+
+        # backend equivalence: dense and sparse paths agree within strict tolerance
+        assert math.isclose(dense_a[0], sparse_a[0], rel_tol=1e-9, abs_tol=1e-15)
+        assert math.isclose(dense_a[1], sparse_a[1], rel_tol=1e-9, abs_tol=1e-15)
+        assert math.isclose(dense_a[0], iter_a[0], rel_tol=1e-9, abs_tol=1e-15)
+        assert math.isclose(dense_a[1], iter_a[1], rel_tol=1e-9, abs_tol=1e-15)
+
+    assert (
+        sparse_iterative_first.telemetry.iterative_iterations
+        == sparse_iterative_second.telemetry.iterative_iterations
+    )
+    assert math.isclose(
+        sparse_iterative_first.telemetry.iterative_residual_norm or 0.0,
+        sparse_iterative_second.telemetry.iterative_residual_norm or 0.0,
+        rel_tol=0.0,
+        abs_tol=1e-18,
+    )
+
+
 def test_matrix_free_residual_safeguard_can_reject_solution() -> None:
     model = _build_plate_model(
         load_scale=1.0,
@@ -438,6 +503,132 @@ def _build_tetra_model(
     )
 
 
+def _build_benchmark_plate_model_2d() -> FEMModel2D:
+    nodes = (
+        Node2D(0.0, 0.0),
+        Node2D(1.0, 0.0),
+        Node2D(2.0, 0.0),
+        Node2D(0.0, 1.0),
+        Node2D(1.0, 1.0),
+        Node2D(2.0, 1.0),
+        Node2D(0.0, 2.0),
+        Node2D(1.0, 2.0),
+        Node2D(2.0, 2.0),
+    )
+
+    elements = (
+        LinearTriangleElement(
+            (0, 1, 4),
+            thickness_m=0.01,
+            youngs_modulus_pa=70e9,
+            poisson_ratio=0.33,
+        ),
+        LinearTriangleElement(
+            (0, 4, 3),
+            thickness_m=0.01,
+            youngs_modulus_pa=70e9,
+            poisson_ratio=0.33,
+        ),
+        LinearTriangleElement(
+            (1, 2, 5),
+            thickness_m=0.01,
+            youngs_modulus_pa=70e9,
+            poisson_ratio=0.33,
+        ),
+        LinearTriangleElement(
+            (1, 5, 4),
+            thickness_m=0.01,
+            youngs_modulus_pa=70e9,
+            poisson_ratio=0.33,
+        ),
+        LinearTriangleElement(
+            (3, 4, 7),
+            thickness_m=0.01,
+            youngs_modulus_pa=70e9,
+            poisson_ratio=0.33,
+        ),
+        LinearTriangleElement(
+            (3, 7, 6),
+            thickness_m=0.01,
+            youngs_modulus_pa=70e9,
+            poisson_ratio=0.33,
+        ),
+        LinearTriangleElement(
+            (4, 5, 8),
+            thickness_m=0.01,
+            youngs_modulus_pa=70e9,
+            poisson_ratio=0.33,
+        ),
+        LinearTriangleElement(
+            (4, 8, 7),
+            thickness_m=0.01,
+            youngs_modulus_pa=70e9,
+            poisson_ratio=0.33,
+        ),
+    )
+
+    constraints = {
+        0: BoundaryConstraint2D(fix_x=True, fix_y=True),
+        3: BoundaryConstraint2D(fix_x=True, fix_y=True),
+        6: BoundaryConstraint2D(fix_x=True, fix_y=True),
+    }
+    loads = {
+        2: NodalLoad2D(fx_n=500.0, fy_n=0.0),
+        5: NodalLoad2D(fx_n=500.0, fy_n=0.0),
+        8: NodalLoad2D(fx_n=500.0, fy_n=0.0),
+    }
+
+    return FEMModel2D(
+        nodes=nodes,
+        elements=elements,
+        nodal_loads=loads,
+        constraints=constraints,
+        solver_config=StructuralSolverConfig(backend=StructuralSolverBackend.SPARSE_DIRECT),
+    )
+
+
+def _build_benchmark_tetra_model_3d() -> FEMModel3D:
+    nodes = (
+        Node3D(0.0, 0.0, 0.0),
+        Node3D(1.0, 0.0, 0.0),
+        Node3D(1.0, 1.0, 0.0),
+        Node3D(0.0, 1.0, 0.0),
+        Node3D(0.0, 0.0, 1.0),
+        Node3D(1.0, 0.0, 1.0),
+        Node3D(1.0, 1.0, 1.0),
+        Node3D(0.0, 1.0, 1.0),
+    )
+
+    elements = (
+        LinearTetrahedronElement((0, 1, 3, 4), youngs_modulus_pa=50e9, poisson_ratio=0.29),
+        LinearTetrahedronElement((1, 2, 3, 6), youngs_modulus_pa=50e9, poisson_ratio=0.29),
+        LinearTetrahedronElement((1, 4, 5, 6), youngs_modulus_pa=50e9, poisson_ratio=0.29),
+        LinearTetrahedronElement((3, 4, 6, 7), youngs_modulus_pa=50e9, poisson_ratio=0.29),
+        LinearTetrahedronElement((1, 3, 4, 6), youngs_modulus_pa=50e9, poisson_ratio=0.29),
+    )
+
+    constraints = {
+        0: BoundaryConstraint3D(fix_x=True, fix_y=True, fix_z=True),
+        1: BoundaryConstraint3D(fix_x=True, fix_y=True, fix_z=True),
+        2: BoundaryConstraint3D(fix_x=True, fix_y=True, fix_z=True),
+        3: BoundaryConstraint3D(fix_x=True, fix_y=True, fix_z=True),
+    }
+    loads = {
+        4: NodalLoad3D(fx_n=250.0, fy_n=0.0, fz_n=0.0),
+        5: NodalLoad3D(fx_n=250.0, fy_n=0.0, fz_n=0.0),
+        6: NodalLoad3D(fx_n=250.0, fy_n=0.0, fz_n=0.0),
+        7: NodalLoad3D(fx_n=250.0, fy_n=0.0, fz_n=0.0),
+    }
+
+    return FEMModel3D(
+        nodes=nodes,
+        elements=elements,
+        nodal_loads=loads,
+        constraints=constraints,
+        solver_config=StructuralSolverConfig(backend=StructuralSolverBackend.SPARSE_DIRECT),
+    )
+
+
 def test_fem_3d_zero_load_yields_zero_displacement() -> None:
     result = solve_linear_static_fem_3d(_build_tetra_model(load_scale=0.0))
 
@@ -497,6 +688,112 @@ def test_fem_3d_solver_backends_produce_consistent_displacements() -> None:
         assert math.isclose(dense[0], sparse_iter[0], rel_tol=1e-9, abs_tol=1e-15)
         assert math.isclose(dense[1], sparse_iter[1], rel_tol=1e-9, abs_tol=1e-15)
         assert math.isclose(dense[2], sparse_iter[2], rel_tol=1e-9, abs_tol=1e-15)
+
+
+def test_fem_3d_dense_vs_sparse_backends_are_repeatably_deterministic_within_tolerance() -> None:
+    dense_first = solve_linear_static_fem_3d(
+        _build_tetra_model(load_scale=1.0, backend=StructuralSolverBackend.DENSE_DIRECT)
+    )
+    dense_second = solve_linear_static_fem_3d(
+        _build_tetra_model(load_scale=1.0, backend=StructuralSolverBackend.DENSE_DIRECT)
+    )
+    sparse_direct_first = solve_linear_static_fem_3d(
+        _build_tetra_model(load_scale=1.0, backend=StructuralSolverBackend.SPARSE_DIRECT)
+    )
+    sparse_direct_second = solve_linear_static_fem_3d(
+        _build_tetra_model(load_scale=1.0, backend=StructuralSolverBackend.SPARSE_DIRECT)
+    )
+    sparse_iterative_first = solve_linear_static_fem_3d(
+        _build_tetra_model(load_scale=1.0, backend=StructuralSolverBackend.SPARSE_ITERATIVE)
+    )
+    sparse_iterative_second = solve_linear_static_fem_3d(
+        _build_tetra_model(load_scale=1.0, backend=StructuralSolverBackend.SPARSE_ITERATIVE)
+    )
+
+    for dense_a, dense_b, sparse_a, sparse_b, iter_a, iter_b in zip(
+        dense_first.displacements_m,
+        dense_second.displacements_m,
+        sparse_direct_first.displacements_m,
+        sparse_direct_second.displacements_m,
+        sparse_iterative_first.displacements_m,
+        sparse_iterative_second.displacements_m,
+        strict=True,
+    ):
+        assert math.isclose(dense_a[0], dense_b[0], rel_tol=0.0, abs_tol=1e-18)
+        assert math.isclose(dense_a[1], dense_b[1], rel_tol=0.0, abs_tol=1e-18)
+        assert math.isclose(dense_a[2], dense_b[2], rel_tol=0.0, abs_tol=1e-18)
+        assert math.isclose(sparse_a[0], sparse_b[0], rel_tol=0.0, abs_tol=1e-18)
+        assert math.isclose(sparse_a[1], sparse_b[1], rel_tol=0.0, abs_tol=1e-18)
+        assert math.isclose(sparse_a[2], sparse_b[2], rel_tol=0.0, abs_tol=1e-18)
+        assert math.isclose(iter_a[0], iter_b[0], rel_tol=0.0, abs_tol=1e-18)
+        assert math.isclose(iter_a[1], iter_b[1], rel_tol=0.0, abs_tol=1e-18)
+        assert math.isclose(iter_a[2], iter_b[2], rel_tol=0.0, abs_tol=1e-18)
+
+        assert math.isclose(dense_a[0], sparse_a[0], rel_tol=1e-9, abs_tol=1e-15)
+        assert math.isclose(dense_a[1], sparse_a[1], rel_tol=1e-9, abs_tol=1e-15)
+        assert math.isclose(dense_a[2], sparse_a[2], rel_tol=1e-9, abs_tol=1e-15)
+        assert math.isclose(dense_a[0], iter_a[0], rel_tol=1e-9, abs_tol=1e-15)
+        assert math.isclose(dense_a[1], iter_a[1], rel_tol=1e-9, abs_tol=1e-15)
+        assert math.isclose(dense_a[2], iter_a[2], rel_tol=1e-9, abs_tol=1e-15)
+
+    assert (
+        sparse_iterative_first.telemetry.iterative_iterations
+        == sparse_iterative_second.telemetry.iterative_iterations
+    )
+    assert math.isclose(
+        sparse_iterative_first.telemetry.iterative_residual_norm or 0.0,
+        sparse_iterative_second.telemetry.iterative_residual_norm or 0.0,
+        rel_tol=0.0,
+        abs_tol=1e-18,
+    )
+
+
+def test_structural_latency_memory_benchmark_suite_for_2d_vs_3d_profiles() -> None:
+    benchmark_2d, benchmark_3d = benchmark_structural_latency_memory_profiles(
+        _build_benchmark_plate_model_2d(),
+        _build_benchmark_tetra_model_3d(),
+        profile=StructuralProfileClass.OPERATIONAL,
+        repeats=3,
+    )
+
+    assert benchmark_2d.profile == StructuralProfileClass.OPERATIONAL
+    assert benchmark_3d.profile == StructuralProfileClass.OPERATIONAL
+
+    assert benchmark_2d.dimension == StructuralModelDimension.TWO_D
+    assert benchmark_3d.dimension == StructuralModelDimension.THREE_D
+
+    assert benchmark_2d.repeats == 3
+    assert benchmark_3d.repeats == 3
+
+    assert benchmark_2d.p50_solve_seconds > 0.0
+    assert benchmark_2d.p95_solve_seconds > 0.0
+    assert benchmark_3d.p50_solve_seconds > 0.0
+    assert benchmark_3d.p95_solve_seconds > 0.0
+
+    assert benchmark_2d.global_dof_count > 0
+    assert benchmark_3d.global_dof_count > benchmark_2d.global_dof_count
+
+    assert benchmark_2d.global_matrix_nnz > 0
+    assert benchmark_3d.global_matrix_nnz > benchmark_2d.global_matrix_nnz
+
+    assert benchmark_2d.estimated_sparse_matrix_storage_bytes > 0
+    assert (
+        benchmark_3d.estimated_sparse_matrix_storage_bytes
+        > benchmark_2d.estimated_sparse_matrix_storage_bytes
+    )
+
+
+def test_structural_latency_memory_benchmark_rejects_non_positive_repeats() -> None:
+    try:
+        benchmark_structural_latency_memory_profiles(
+            _build_benchmark_plate_model_2d(),
+            _build_benchmark_tetra_model_3d(),
+            repeats=0,
+        )
+    except ValueError as exc:
+        assert "repeats must be positive" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError for non-positive repeats")
 
 
 def test_structural_model_selection_policy_for_2d_vs_3d() -> None:

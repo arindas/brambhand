@@ -98,6 +98,22 @@ Validation covers:
 - Operational-constraint and finite-burn realism validation scenarios
 - Mission-analysis product acceptance and interactive-session reproducibility scenarios
 
+## R13 (atmospheric launch/ascent + aero-structural behavior)
+- Atmosphere-profile and aerodynamic-load plausibility scenarios across ascent altitude bands
+- Launch event-sequence acceptance scenarios (liftoff, max-q, staging, MECO, atmospheric exit)
+- Atmospheric-exit and apogee prediction acceptance scenarios with propagated-truth tolerance checks
+- Ascent guidance/attitude profile-following scenarios with disturbance/drag sensitivity checks
+- Buckling/fatigue risk progression scenarios and fracture-seeding alarm/event propagation checks
+
+## R14 (advanced structural fidelity stack)
+- Nonlinear structural response validation scenarios against trusted references (large-deformation baseline)
+- Material nonlinearity/plastic-response validation scenarios with profile-specific tolerances
+- Transient structural dynamics validation scenarios (modal/direct integration) and replay consistency checks
+- Buckling and post-buckling progression validation scenarios for critical load cases
+- Fatigue accumulation and crack-growth coupling validation scenarios across mission-phase duty cycles
+- Thermo-structural coupling validation scenarios (temperature-dependent material properties and thermal-load influence)
+- Adaptive remesh/refinement provenance and acceptance scenarios under deterministic replay constraints
+
 ## Baseline continuity suite (cross-phase)
 - Orbital baseline continuity checks against earlier deterministic scenarios
 - Communication visibility/occlusion continuity checks
@@ -136,9 +152,11 @@ Validation suites in this document cover the following requirement groups:
 - FR-091..FR-102: trajectory optimization + interplanetary mission-analysis adapter workflows and campaign orchestration
 - FR-103..FR-114: OD/uncertainty/dispersion/ops-constraint/mission-product/interactive-analysis parity workflows
 - FR-115..FR-118: architecture decoupling integrity and shared frame/time service consistency workflows
+- FR-119..FR-124: atmospheric launch/ascent, aerodynamic loading, ascent-event sequencing, apogee prediction, and buckling/fatigue-to-fracture workflows
+- FR-125..FR-131: advanced structural fidelity workflows (nonlinear/material/transient/buckling/fatigue-growth/thermal coupling/adaptive remeshing)
 - FR-029..FR-030: diagnostics and reproducibility metadata channels
 
-Non-functional validation intent in this document aligns with NR-001..NR-049, with specific SLO-aligned targets governed by `docs/PERFORMANCE_SLOS.md`.
+Non-functional validation intent in this document aligns with NR-001..NR-056, with specific SLO-aligned targets governed by `docs/PERFORMANCE_SLOS.md`.
 
 ## 7) Current validation-progress snapshot (2026-04-02)
 
@@ -147,7 +165,7 @@ Non-functional validation intent in this document aligns with NR-001..NR-049, wi
 - R2.1 validation-prep evidence available for nozzle geometry sensitivity (area ratio and contour loss).
 - R3 validation-prep evidence available for linear-static 2D FEM baseline contracts.
 - Matrix-free acceptance-threshold evaluation evidence is available for operational/analysis profiles (including strict-threshold failure-path checks).
-- Sparse/3D performance validation remains planned.
+- Structural latency/memory benchmark-prep evidence is available for 2D-vs-3D profile comparisons (P50/P95 solve timing and `nnz`-based sparse storage estimates).
 - Full benchmark-grade validation suites remain milestone-gated and are tracked in `TODO.md`.
 
 ## 8) Governance

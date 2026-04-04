@@ -9,6 +9,7 @@ This module now acts as a facade/orchestrator over modularized FEM components:
 from __future__ import annotations
 
 from dataclasses import replace
+from time import perf_counter
 
 import numpy as np
 from scipy import sparse
@@ -37,6 +38,7 @@ from brambhand.structures.fem.contracts import (
     Structural2DValidityEnvelope,
     Structural3DValidityEnvelope,
     StructuralIterativePreconditioner,
+    StructuralLatencyMemoryBenchmarkResult,
     StructuralModelDimension,
     StructuralModelSelectionDecision,
     StructuralModelSelectionInput,
@@ -394,6 +396,78 @@ def benchmark_matrix_free_preconditioners(
     return tuple(results)
 
 
+def benchmark_structural_latency_memory_profiles(
+    model_2d: FEMModel2D,
+    model_3d: FEMModel3D,
+    profile: StructuralProfileClass = StructuralProfileClass.OPERATIONAL,
+    repeats: int = 5,
+) -> tuple[StructuralLatencyMemoryBenchmarkResult, StructuralLatencyMemoryBenchmarkResult]:
+    """Benchmark structural latency/memory telemetry for paired 2D and 3D models."""
+    if repeats <= 0:
+        raise ValueError("repeats must be positive.")
+
+    def _p95(samples: list[float]) -> float:
+        ordered = sorted(samples)
+        rank = max(int(np.ceil(0.95 * len(ordered))) - 1, 0)
+        return float(ordered[rank])
+
+    times_2d: list[float] = []
+    result_2d: FEMSolveResult2D | None = None
+    for _ in range(repeats):
+        start = perf_counter()
+        result_2d = solve_linear_static_fem(model_2d)
+        times_2d.append(perf_counter() - start)
+
+    times_3d: list[float] = []
+    result_3d: FEMSolveResult3D | None = None
+    for _ in range(repeats):
+        start = perf_counter()
+        result_3d = solve_linear_static_fem_3d(model_3d)
+        times_3d.append(perf_counter() - start)
+
+    if result_2d is None or result_3d is None:
+        raise ValueError("Benchmark requires at least one solve sample per profile.")
+
+    telemetry_2d = result_2d.telemetry
+    telemetry_3d = result_3d.telemetry
+
+    estimate_2d = (
+        telemetry_2d.global_matrix_nnz * 12
+        + (telemetry_2d.global_dof_count + 1) * 4
+    )
+    estimate_3d = (
+        telemetry_3d.global_matrix_nnz * 12
+        + (telemetry_3d.global_dof_count + 1) * 4
+    )
+
+    return (
+        StructuralLatencyMemoryBenchmarkResult(
+            profile=profile,
+            dimension=StructuralModelDimension.TWO_D,
+            solver_backend=telemetry_2d.solver_backend,
+            repeats=repeats,
+            p50_solve_seconds=float(np.median(np.array(times_2d, dtype=float))),
+            p95_solve_seconds=_p95(times_2d),
+            global_dof_count=telemetry_2d.global_dof_count,
+            global_matrix_nnz=telemetry_2d.global_matrix_nnz,
+            reduced_matrix_nnz=telemetry_2d.reduced_matrix_nnz,
+            estimated_sparse_matrix_storage_bytes=estimate_2d,
+        ),
+        StructuralLatencyMemoryBenchmarkResult(
+            profile=profile,
+            dimension=StructuralModelDimension.THREE_D,
+            solver_backend=telemetry_3d.solver_backend,
+            repeats=repeats,
+            p50_solve_seconds=float(np.median(np.array(times_3d, dtype=float))),
+            p95_solve_seconds=_p95(times_3d),
+            global_dof_count=telemetry_3d.global_dof_count,
+            global_matrix_nnz=telemetry_3d.global_matrix_nnz,
+            reduced_matrix_nnz=telemetry_3d.reduced_matrix_nnz,
+            estimated_sparse_matrix_storage_bytes=estimate_3d,
+        ),
+    )
+
+
 def default_matrix_free_acceptance_threshold(
     profile: StructuralProfileClass,
 ) -> MatrixFreeAcceptanceThreshold:
@@ -477,9 +551,11 @@ __all__ = [
     "StructuralSolverBackend",
     "StructuralSolverConfig",
     "StructuralSolverTerminationReason",
+    "StructuralLatencyMemoryBenchmarkResult",
     "TetrahedronElementResult",
     "TriangleElementResult",
     "benchmark_matrix_free_preconditioners",
+    "benchmark_structural_latency_memory_profiles",
     "default_matrix_free_acceptance_threshold",
     "evaluate_matrix_free_acceptance",
     "select_structural_model_dimension",

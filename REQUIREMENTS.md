@@ -13,6 +13,7 @@ This revision formalizes the **next requirement set** focused on:
 - horizontal scalability and persistence
 - realistic mission-control and onboard visualization
 - space debris environment simulation and compounding debris accretion prediction
+- atmospheric launch/ascent simulation with aero-structural load effects and ascent-event prediction
 
 ---
 
@@ -170,6 +171,23 @@ This revision formalizes the **next requirement set** focused on:
 - FR-117: Frame/time normalization shall be centralized through shared provider contracts so trajectory, navigation, and mission modules do not embed divergent conversion logic.
 - FR-118: Structural FEM components shall be organized under a dedicated FEM module namespace with explicit submodules (contracts, geometry/assembly, backend execution, orchestration/selection) while preserving stable public API entry points.
 
+## R. Atmospheric launch/ascent and aero-structural behavior
+- FR-119: The simulator shall model atmospheric state for launch/ascent phases (density, pressure, temperature, speed of sound) using configurable atmosphere profiles and validity envelopes.
+- FR-120: The simulator shall compute aerodynamic forces/moments on launch vehicles (drag baseline, extensible lift/side-force terms) and couple those loads into 6-DOF dynamics.
+- FR-121: The simulator shall model launch-phase event sequencing (liftoff, max-q, staging, engine-cutoff, atmospheric exit) with deterministic event provenance and replay visibility.
+- FR-122: The simulator shall provide atmospheric-exit and apogee prediction utilities for ascent trajectories, with tolerance-governed comparisons against propagated truth trajectories.
+- FR-123: The simulator shall support ascent-focused attitude/control workflows (e.g., gravity-turn or profile-following guidance) with command-to-actuation causal traceability.
+- FR-124: The structural pipeline shall support launch-load buckling risk screening and cyclic fatigue accumulation hooks that can trigger/seed fracture progression workflows.
+
+## S. Advanced structural fidelity (full-fledged FEM progression)
+- FR-125: The structural solver stack shall support nonlinear structural analysis modes including geometric nonlinearity (large deformation) for selected high-load scenarios.
+- FR-126: The structural solver stack shall support material nonlinearity hooks (e.g., plasticity/yield behavior) with configurable constitutive-model contracts.
+- FR-127: The structural pipeline shall support transient structural dynamics workflows (modal or direct time integration) for vibration/impact-follow-on response analysis.
+- FR-128: The structural failure pipeline shall support explicit buckling workflows (eigenvalue baseline and post-buckling progression policy) for critical structures.
+- FR-129: The structural durability pipeline shall support mission-phase fatigue accumulation models and fracture-growth coupling beyond threshold screening.
+- FR-130: The structural mesh pipeline shall support adaptive refinement/remeshing policies around stress/fatigue/fracture hot-spots with deterministic remesh provenance.
+- FR-131: The structural stack shall support thermo-structural coupling hooks where temperature-dependent material properties and thermal loads can influence stress, buckling, fatigue, and fracture progression models.
+
 ---
 
 ## Non-functional Requirements
@@ -238,6 +256,13 @@ This revision formalizes the **next requirement set** focused on:
 - NR-047: Adapter-neutral interfaces shall remain stable under backend substitution and reject backend-specific payload leakage at integration boundaries.
 - NR-048: Centralized frame/time services shall enforce consistent conversions across modules with bounded cross-module drift.
 - NR-049: Internal structural FEM module reorganizations shall provide an explicit migration plan and deterministic behavioral parity checks; canonical public import paths shall remain stable after migration completion.
+- NR-050: Atmospheric/aerodynamic models shall declare Mach/Reynolds/altitude validity envelopes and raise explicit diagnostics for out-of-envelope use.
+- NR-051: Launch-event and ascent-prediction outputs (max-q timing, atmospheric-exit timing, apogee estimate) shall be reproducible and tolerance-bounded under fixed seeds/configuration.
+- NR-052: Buckling/fatigue risk-screening transitions into fracture workflows shall be deterministic, explicitly telemetered, and operator-visible when thresholds are crossed.
+- NR-053: Nonlinear/transient structural solve workflows shall expose convergence/stability diagnostics and deterministic termination metadata equivalent to linear structural telemetry standards.
+- NR-054: Advanced structural fidelity modes (nonlinear/transient/adaptive-remesh) shall define profile-specific compute-budget and fallback policies to avoid uncontrolled runtime degradation.
+- NR-055: Advanced structural model outputs shall be benchmarked against trusted structural references with tolerance-governed acceptance thresholds per profile class.
+- NR-056: Thermo-structural coupling workflows shall provide deterministic temperature/material-property provenance and bounded sensitivity drift across repeated runs.
 
 ---
 

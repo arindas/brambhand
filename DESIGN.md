@@ -26,6 +26,13 @@ src/brambhand/
     rigid_body_6dof.py            # translational + rotational dynamics
     mechanisms.py                 # joints, constraints, actuators
     contact_docking.py            # contact/impact dynamics for docking
+    aerodynamic_loads.py          # drag/lift/side-force models for atmosphere-coupled phases
+  atmosphere/
+    atmosphere_profile.py         # density/pressure/temperature/speed-of-sound profiles
+  launch/
+    ascent_events.py              # liftoff/max-q/staging/MECO/atmospheric-exit event sequencing
+    ascent_prediction.py          # atmospheric-exit and apogee predictors
+    ascent_guidance.py            # launch/ascent attitude-profile control workflows
   propulsion/
     fluid_network.py              # tanks/lines/valves/injectors
     combustion_model.py           # chamber dynamics
@@ -39,7 +46,15 @@ src/brambhand/
       backends.py                 # linear solver backend implementations
       solver.py                   # 2D/3D solve orchestration + telemetry
       selection.py                # 2D-vs-3D model-selection policy helpers
+      nonlinear.py                # geometric nonlinearity workflows
+      materials.py                # material nonlinearity/plastic constitutive hooks
+      transient.py                # transient structural dynamics workflows
+      buckling.py                 # eigenvalue/post-buckling analysis policies
+      adaptivity.py               # adaptive refinement/remeshing policy contracts
+      thermal_coupling.py         # temperature-dependent material and thermal-load coupling hooks
     fracture_model.py             # crack initiation/propagation
+    buckling_screen.py            # launch-load buckling risk screening
+    fatigue_model.py              # cyclic fatigue accumulation and threshold checks
     structural_state.py           # stiffness/mass degradation state
   coupling/
     fsi_coupler.py                # fluid-structure two-way coupling
@@ -111,6 +126,7 @@ src/brambhand/
 2. Build model graph (rigid bodies, fluid networks, combustion, structures, couplers).
 3. For each time step:
    - update controls/commands
+   - evaluate atmosphere profile state and aerodynamic loads (for atmosphere-coupled phases)
    - propagate rigid-body/mechanism states
    - solve propulsion fluid/combustion subsystem
    - execute FSI + structural updates (iterative if required)
@@ -206,6 +222,8 @@ Write semantics:
 | FR-091..FR-102 | `trajectory/*`, `mission/*`, `guidance/*`, scenario mission-phase DSL/contracts, persistence provenance for optimization campaigns |
 | FR-103..FR-114 | `navigation/*`, `trajectory/*`, `mission_products/*`, constraint/dispersion services, benchmark-validation harnesses, interactive analysis session metadata |
 | FR-115..FR-118 | `structures/fem/*` decomposition boundaries and namespace policy, `trajectory/*` adapter contracts, shared frame/time provider services across trajectory/navigation/mission modules |
+| FR-119..FR-124 | `atmosphere/*`, `dynamics/aerodynamic_loads.py`, `launch/*`, `structures/buckling_screen.py`, `structures/fatigue_model.py`, coupling into `dynamics/*` + `structures/fracture_model.py` |
+| FR-125..FR-131 | `structures/fem/nonlinear.py`, `structures/fem/materials.py`, `structures/fem/transient.py`, `structures/fem/buckling.py`, `structures/fem/adaptivity.py`, `structures/fem/thermal_coupling.py`, `structures/fracture_model.py`, `geometry/mesh_pipeline.py`, runtime profile/fallback selectors |
 | FR-044..FR-048 | `core/simulation_clock.py`, `core/pacing_controller.py`, `core/scheduler.py`, replay/persistence metadata |
 | FR-049..FR-058 | `core/scheduler.py`, `core/simulation_runtime.py`, contract schemas, unit/frame validators, distributed sync protocol, replay metadata |
 | FR-067..FR-071 | `physics/*`, `communication/*`, `guidance/*`, `operations/*`, `scenario/*`, `cli.py`, regression test suites |
@@ -337,6 +355,8 @@ Coupling-mitigation implementation policy:
 - **R10: Docking lifecycle + booster payload transfer logistics + interplanetary SOI handoff**
 - **R11: Trajectory optimization + interplanetary mission-analysis adapters (Hohmann/Lambert/gravity-assist + campaign orchestration)**
 - **R12: Advanced mission-analysis parity extensions (OD/covariance/dispersion/ops constraints/mission products/benchmark cross-validation)**
+- **R13: Atmospheric launch/ascent and aero-structural behavior (scheduled post-R12 to avoid derailing active R3-R12 execution path)**
+- **R14: Advanced structural fidelity stack (nonlinear/material/transient/post-buckling/fatigue-growth/adaptive remeshing/thermal coupling) after R13 to preserve current execution momentum**
 
 ## Current implementation status snapshot
 - R1 baseline implemented in `dynamics/*` with expanded rigid-body/docking contract tests.
@@ -353,6 +373,9 @@ Coupling-mitigation implementation policy:
 - Matrix-free path includes advanced preconditioning beyond Jacobi (node-wise block-Jacobi) and benchmark utility hooks for convergence comparison.
 - Structural telemetry now includes explicit solver termination reason codes across dense/sparse/matrix-free backends.
 - Matrix-free acceptance thresholds are now defined/validated for operational and analysis profiles via telemetry-based evaluators.
+- Structural latency/memory benchmark utilities now provide 2D-vs-3D profile summaries (P50/P95 solve latency plus `nnz`-derived sparse storage estimates).
+- Atmospheric launch/ascent and aero-structural modules are requirements-defined but intentionally deferred to R13 after current R3-R12 priorities.
+- Full-fledged advanced structural fidelity modules (nonlinear/material/transient/post-buckling/fatigue-growth/adaptive-remesh/thermal-coupling) are requirements-defined and deferred to R14, following completion of R13.
 
 ## Design -> Verification linkage
 `VERIFICATION.md` defines V&V evidence per requirement group and per roadmap phase.

@@ -375,6 +375,22 @@ class MatrixFreePreconditionerBenchmarkResult:
 
 
 @dataclass(frozen=True)
+class StructuralLatencyMemoryBenchmarkResult:
+    """Latency/memory benchmark summary for one structural model profile."""
+
+    profile: StructuralProfileClass
+    dimension: StructuralModelDimension
+    solver_backend: StructuralSolverBackend
+    repeats: int
+    p50_solve_seconds: float
+    p95_solve_seconds: float
+    global_dof_count: int
+    global_matrix_nnz: int
+    reduced_matrix_nnz: int
+    estimated_sparse_matrix_storage_bytes: int
+
+
+@dataclass(frozen=True)
 class MatrixFreeAcceptanceThreshold:
     """Acceptance bounds for matrix-free solve telemetry under a profile."""
 

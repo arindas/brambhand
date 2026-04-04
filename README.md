@@ -46,12 +46,12 @@ Source of truth: [`TODO.md`](./TODO.md)
   - sparse assembly and backend-selectable solves
   - matrix-free (2D) path and convergence telemetry
   - model-selection helpers (2D vs 3D)
+  - backend-equivalence/determinism tolerance tests (dense vs sparse)
+  - structural latency/memory benchmark suite (2D vs 3D profiles)
 
 ### In progress
 
 - R3 remaining work:
-  - backend-equivalence and determinism-tolerance tests
-  - structural latency/memory benchmark suite (2D vs 3D profiles)
   - fracture initiation/propagation baseline
   - damage-state propagation to mass/stiffness/contact behavior
 

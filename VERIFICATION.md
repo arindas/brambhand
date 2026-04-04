@@ -66,6 +66,8 @@ Detailed scenario/benchmark acceptance criteria are maintained in `VALIDATION.md
 | FR-091..FR-102 | optimizer-contract tests, ephemeris/frame-provider adapter tests, Hohmann/Lambert adapter tests, gravity-assist adapter tests, campaign-orchestration determinism/provenance tests, seed-sensitivity/convergence-basin tests, cross-backend tolerance benchmark tests | trajectory-optimization and interplanetary trade-study validation packs with backend-swap reproducibility evidence |
 | FR-103..FR-114 | orbit-determination estimator tests, covariance propagation and covariance-consistency tests, Monte Carlo/dispersion workflow tests, operational-constraint loop tests, finite-burn targeting realism tests, stationkeeping workflow tests, mission-product generation contract tests, reference cross-validation harness tests, interactive-session reproducibility tests | advanced mission-analysis validation suites comparing OD/dispersion/constraint workflows to trusted references and mission-ops product acceptance criteria |
 | FR-115..FR-118 | module-boundary decomposition tests, FEM namespace migration/completeness tests, adapter type-leakage guard tests, shared frame/time-provider contract tests | architecture-integrity scenarios demonstrating backend swaps, canonical public API path stability after migration, and cross-module frame/time consistency |
+| FR-119..FR-124 | atmosphere-profile validity tests, aerodynamic force/moment contract tests, launch event-sequencing/replay-order tests, atmospheric-exit/apogee predictor tolerance tests, ascent guidance-control loop tests, buckling/fatigue-to-fracture coupling tests | integrated launch/ascent scenarios with max-q/staging/atmospheric-exit/apogee checks and aero-structural risk progression validation |
+| FR-125..FR-131 | nonlinear structural solve tests, material-model contract tests, transient structural integration tests, buckling/post-buckling workflow tests, fatigue-growth coupling tests, deterministic remesh provenance checks, thermo-structural coupling tests | advanced structural reference-benchmark scenarios with profile-class tolerance envelopes, thermal-coupling plausibility checks, and fallback-policy observability checks |
 | FR-029..FR-030 | diagnostics/metadata emission tests | reproducible run record audits |
 
 ## 4) Non-functional verification plan
@@ -74,7 +76,7 @@ Detailed scenario/benchmark acceptance criteria are maintained in `VALIDATION.md
 - NR-006..NR-008: scalability/load tests + ingestion durability + restart-time tests
 - NR-022..NR-024: cadence error/jitter/drift tests and pacing-mode equivalence checks
 - NR-032..NR-036: structural `nnz` memory scaling checks, dimensional latency-profile tests (2D/3D), backend-switch determinism tolerance, fallback visibility tests, and matrix-free convergence stability characterization
-- NR-037..NR-049: trajectory/mission-analysis adapter swap stability, frame/time validation diagnostics, campaign reproducibility ordering, external-vs-in-house tolerance equivalence, OD convergence/uncertainty stability, operational-constraint auditability, mission-product reproducibility, interactive-session replay integrity, adapter type-leakage rejection, centralized conversion-drift bounds, and FEM-namespace migration/completeness parity checks on canonical import paths
+- NR-037..NR-056: trajectory/mission-analysis adapter swap stability, frame/time validation diagnostics, campaign reproducibility ordering, external-vs-in-house tolerance equivalence, OD convergence/uncertainty stability, operational-constraint auditability, mission-product reproducibility, interactive-session replay integrity, adapter type-leakage rejection, centralized conversion-drift bounds, FEM-namespace migration/completeness parity checks on canonical import paths, atmospheric/aerodynamic validity-envelope enforcement, launch-event/apogee reproducibility tolerances, deterministic buckling/fatigue threshold observability, nonlinear/transient structural convergence diagnostics, advanced-fidelity compute-budget/fallback behavior, benchmark-governed acceptance envelopes, and deterministic thermo-material provenance drift bounds
 - NR-025..NR-028: interface validation, provenance completeness, degraded-mode visibility tests
 - NR-029..NR-031: barrier commit skew, persistence commit-latency bounds, deterministic retry/idempotency tests
 - NR-009..NR-011: modular interface tests + schema version compatibility checks
@@ -97,6 +99,8 @@ Detailed scenario/benchmark acceptance criteria are maintained in `VALIDATION.md
 - **R7.2 gate:** inter-module/distributed contracts enforce atomic barrier commits and replay-grade persistence provenance
 - **R8 gate:** dashboard/operator workflows pass acceptance scenarios
 - **R8.1 gate:** 3D rendering pipeline meets profile-specific frame-time/quality targets with deterministic replay camera sync
+- **R13 gate:** atmospheric launch/ascent stack demonstrates drag-coupled trajectory realism, deterministic launch-event sequencing, atmospheric-exit/apogee prediction tolerance conformance, and buckling/fatigue risk-propagation evidence
+- **R14 gate:** advanced structural fidelity stack demonstrates nonlinear/material/transient/buckling/fatigue-growth/thermal-coupling workflow correctness against trusted references with deterministic remesh/fallback observability
 
 ## 6) Current evidence snapshot (2026-04-02)
 
@@ -117,6 +121,8 @@ Detailed scenario/benchmark acceptance criteria are maintained in `VALIDATION.md
   - validity-envelope enforcement checks (plane-stress thickness guard, plane-strain mode path, out-of-plane rejection)
   - sparse assembly/telemetry checks (`sparse_coo_csr`, `nnz` metrics)
   - solver-backend consistency checks (dense direct vs sparse direct vs sparse iterative vs matrix-free iterative)
+  - backend-equivalence + repeatability determinism tolerance checks for dense vs sparse modes in both 2D and 3D solves
+  - structural latency/memory benchmark suite coverage for 2D vs 3D profiles (P50/P95 solve timing + sparse storage estimate from `nnz` telemetry)
   - preconditioned iterative convergence telemetry checks (preconditioner id, iterations, residual)
   - explicit solver termination reason code checks across all structural backends
   - advanced matrix-free preconditioning checks (block-Jacobi) and benchmark result reporting
