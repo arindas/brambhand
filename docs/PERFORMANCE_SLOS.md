@@ -64,7 +64,7 @@ Suggested automatic mode selection:
 If SLO violations persist:
 1. reduce render quality/frequency
 2. reduce non-critical telemetry sampling
-3. switch pacing mode (e.g., real-time -> slowed)
+3. switch pacing mode (e.g., `real-time -> slowed`)
 4. controlled pause for operator action
 
 ## 9) Mapping to requirements

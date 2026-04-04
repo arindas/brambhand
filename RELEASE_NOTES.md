@@ -17,7 +17,7 @@
 - R3 structural FEM baseline:
   - added deterministic linear static 2D triangular FEM solver (canonical path: `structures/fem/solver.py`)
   - added `tests/test_structures_r3_contracts.py` for solve behavior, linearity, and element stress outputs
-  - added sparse assembly path (COO->CSR) and structural `nnz` telemetry in solve results
+  - added sparse assembly path (`COO->CSR`) and structural `nnz` telemetry in solve results
   - added solver backend abstraction for reduced systems (`dense_direct`, `sparse_direct`, `sparse_iterative`)
   - added preconditioned sparse-iterative solve path (Jacobi/none) with convergence telemetry
   - added matrix-free iterative operator prototype backend for reduced-system structural solves

@@ -174,7 +174,7 @@ All modes share scenario and telemetry contracts; adapter interfaces isolate sol
 3. **Intra-partition module scheduling**: modules execute by dependency graph per tick.
 
 ### Per-tick protocol (authoritative partition owners)
-For tick `k -> k+1`:
+For logical tick transition `k -> k+1`:
 1. `LOCAL_COMPUTE`: each partition owner computes tentative next state.
 2. `BOUNDARY_EXCHANGE`: owners exchange required boundary/coupling data.
 3. `RECONCILE`: apply boundary updates and coupling checks.
@@ -204,7 +204,7 @@ Write semantics:
 - commit-order reads based on logical tick, not ingestion order
 - replay reconstruction uses committed global tick order
 
-## Requirements -> Design traceability matrix
+## Requirements `->` Design traceability matrix
 
 | Requirement group | Primary architecture areas |
 |---|---|
@@ -279,7 +279,7 @@ Selection policy (runtime/orchestrator):
 - Backpressure policy order:
   1. reduce non-critical visualization quality/frequency,
   2. reduce telemetry sampling rate (within policy bounds),
-  3. reduce structural solve cadence/fidelity by policy (e.g., backend switch dense->sparse iterative, optional coarse mesh mode),
+  3. reduce structural solve cadence/fidelity by policy (e.g., backend switch `dense->sparse iterative`, optional coarse mesh mode),
   4. pause/slow simulation when commit safety at risk.
 - Persistence writes remain idempotent and commit-ordered; ingestion lag must not reorder replay semantics.
 
@@ -365,7 +365,7 @@ Coupling-mitigation implementation policy:
 - R3 baseline provides linear static 2D and 3D FEM evaluation in `structures/fem/solver.py`.
 - Structural solver stack is modularized under `structures/fem/*`: contracts (`contracts.py`), geometry/assembly (`geometry.py`), backend solvers (`backends.py`), selection policy (`selection.py`), and orchestration facade (`solver.py`).
 - R3 now enforces 2D validity envelopes (plane-stress/plane-strain mode selection, thickness/span guardrails, out-of-plane rejection, small-strain guard).
-- R3 now uses sparse assembly (COO->CSR) for 2D baseline stiffness with `nnz` telemetry emission.
+- R3 now uses sparse assembly (`COO->CSR`) for 2D baseline stiffness with `nnz` telemetry emission.
 - R3 now provides structural solver backend abstraction for reduced systems (dense direct, sparse direct, sparse iterative).
 - R3 sparse-iterative path now supports configurable preconditioning (Jacobi/none) with convergence telemetry (iterations/residual).
 - R3 includes matrix-free iterative reduced-system solves for large-mesh pressure scenarios.
@@ -377,7 +377,7 @@ Coupling-mitigation implementation policy:
 - Atmospheric launch/ascent and aero-structural modules are requirements-defined but intentionally deferred to R13 after current R3-R12 priorities.
 - Full-fledged advanced structural fidelity modules (nonlinear/material/transient/post-buckling/fatigue-growth/adaptive-remesh/thermal-coupling) are requirements-defined and deferred to R14, following completion of R13.
 
-## Design -> Verification linkage
+## Design `->` Verification linkage
 `VERIFICATION.md` defines V&V evidence per requirement group and per roadmap phase.
 
 ## Non-functional linkage note

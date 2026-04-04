@@ -16,7 +16,7 @@ This document specifies distributed execution semantics for `brambhand`.
 
 ## 3) Tick lifecycle
 
-For logical tick `k -> k+1`:
+For logical tick transition `k -> k+1`:
 
 1. `LOCAL_COMPUTE`
    - each partition computes tentative next state

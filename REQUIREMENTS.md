@@ -31,7 +31,7 @@ This revision formalizes the **next requirement set** focused on:
 - FR-007: The simulator shall model combustion chamber dynamics sufficient to estimate thrust, chamber pressure, and thermal loads.
 - FR-008: The simulator shall compute thrust/torque from combustion + nozzle flow, including off-nominal effects.
 - FR-009: The simulator shall model leakage in propulsion circuits and structural compartments with time-varying mass loss.
-- FR-010: The simulator shall support configurable fluid model fidelity levels (reduced-order -> high-fidelity CFD-coupled).
+- FR-010: The simulator shall support configurable fluid model fidelity levels (`reduced-order -> high-fidelity CFD-coupled`).
 - FR-031: The simulator shall account for nozzle geometry effects on thrust (throat/exit areas, area ratio, contour losses), with geometry-derived parameters ingestible from STL assets.
 
 ## C. Fluid-structure interaction and structural failure
@@ -104,7 +104,7 @@ This revision formalizes the **next requirement set** focused on:
 - FR-051: Cross-module data exchange shall use versioned schemas/contracts with explicit backward-compatibility rules.
 - FR-052: The system shall standardize units and coordinate/frame conventions across modules, with runtime validation of mismatches.
 - FR-053: Coupled domains shall exchange convergence/health signals through a common interface (residuals, status, fallback mode).
-- FR-054: Fault propagation shall be explicit across module boundaries (e.g., structure damage -> leak model -> propulsion/performance -> visualization alarms).
+- FR-054: Fault propagation shall be explicit across module boundaries (e.g., `structure damage -> leak model -> propulsion/performance -> visualization alarms`).
 - FR-055: Command ingestion, control application, and actuator effects shall be timestamped and causally ordered against simulation ticks.
 - FR-056: Persistence and replay layers shall preserve subsystem-level timing, ordering, and provenance metadata needed for full reconstruction.
 - FR-057: Distributed workers shall synchronize on a shared logical tick/barrier protocol compatible with single-node execution semantics.
@@ -267,6 +267,6 @@ This revision formalizes the **next requirement set** focused on:
 ---
 
 ## Traceability Notes
-- Design mapping (Requirement -> Architecture/Modules) is maintained in `DESIGN.md`.
-- Verification and validation mapping (Requirement -> Evidence) is maintained in `VERIFICATION.md`.
+- Design mapping (`Requirement -> Architecture/Modules`) is maintained in `DESIGN.md`.
+- Verification and validation mapping (`Requirement -> Evidence`) is maintained in `VERIFICATION.md`.
 - Execution planning and sequencing are tracked in `TODO.md`.

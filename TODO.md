@@ -4,7 +4,7 @@
 - [x] Formalize requirements
 - [x] Outline design and architecture in DESIGN.md
 - [x] Maintain verification strategy in VERIFICATION.md
-- [x] Keep requirements -> design -> actions -> TODO flow updated
+- [x] Keep requirements `->` design `->` actions `->` TODO flow updated
 
 ## Next-phase implementation roadmap (from updated requirements)
 
@@ -46,7 +46,7 @@
 - [ ] Implement fracture initiation/propagation baseline model
 - [ ] Implement damage state propagation to mass/stiffness/contact behavior
 - [ ] Add structural failure scenario tests (including leak path creation)
-- [ ] Add end-to-end asteroid-impact fault-chain scenario test (impact -> localized damage -> leak thrust/moment -> cabin depressurization -> alarm/event propagation)
+- [ ] Add end-to-end asteroid-impact fault-chain scenario test (`impact -> localized damage -> leak thrust/moment -> cabin depressurization -> alarm/event propagation`)
 
 ### R4 — Fluid-structure interaction coupling
 - [ ] Implement two-way FSI coupler with convergence residuals
@@ -88,7 +88,7 @@
 - [ ] Implement pacing controller (pause/slow/real-time/accelerated/max-throughput)
 - [ ] Implement multi-rate scheduler support (physics/control/render ticks)
 - [ ] Implement adaptive cadence policy (degrade non-critical workloads to hold cadence)
-- [ ] Implement structural fallback policy under cadence pressure (3D -> coarse 3D -> validated 2D proxy), with explicit operator-visible degraded-mode events
+- [ ] Implement structural fallback policy under cadence pressure (`3D -> coarse 3D -> validated 2D proxy`), with explicit operator-visible degraded-mode events
 - [ ] Persist pacing/timeline metadata in run/replay artifacts
 - [ ] Add timeline equivalence tests across pacing modes
 
@@ -97,7 +97,7 @@
 - [ ] Implement unit/frame validation at module boundaries
 - [ ] Implement deterministic scheduler-order metadata and enforcement
 - [ ] Implement explicit fault-propagation event contracts across domains
-- [ ] Define cross-partition communication exchange contract for endpoints on different workers (e.g., ground station <-> spacecraft), including delivery tick semantics
+- [ ] Define cross-partition communication exchange contract for endpoints on different workers (e.g., `ground station <-> spacecraft`), including delivery tick semantics
 - [ ] Implement distributed logical tick/barrier compatibility checks
 - [ ] Add integration tests for causal ordering and audit-grade replay reconstruction
 
@@ -125,7 +125,7 @@
 - [ ] Implement debris orbital propagation integration with core dynamics loop
 - [ ] Implement compounding debris accretion/risk-growth predictor (secondary fragment generation feedback)
 - [ ] Implement debris-impact coupling hooks into structural damage/leak creation workflows
-- [ ] Add debris-centric end-to-end scenarios (including asteroid strike -> fragment cloud evolution)
+- [ ] Add debris-centric end-to-end scenarios (including `asteroid strike -> fragment cloud evolution`)
 - [ ] Add breakup-assumption sensitivity and casualty-risk uncertainty-band benchmark scenarios
 
 ### R10 — Docking lifecycle and booster payload transfer logistics
@@ -138,7 +138,7 @@
 - [ ] Implement booster-to-payload transfer guidance/control workflow hooks for UEO/interplanetary missions
 - [ ] Implement planetary sphere-of-influence handoff propagation metadata and replay reconstruction checks
 - [ ] Add dock/undock lifecycle causal-ordering tests (including hold-point/abort/escape paths)
-- [ ] Add end-to-end transfer scenario (launch -> UEO docking/assembly -> boost out of origin SOI -> destination SOI insertion)
+- [ ] Add end-to-end transfer scenario (`launch -> UEO docking/assembly -> boost out of origin SOI -> destination SOI insertion`)
 
 ### R11 — Trajectory optimization and interplanetary mission-analysis adapters
 - [ ] Define backend-agnostic trajectory optimization contracts (problem/constraints/objectives/results)

@@ -11,7 +11,7 @@ Use this sequence every new session:
    - `.agent/memory/0-memory-summary.md`
    - most recent `.agent/memory/entry-*.md` files
 3. Reconcile planning docs in order:
-   - `REQUIREMENTS.md` -> `DESIGN.md` -> `VERIFICATION.md` -> `VALIDATION.md`
+   - `REQUIREMENTS.md -> DESIGN.md -> VERIFICATION.md -> VALIDATION.md`
 4. Run environment sanity checks:
 
 ```bash

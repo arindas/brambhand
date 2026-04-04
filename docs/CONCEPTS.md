@@ -38,7 +38,7 @@ you should obtain deterministic event ordering and equivalent snapshots.
 
 Guidance APIs include:
 
-- Cartesian <-> Keplerian conversions
+- Cartesian `<->` Keplerian conversions
 - forward prediction using current integrator
 
 These support orbit analysis and mission planning workflows.

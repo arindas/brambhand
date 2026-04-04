@@ -9,7 +9,7 @@ Read in order:
 2. `TODO.md`
 3. `.agent/memory/0-memory-summary.md`
 4. Last 10 `.agent/memory/entry-*.md`
-5. `REQUIREMENTS.md` -> `DESIGN.md` -> `VERIFICATION.md` -> `VALIDATION.md`
+5. `REQUIREMENTS.md -> DESIGN.md -> VERIFICATION.md -> VALIDATION.md`
 
 Run baseline checks:
 

@@ -53,7 +53,7 @@ Validation covers:
 - Fracture initiation/propagation mission consequences
 - FSI coupled stability and plausibility scenarios
 - FSI failure/recovery scenarios (partitioned coupling instability triggers and controlled fallback/escalation)
-- End-to-end impact-fault scenario: stray asteroid impact -> localized structural damage -> leak-path creation -> unintended leak thrust/moment contribution -> crew-cabin depressurization progression and alarms
+- End-to-end impact-fault scenario: `stray asteroid impact -> localized structural damage -> leak-path creation -> unintended leak thrust/moment contribution -> crew-cabin depressurization progression and alarms`
 
 ## R5 (geometry pipeline)
 - STL-to-physics consistency scenarios (mass/inertia/contact/FEM)
@@ -66,7 +66,7 @@ Validation covers:
 - Pacing-mode timeline equivalence (real-time vs accelerated vs offline)
 
 ## Mission transfer logistics suite (cross-phase)
-- Dock/undock lifecycle acceptance (approach->capture->hard-dock->detach->clearance)
+- Dock/undock lifecycle acceptance (`approach->capture->hard-dock->detach->clearance`)
 - Orbital-booster payload transfer acceptance (launch-to-UEO assembly and staged transfer burns)
 - Planetary sphere-of-influence handoff acceptance for interplanetary delivery missions
 - Hohmann-transfer acceptance scenarios (co-planar baseline transfers)
@@ -85,7 +85,7 @@ Validation covers:
 - Debris population and fragment-cloud evolution scenarios
 - Secondary-collision/fragment feedback scenarios for compounding risk growth
 - Breakup-assumption sensitivity scenarios with casualty-risk uncertainty bands
-- Asteroid-impact -> leak/depressurization -> debris-evolution end-to-end scenarios
+- `Asteroid-impact -> leak/depressurization -> debris-evolution` end-to-end scenarios
 
 ## R10 / R11 / R12 (transfer logistics + trajectory optimization + advanced mission analysis)
 - Dock/undock lifecycle and booster transfer mission-phase scenarios (including safety-zone/hold-point and collision-avoidance cases)

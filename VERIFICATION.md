@@ -30,11 +30,11 @@ Detailed scenario/benchmark acceptance criteria are maintained in `VALIDATION.md
    - renderer profile configuration, BVH structure integrity, and ray-march parameter validation
 
 2. **Domain integration tests**
-   - propulsion chain (fluid -> combustion -> thrust)
-   - docking contact -> rigid-body response
-   - structural damage -> leakage emergence
+   - propulsion chain (`fluid -> combustion -> thrust`)
+   - `docking contact -> rigid-body response`
+   - `structural damage -> leakage emergence`
    - FSI coupling iterations and convergence
-   - visualization pipeline (scene graph -> BVH -> render output) for deterministic replay frames
+   - visualization pipeline (`scene graph -> BVH -> render output`) for deterministic replay frames
 
 3. **System integration tests**
    - end-to-end scenario run with persistence and replay
@@ -62,7 +62,7 @@ Detailed scenario/benchmark acceptance criteria are maintained in `VALIDATION.md
 | FR-067..FR-071 | baseline regression tests for gravity/orbit propagation, communication LOS occlusion, link delay channel behavior, scenario/replay CLI workflows | continuity scenarios proving baseline mission workflows remain valid while high-fidelity/distributed features evolve |
 | FR-074..FR-080 | sparse assembly/backend tests, preconditioner convergence tests, matrix-free operator checks, backend-equivalence/determinism tolerance tests, solver telemetry contract tests, matrix-free robustness/failure-path tests | latency/memory benchmark scenarios across 2D/3D structural profiles with matrix-free acceptance thresholds |
 | FR-084..FR-085 | debris population/fragmentation tests, compounding accretion predictor tests, debris-impact coupling tests | debris-growth risk scenarios and asteroid-impact fragment-cloud evolution scenarios |
-| FR-086..FR-090 | rendezvous/dock/undock lifecycle tests, approach safety-zone/hold-point/collision-avoidance contract tests, booster payload-transfer mission-phase tests, sphere-of-influence handoff propagation tests, Hohmann-transfer workflow tests, gravity-assist encounter/deflection tests | end-to-end payload transfer scenarios (launch->UEO assembly->boost->handoff to destination planetary influence) plus Hohmann and gravity-assist mission validations |
+| FR-086..FR-090 | rendezvous/dock/undock lifecycle tests, approach safety-zone/hold-point/collision-avoidance contract tests, booster payload-transfer mission-phase tests, sphere-of-influence handoff propagation tests, Hohmann-transfer workflow tests, gravity-assist encounter/deflection tests | end-to-end payload transfer scenarios (`launch->UEO assembly->boost->handoff to destination planetary influence`) plus Hohmann and gravity-assist mission validations |
 | FR-091..FR-102 | optimizer-contract tests, ephemeris/frame-provider adapter tests, Hohmann/Lambert adapter tests, gravity-assist adapter tests, campaign-orchestration determinism/provenance tests, seed-sensitivity/convergence-basin tests, cross-backend tolerance benchmark tests | trajectory-optimization and interplanetary trade-study validation packs with backend-swap reproducibility evidence |
 | FR-103..FR-114 | orbit-determination estimator tests, covariance propagation and covariance-consistency tests, Monte Carlo/dispersion workflow tests, operational-constraint loop tests, finite-burn targeting realism tests, stationkeeping workflow tests, mission-product generation contract tests, reference cross-validation harness tests, interactive-session reproducibility tests | advanced mission-analysis validation suites comparing OD/dispersion/constraint workflows to trusted references and mission-ops product acceptance criteria |
 | FR-115..FR-118 | module-boundary decomposition tests, FEM namespace migration/completeness tests, adapter type-leakage guard tests, shared frame/time-provider contract tests | architecture-integrity scenarios demonstrating backend swaps, canonical public API path stability after migration, and cross-module frame/time consistency |

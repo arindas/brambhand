@@ -1,6 +1,6 @@
 # Workflows
 
-## A. User workflow: validate -> run -> replay
+## A. User workflow: `validate -> run -> replay`
 
 1. Validate scenario:
 
