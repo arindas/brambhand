@@ -9,22 +9,17 @@
 ## Next-phase implementation roadmap (from updated requirements)
 
 ### R1 — 6-DOF rigid-body and mechanisms baseline
-- [x] Define R1 contracts/modules for 6-DOF, mechanisms, docking contact, and control interfaces (`dynamics/*`)
-- [x] Implement 6-DOF rigid-body dynamics module (translation + rotation)
-- [x] Implement articulated mechanism/joint model for moving components
-- [x] Implement docking contact/impact rigid-body baseline
-- [x] Add control interfaces for attitude and mechanism actuation
-- [x] Add initial contract tests for rigid-body, joints, and docking screening
-- [x] Add unit/integration tests for full rigid-body and docking contact behavior
+- [x] Complete R1 implementation + contract/integration tests
 
 ### R2 — Propulsion fluids, combustion, and thrust estimation
-- [x] Implement reduced-order fluid network subsystem (tank/line/valve baseline)
-- [x] Implement combustion chamber dynamic model (ideal-gas baseline)
-- [x] Implement thrust estimator from chamber/flow state (momentum + pressure terms)
-- [x] Implement leakage model for propulsion circuits/chassis compartments
-- [x] Add baseline analytical validation tests for R2 contracts
-- [x] Add nozzle geometry-aware thrust correction model (area ratio/contour losses)
-- [x] Add tests for nozzle shape sensitivity in thrust predictions
+- [x] Complete R2/R2.1 implementation + validation tests (including nozzle geometry sensitivity)
+
+### R2.2 — Internal chamber-flow and leak-jet dynamics coupling
+- [ ] Implement reduced-order injector-to-throat chamber-flow state model with diagnostics (pressure/temperature/mixing proxies)
+- [ ] Couple chamber-flow state to thrust estimator/nozzle correction path with deterministic contracts
+- [ ] Implement leak-jet dynamics model (mass/momentum/thermal state) for propulsion and structural leak paths
+- [ ] Propagate leak-jet forces/torques into 6-DOF rigid-body dynamics
+- [ ] Add analytical/consistency tests for chamber-flow + leak-jet force coupling and conservation envelopes
 
 ### R3 — Structural FEM and fracture
 - [x] Implement FEM structural evaluation baseline for chassis components
@@ -48,12 +43,35 @@
 - [ ] Add structural failure scenario tests (including leak path creation)
 - [ ] Add end-to-end asteroid-impact fault-chain scenario test (`impact -> localized damage -> leak thrust/moment -> cabin depressurization -> alarm/event propagation`)
 
+### R3.1 — Topology-transition simulation baseline
+- [ ] Implement assembly-topology state graph (attachments/interfaces between rigid bodies/modules)
+- [ ] Implement fracture-driven topology split transitions into distinct rigid bodies with deterministic IDs/provenance
+- [ ] Implement baseline dock/undock attach/detach topology transitions with constraint/contact handoff (lifecycle mission semantics remain in R10)
+- [ ] Propagate topology transitions to mass properties, constraints, contact manifolds, and control authority surfaces
+- [ ] Add determinism/conservation tests for topology transitions and replay reconstruction
+
+### R8.0 — Replay/trajectory quicklook
+- [ ] Define minimal visualization telemetry contract for trajectory/event extraction from replay artifacts
+- [ ] Implement headless trajectory quicklook pipeline (2D/3D) from replay JSONL
+- [ ] Add event markers in quicklook outputs
+- [ ] Add minimal severity contract in quicklook (`info|warning|critical`) with deterministic event->severity mapping table
+- [ ] Add basic severity styling in quicklook markers (3-color palette) with backward-compatible extension path for richer UI theming later
+- [ ] Add `current` vs `planned` trajectory overlay baseline (planned from predictor/scenario intent)
+- [ ] Add deterministic snapshot tests for quicklook extraction and ordering
+
 ### R4 — Fluid-structure interaction coupling
 - [ ] Implement two-way FSI coupler with convergence residuals
 - [ ] Implement coupling controller (iteration budget, thresholds, fallback)
 - [ ] Define initial coupling policy: partitioned baseline with explicit criteria for monolithic escalation
 - [ ] Add convergence diagnostics and residual telemetry channels
 - [ ] Add FSI benchmark tests for coupled stability (including failure/recovery paths)
+
+### R8.1 — Dashboard view-model contracts (headless)
+- [ ] Define versioned mission-control view-model schema (telemetry cards, alarms, timeline, command status)
+- [ ] Define versioned onboard view-model schema (flight instruments, subsystem health, cautions/warnings)
+- [ ] Implement view-model builders from committed simulation state + replay metadata
+- [ ] Add schema compatibility tests and deterministic serialization tests
+- [ ] Freeze baseline mission-control/onboard layout contracts for R8.1 implementation (revise later via backward-compatible schema evolution)
 
 ### R5 — Geometry pipeline (STL import)
 - [x] Add idealized/reference STL fixture sets and manifest for geometry-dependent tests
@@ -65,6 +83,12 @@
 - [ ] Implement geometry-anchored damage/leak localization metadata
 - [ ] Implement geometry-to-subsystem mapping registry (propulsion/structures/mechanisms/visualization)
 - [ ] Add asset versioning + metadata linkage in scenario definitions
+
+### R8.2 — Geometry-anchored overlay contracts
+- [ ] Define crack/fracture/leak overlay schema bound to geometry region IDs
+- [ ] Define severe-topology-change marker schema for structural separation fragments (debris-cloud extensions handled in R9)
+- [ ] Implement overlay model adapters consuming geometry-to-subsystem mapping metadata
+- [ ] Add integration tests for geometry-tag continuity across replay
 
 ### R6 — Persistence and checkpointing
 - [ ] Design and implement DB schema for runs/events/telemetry/checkpoints/assets
@@ -92,6 +116,11 @@
 - [ ] Persist pacing/timeline metadata in run/replay artifacts
 - [ ] Add timeline equivalence tests across pacing modes
 
+### R8.3 — Replay/timeline UX contracts
+- [ ] Define playback control contract (`play/pause/scrub/rate`) and deterministic seek semantics
+- [ ] Define replay camera-sync metadata contract and interpolation policy hooks
+- [ ] Add timeline equivalence tests for replay controls across pacing modes
+
 ### R7.2 — Inter-module orchestration contracts
 - [ ] Define versioned inter-module schema contracts for cross-domain exchange
 - [ ] Implement unit/frame validation at module boundaries
@@ -101,7 +130,7 @@
 - [ ] Implement distributed logical tick/barrier compatibility checks
 - [ ] Add integration tests for causal ordering and audit-grade replay reconstruction
 
-### R8 — Visualization and dashboards
+### R8.4 — Visualization and dashboards (full UI realization after R8.0..R8.3 contracts)
 - [ ] Implement mission-control dashboard backend/view models
 - [ ] Implement onboard spacecraft dashboard backend/view models
 - [ ] Implement 3D state/damage/leak overlays and event timeline integration
@@ -110,7 +139,7 @@
 - [ ] Add operator workflow acceptance tests (latency + usability gates)
 - [ ] Add visualization acceptance scenario for post-impact geometry-change overlays and leak/depressurization operator cues
 
-### R8.1 — 3D rendering core
+### R8.5 — 3D rendering core
 - [ ] Implement render scene graph assembly from simulation state
 - [ ] Implement BVH acceleration structures for dynamic geometry
 - [ ] Implement ray-marching-capable volumetric rendering pipeline (plume/field views)
@@ -130,6 +159,7 @@
 
 ### R10 — Docking lifecycle and booster payload transfer logistics
 - [ ] Implement explicit dock/undock lifecycle state machine (approach/capture/hard-dock/detach/clearance)
+- [ ] Integrate dock/undock lifecycle transitions with assembly-topology simulation contracts (attach/detach graph updates)
 - [ ] Define approach safety-zone/hold-point/collision-avoidance contracts in docking lifecycle flows
 - [ ] Implement hold-point authority/permission gating and proceed/abort command semantics
 - [ ] Implement collision-avoidance trigger and escape-maneuver contract path from each critical approach segment
@@ -165,7 +195,7 @@
 - [ ] Add cross-validation harness against trusted astrodynamics references with tolerance-governed pass/fail criteria
 - [ ] Add human-in-the-loop interactive trade-study session capture/replay metadata support
 
-### R13 — Atmospheric launch/ascent and aero-structural behavior (deferred to avoid derailing active R3-R12 delivery)
+### R13 — Atmospheric launch/ascent and aero-structural behavior
 - [ ] Implement atmospheric profile subsystem (density/pressure/temperature/speed-of-sound) with validity-envelope checks
 - [ ] Implement aerodynamic load model baseline (drag + extensible lift/side-force) coupled into 6-DOF rigid-body dynamics
 - [ ] Implement launch/ascent event sequencer (liftoff/max-q/staging/MECO/atmospheric-exit) with deterministic replay provenance
@@ -175,7 +205,7 @@
 - [ ] Add integrated launch scenario tests covering drag-loaded ascent, max-q region behavior, atmospheric exit, and apogee prediction
 - [ ] Add fatigue/buckling-to-fracture progression scenarios and alarm/event propagation tests
 
-### R14 — Advanced structural fidelity stack (deferred post-R13 to protect R3-R13 delivery cadence)
+### R14 — Advanced structural fidelity stack
 - [ ] Implement nonlinear structural solve baseline (geometric nonlinearity) with convergence diagnostics/termination telemetry
 - [ ] Implement material nonlinearity hook contracts (yield/plastic response baseline) with profile-aware model selection
 - [ ] Implement transient structural dynamics workflows (modal/direct integration baseline) and replay-compatible state serialization
@@ -186,14 +216,8 @@
 - [ ] Add advanced structural benchmark suite against trusted references with tolerance-governed acceptance per profile
 - [ ] Add degraded-mode/fallback policy tests for advanced structural fidelity under compute-pressure constraints
 
-## Design, verification, and validation documentation gaps (reviewed)
-- [x] Finalize initial numeric latency/SLO targets per deployment/render profile (`docs/PERFORMANCE_SLOS.md`)
-- [x] Document automatic scaling mode-selection thresholds (single-node vs partitioned vs hybrid)
-- [x] Document persistence durability policy per artifact class (events/telemetry/checkpoints)
-- [x] Document coupling fallback/degraded-mode hierarchy under load
-- [x] Add dedicated `VALIDATION.md` for benchmark datasets, acceptance scenarios, and operator workflow criteria
-- [x] Add distributed execution protocol spec (`docs/DISTRIBUTED_PROTOCOL.md`) for tick/barrier/commit semantics
-- [x] Add performance and pacing SLO doc (`docs/PERFORMANCE_SLOS.md`) tied to NR-018..NR-024, NR-029..NR-031
+## Design, verification, and validation documentation gaps
+- [x] Complete initial documentation gap closure set (`VALIDATION.md`, `docs/DISTRIBUTED_PROTOCOL.md`, `docs/PERFORMANCE_SLOS.md`)
 
 ## Quality hardening
 - [x] Raise coverage floor by adding targeted edge/error-path tests for CLI command flows, propulsion validation guards, and constellation validation guards
@@ -206,3 +230,4 @@
 - [ ] Keep VALIDATION scenario/benchmark registry current with new acceptance evidence
 - [ ] Keep inline API docs complete for all new public modules
 - [ ] Maintain release notes for each semver milestone
+- [ ] Track unresolved UI/renderer/transport decisions in DESIGN decision log with explicit owner and due milestone

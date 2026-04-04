@@ -188,6 +188,11 @@ This revision formalizes the **next requirement set** focused on:
 - FR-130: The structural mesh pipeline shall support adaptive refinement/remeshing policies around stress/fatigue/fracture hot-spots with deterministic remesh provenance.
 - FR-131: The structural stack shall support thermo-structural coupling hooks where temperature-dependent material properties and thermal loads can influence stress, buckling, fatigue, and fracture progression models.
 
+## T. Internal propulsion flow and topology-transition simulation fidelity
+- FR-132: The propulsion stack shall simulate thrust-chamber internal flow/combustion state evolution (injector-to-throat reduced-order baseline, extensible to CFD-coupled workflows) and expose physically meaningful chamber-field diagnostics for coupling/analysis.
+- FR-133: The leakage/fault stack shall simulate leak-jet dynamics (mass, momentum, and thermal state) and propagate leak-jet forces/torques into 6-DOF vehicle dynamics.
+- FR-134: The simulator shall maintain an explicit assembly-topology state model (attachment graph and interfaces) and simulate topology transitions from fracture separation and dock/undock operations, propagating changes to mass properties, constraints, contacts, and control authority.
+
 ---
 
 ## Non-functional Requirements
@@ -263,6 +268,7 @@ This revision formalizes the **next requirement set** focused on:
 - NR-054: Advanced structural fidelity modes (nonlinear/transient/adaptive-remesh) shall define profile-specific compute-budget and fallback policies to avoid uncontrolled runtime degradation.
 - NR-055: Advanced structural model outputs shall be benchmarked against trusted structural references with tolerance-governed acceptance thresholds per profile class.
 - NR-056: Thermo-structural coupling workflows shall provide deterministic temperature/material-property provenance and bounded sensitivity drift across repeated runs.
+- NR-057: Topology-transition and leak-jet force propagation workflows shall be deterministic, conservation-consistent (mass/momentum within configured tolerances), and fully traceable in replay metadata.
 
 ---
 

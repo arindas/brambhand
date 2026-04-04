@@ -40,17 +40,20 @@ Validation covers:
 - Contact/capture/rejection envelope scenarios
 - Mechanism limit and rate behavior in mission sequences
 
-## R2 / R2.1 (propulsion + nozzle geometry)
+## R2 / R2.1 / R2.2 (propulsion + nozzle geometry + chamber/leak-jet fidelity)
 - Feed/combustion/thrust chain scenarios
 - Nozzle shape sensitivity scenarios (throat/exit/area-ratio/contour)
+- Chamber internal-flow plausibility scenarios (injector-to-throat state evolution and thrust coupling)
 - Leak fault impact on delivered thrust and mission outcomes
+- Leak-jet disturbance scenarios (unintended force/moment and trajectory/attitude impact)
 
-## R3 / R4 (structures + fracture + FSI)
+## R3 / R3.1 / R4 (structures + topology transitions + FSI)
 - Structural loading progression scenarios
 - 2D validity-envelope scenarios and 2D-vs-3D model-selection scenarios
 - Structural backend comparison scenarios (dense vs sparse vs matrix-free where available)
 - Structural latency/memory envelope scenarios by profile (operational vs analysis)
 - Fracture initiation/propagation mission consequences
+- Topology-transition scenarios (fracture separation into distinct bodies with contact/constraint updates)
 - FSI coupled stability and plausibility scenarios
 - FSI failure/recovery scenarios (partitioned coupling instability triggers and controlled fallback/escalation)
 - End-to-end impact-fault scenario: `stray asteroid impact -> localized structural damage -> leak-path creation -> unintended leak thrust/moment contribution -> crew-cabin depressurization progression and alarms`
@@ -72,7 +75,17 @@ Validation covers:
 - Hohmann-transfer acceptance scenarios (co-planar baseline transfers)
 - Gravity-assist acceptance scenarios (swing-by deflection and downstream trajectory verification)
 
-## R8 / R8.1 (dashboards + rendering)
+## R8.0 / R8.1 / R8.2 / R8.3 (interleaved early visual-feedback track)
+- Replay-driven trajectory quicklook acceptance (`current` path + event markers)
+- Quicklook severity readability acceptance using baseline `info|warning|critical` marker styling
+- `Current` vs `planned` overlay interpretability acceptance for planning/what-if review
+- Mission-control baseline layout acceptance (top bar, command panel, main viewport, telemetry rail, alarm timeline)
+- Onboard baseline layout acceptance (flight strip, instrument cluster, caution/warning rail, recent-events strip)
+- View-model schema compatibility acceptance across revisions (backward-compatible evolution checks)
+- Geometry-region overlay continuity acceptance for crack/fracture/leak markers once R5 metadata is available
+- Replay-control acceptance (play/pause/scrub/rate) with deterministic seek/timeline behavior
+
+## R8.4 / R8.5 (dashboards + rendering)
 - Mission-control workflow acceptance (alerts/timeline/commands)
 - Onboard workflow acceptance (subsystem status readability)
 - Rendering profile acceptance (operational vs analysis)
@@ -140,8 +153,8 @@ Each validation scenario must define:
 
 Validation suites in this document cover the following requirement groups:
 - FR-001..FR-005, FR-067..FR-071: dynamics/control and baseline mission continuity
-- FR-006..FR-010, FR-031: propulsion/combustion/nozzle behavior
-- FR-011..FR-015, FR-072..FR-073, FR-074..FR-080, FR-081..FR-083: structures/fracture/FSI, severe topology-change events, and structural scalability paths (including matrix-free acceptance)
+- FR-006..FR-010, FR-031, FR-132..FR-133: propulsion/combustion/nozzle behavior, chamber-internal flow, and leak-jet dynamics
+- FR-011..FR-015, FR-072..FR-073, FR-074..FR-080, FR-081..FR-083, FR-134: structures/fracture/FSI, severe topology-change events, assembly-topology transitions, and structural scalability paths (including matrix-free acceptance)
 - FR-016..FR-018, FR-032..FR-037: geometry ingestion and geometry-to-physics consistency
 - FR-019..FR-021, FR-064..FR-066: persistence/checkpoint/replay auditability
 - FR-022..FR-024, FR-059..FR-063: distributed synchronization, barrier commit, and recovery semantics
@@ -167,6 +180,7 @@ Non-functional validation intent in this document aligns with NR-001..NR-056, wi
 - Matrix-free acceptance-threshold evaluation evidence is available for operational/analysis profiles (including strict-threshold failure-path checks).
 - Structural latency/memory benchmark-prep evidence is available for 2D-vs-3D profile comparisons (P50/P95 solve timing and `nnz`-based sparse storage estimates).
 - Full benchmark-grade validation suites remain milestone-gated and are tracked in `TODO.md`.
+- R8.0..R8.3 suites are now defined for incremental operator feedback prior to full R8.4/R8.5 dashboard+rendering delivery.
 
 ## 8) Governance
 

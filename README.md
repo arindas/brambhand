@@ -54,20 +54,24 @@ Source of truth: [`TODO.md`](./TODO.md)
   - backend-equivalence/determinism tolerance tests (dense vs sparse)
   - structural latency/memory benchmark suite (2D vs 3D profiles)
 
-### In progress
+### In progress (core delivery lane)
 
+- R2.2: chamber-flow + leak-jet dynamics coupling baseline
 - R3 remaining work:
   - fracture initiation/propagation baseline
   - damage-state propagation to mass/stiffness/contact behavior
+- R3.1: topology-transition simulation baseline (fracture separation + dock/undock attach/detach graph propagation)
+- R8.0: early replay/trajectory quicklook feedback
 
 ### Planned
 
-- R4: fluid-structure interaction coupling
-- R5: STL import and geometry-to-subsystem pipeline
-- R6: persistence, checkpointing, and replay durability workflow
-- R7/R7.1/R7.2: distributed runtime, pacing/time-scale control, and orchestration contracts
-- R8/R8.1: operator dashboards and 3D rendering core
-- R9+: debris-risk modeling, docking lifecycle logistics, trajectory optimization, mission-analysis parity extensions
+- Complete core lane through R8.5:
+  - R4, R8.1, R5, R8.2, R6, R7, R7.1, R8.3, R7.2, R8.4, R8.5
+- Post-core lane (kept from derailing core execution):
+  - R9: debris-risk modeling
+  - R10: docking lifecycle logistics and transfer workflows
+  - R11/R12: trajectory optimization and advanced mission-analysis parity extensions
+  - R13/R14: deferred atmospheric + advanced structural fidelity expansions
 
 ## Getting started
 

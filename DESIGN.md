@@ -36,9 +36,11 @@ src/brambhand/
   propulsion/
     fluid_network.py              # tanks/lines/valves/injectors
     combustion_model.py           # chamber dynamics
+    chamber_flow.py               # injector-to-throat internal flow/combustion field baseline
     thrust_estimator.py           # force/torque from engine state
     nozzle_geometry.py            # nozzle shape factors from geometry assets
     leakage_model.py              # leak path + mass loss model
+    leak_jet_dynamics.py          # leak jet momentum/thermal state and force coupling
   structures/
     fem/
       contracts.py                # FEM contracts and configuration types (2D/3D)
@@ -80,6 +82,7 @@ src/brambhand/
     orchestrator_client.py        # job lifecycle integration
   mission/
     docking_lifecycle.py          # approach/capture/dock/undock state machine + safety-zone/hold-point/abort contracts
+    assembly_topology.py          # attachment graph + topology transition simulation (dock/undock/fracture)
     transfer_logistics.py         # booster payload transfer mission phases
     soi_handoff.py                # planetary sphere-of-influence handoff metadata/contracts
   trajectory/
@@ -224,6 +227,7 @@ Write semantics:
 | FR-115..FR-118 | `structures/fem/*` decomposition boundaries and namespace policy, `trajectory/*` adapter contracts, shared frame/time provider services across trajectory/navigation/mission modules |
 | FR-119..FR-124 | `atmosphere/*`, `dynamics/aerodynamic_loads.py`, `launch/*`, `structures/buckling_screen.py`, `structures/fatigue_model.py`, coupling into `dynamics/*` + `structures/fracture_model.py` |
 | FR-125..FR-131 | `structures/fem/nonlinear.py`, `structures/fem/materials.py`, `structures/fem/transient.py`, `structures/fem/buckling.py`, `structures/fem/adaptivity.py`, `structures/fem/thermal_coupling.py`, `structures/fracture_model.py`, `geometry/mesh_pipeline.py`, runtime profile/fallback selectors |
+| FR-132..FR-134 | `propulsion/chamber_flow.py`, `propulsion/leak_jet_dynamics.py`, `mission/assembly_topology.py`, `dynamics/*`, `structures/*`, replay/persistence topology provenance |
 | FR-044..FR-048 | `core/simulation_clock.py`, `core/pacing_controller.py`, `core/scheduler.py`, replay/persistence metadata |
 | FR-049..FR-058 | `core/scheduler.py`, `core/simulation_runtime.py`, contract schemas, unit/frame validators, distributed sync protocol, replay metadata |
 | FR-067..FR-071 | `physics/*`, `communication/*`, `guidance/*`, `operations/*`, `scenario/*`, `cli.py`, regression test suites |
@@ -331,32 +335,127 @@ Coupling-mitigation implementation policy:
 - prohibit backend-specific classes from crossing `trajectory/*`, `navigation/*`, and `mission/*` public interfaces.
 - route all frame/time conversions through shared provider services (no adapter-local divergent conversion logic).
 
+## Interleaved visualization delivery design (R8.0..R8.5)
+
+To provide operator-visible feedback earlier, visualization is decomposed into explicitly ordered milestones interleaved with core physics/runtime delivery.
+
+Execution order (authoritative):
+1. R8.0 after R3
+2. R8.1 after R4
+3. R8.2 after R5
+4. R8.3 after R7.1
+5. R8.4 after R7.2
+6. R8.5 after R8.4
+
+### R8.0 — Replay/trajectory quicklook (low risk, immediate)
+- Inputs: `scenario/replay_log.py` records + deterministic body summaries emitted by run workflows.
+- Outputs:
+  - trajectory plotting artifacts (2D/3D quicklook)
+  - event markers on timeline/trajectory (`simulation_started`, `step_completed`, and later command/fault events)
+  - minimal severity encoding (`info|warning|critical`) with deterministic event->severity mapping and basic 3-color styling
+  - optional overlay support for `current` vs `planned` traces.
+- Architecture surface:
+  - `visualization/quicklook.py` (headless extraction + plotting adapters)
+  - `visualization/trajectory_overlay.py` (trace alignment utilities)
+- Constraints: no dependence on full scene-graph/BVH/ray-march stack; severity mapping table must be versioned/extendable for later dashboard theming.
+
+### R8.1 — Dashboard data contracts and view-models (headless)
+- Inputs: simulation snapshots/events/alarms, replay metadata.
+- Outputs:
+  - mission-control view-model payloads
+  - onboard view-model payloads
+  - stable schema/versioning for UI clients.
+- Architecture surface:
+  - `visualization/telemetry_api.py`
+  - `visualization/mission_control_view_model.py`
+  - `visualization/onboard_view_model.py`
+- Determinism policy: view-model generation is pure over committed simulation state.
+
+### R8.2 — Geometry-anchored overlays (post-R5 dependency)
+- Inputs: geometry-to-subsystem/region tags and damage/leak metadata.
+- Outputs:
+  - crack/fracture/leak-source overlays bound to geometry IDs
+  - topology-change markers for severe-separation states.
+- Architecture surface:
+  - `visualization/damage_overlay_model.py`
+  - geometry mapping contracts under `geometry/*`.
+
+### R8.3 — Timeline/replay UX and control semantics (post-R6/R7.1 dependency)
+- Inputs: persisted timing/provenance and pacing metadata.
+- Outputs:
+  - deterministic playback controls (scrub/play/pause/rate)
+  - replay camera/state sync policies
+  - operator incident-review event filtering.
+- Architecture surface:
+  - `visualization/replay_camera_sync.py`
+  - timeline control contracts consumed by mission-control UI.
+
+### R8.4/R8.5 — Full dashboard and rendering stack
+- Scene graph assembly, BVH acceleration, renderer profiles, and ray-marching pipeline.
+
+## Baseline UI layout (initial common-sense wireframe spec)
+
+These are initial layout contracts to unblock backend/view-model design before final UX iteration.
+
+### Mission-control screen (desktop)
+- Top bar: run ID, sim time, wall-clock mode, pacing mode, degraded-mode badge.
+- Left panel: command console + queued command status.
+- Center main: 3D/trajectory viewport with layer toggles (`current`, `planned`, `optimal`, damage/leak overlays).
+- Right panel: subsystem telemetry cards (propulsion, structures, comms, guidance).
+- Bottom panel: event/alarm timeline with severity filtering and jump-to-time.
+
+### Onboard screen (cockpit/minimal)
+- Top strip: attitude/orbit state and critical caution/warning indicators.
+- Main instruments: propulsion, power, structural integrity, cabin pressure.
+- Secondary mini-view: relative-motion/docking cue and proximity metrics.
+- Bottom strip: recent events and acknowledgment controls.
+
+## Visualization unknowns / decision log (tracked, not blocking)
+- UI framework choice (web stack vs native desktop).
+- Real-time streaming transport (websocket/gRPC/other) and auth model.
+- 3D renderer technology choice and hardware capability envelope.
+- Final interaction model for trajectory overlays (`planned` source vs `optimal` source before R11 availability).
+- Multi-vehicle screen-density policy for high object-count operations.
+
 ## Remaining design decisions to refine
 - Initial latency/SLO targets are documented in `docs/PERFORMANCE_SLOS.md`; refine with benchmark data.
 - Initial mode-selection thresholds are documented in `docs/PERFORMANCE_SLOS.md`; tune with production workload evidence.
 - Initial persistence durability policy is documented in `docs/DISTRIBUTED_PROTOCOL.md`; finalize per deployment tier.
 - Initial fallback/degraded-mode hierarchy is documented in `docs/DISTRIBUTED_PROTOCOL.md`; refine with coupling stress tests.
 - FSI coupling policy needs explicit first-cut criteria for partitioned baseline operation vs monolithic escalation under instability/additional-mass sensitivity.
+- Visualization unknowns above are tracked as explicit decision items; implementations should proceed with R8.0/R8.1 defaults while preserving adapter boundaries for future swaps.
 
 ## Incremental implementation roadmap
+
+Execution policy:
+- **Core delivery lane (anti-derailment):** `R2.2 -> R3 -> R3.1 -> R8.0 -> R4 -> R8.1 -> R5 -> R8.2 -> R6 -> R7 -> R7.1 -> R8.3 -> R7.2 -> R8.4 -> R8.5`.
+- Do not pull post-core milestones forward unless explicitly prioritized.
+- Core lane focuses on simulation correctness/coupling/replay determinism and only minimal operator-feedback surfaces needed for validation.
+
 - **R1: 6-DOF core + mechanisms + docking contact baseline**
 - **R2: Propulsion fluid network + combustion + thrust estimation + leakage**
 - **R2.1: Nozzle geometry-aware thrust corrections (with STL-derived parameters)**
+- **R2.2: Internal thrust-chamber flow and leak-jet dynamics coupling baseline**
 - **R3: FEM structural solver + fracture pipeline**
+- **R3.1: Topology-transition simulation baseline (fracture separation + dock/undock attach/detach graph propagation)**
+- **R8.0 (interleaved after R3): replay/trajectory quicklook for early visual feedback**
 - **R4: FSI coupler and convergence diagnostics**
+- **R8.1 (interleaved after R4): headless dashboard view-model contracts**
 - **R5: STL ingestion and geometry-to-physics pipeline**
+- **R8.2 (interleaved after R5): geometry-anchored overlay contracts**
 - **R6: Database persistence and checkpoint/restart**
 - **R7: Distributed runtime partition/sync/orchestration**
 - **R7.1: Runtime pacing and time-scale control (multi-rate scheduling + cadence policy)**
+- **R8.3 (interleaved after R7.1): deterministic replay/timeline UX contracts**
 - **R7.2: Inter-module orchestration contracts and audit-grade replay provenance**
-- **R8: Mission-control + onboard dashboard stack**
-- **R8.1: 3D rendering core (scene graph, BVH, ray-marching, replay camera sync)**
+- **R8.4: Mission-control + onboard dashboard stack**
+- **R8.5: 3D rendering core (scene graph, BVH, ray-marching, replay camera sync)**
 - **R9: Space debris environment + compounding accretion prediction**
 - **R10: Docking lifecycle + booster payload transfer logistics + interplanetary SOI handoff**
-- **R11: Trajectory optimization + interplanetary mission-analysis adapters (Hohmann/Lambert/gravity-assist + campaign orchestration)**
-- **R12: Advanced mission-analysis parity extensions (OD/covariance/dispersion/ops constraints/mission products/benchmark cross-validation)**
-- **R13: Atmospheric launch/ascent and aero-structural behavior (scheduled post-R12 to avoid derailing active R3-R12 execution path)**
-- **R14: Advanced structural fidelity stack (nonlinear/material/transient/post-buckling/fatigue-growth/adaptive remeshing/thermal coupling) after R13 to preserve current execution momentum**
+- **R11: Trajectory optimization + interplanetary mission-analysis adapters**
+- **R12: Advanced mission-analysis parity extensions**
+- **R13: Atmospheric launch/ascent and aero-structural behavior (deferred post-R12)**
+- **R14: Advanced structural fidelity stack (deferred post-R13)**
 
 ## Current implementation status snapshot
 - R1 baseline implemented in `dynamics/*` with expanded rigid-body/docking contract tests.

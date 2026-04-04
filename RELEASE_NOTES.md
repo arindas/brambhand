@@ -61,6 +61,23 @@
   - expanded CLI command-path tests to cover validate/run/replay main flows and invalid run-argument guards
   - expanded propulsion contract/error-path tests for validation guards and zero-flow/no-leak edge paths
   - expanded constellation validation tests for empty/duplicate-name/duplicate-slot rejection
+- Visualization planning/design expansion:
+  - added explicit numbered visualization milestones `R8.0..R8.5` in `DESIGN.md` with authoritative interleave order across core milestones
+  - documented baseline mission-control/onboard layout contracts and explicit visualization unknown/decision log items
+  - extended `VERIFICATION.md` with `R8.0..R8.5` evidence gates (quicklook determinism, schema contracts, replay-control equivalence, full dashboard/render gates)
+  - extended `VALIDATION.md` with `R8.0..R8.5` acceptance suites (trajectory overlays, baseline layout usability, replay-control behavior, full rendering acceptance)
+  - expanded `TODO.md` with actionable `R8.0..R8.5` work items and explicit interleave placement
+- Simulation-fidelity planning expansion for requested domains:
+  - added new requirements `FR-132..FR-134` and `NR-057` for chamber-internal flow simulation, leak-jet momentum/thermal dynamics with 6-DOF coupling, and explicit assembly-topology transition simulation across fracture and dock/undock events
+  - added matching design surfaces (`propulsion/chamber_flow.py`, `propulsion/leak_jet_dynamics.py`, `mission/assembly_topology.py`) and traceability mapping
+  - added roadmap/TODO milestones `R2.2` and `R3.1`, plus R10 topology-integration task
+  - extended V&V/validation plans with chamber-flow, leak-jet disturbance, and topology-transition evidence scenarios
+- Roadmap consistency hardening:
+  - standardized anti-derailment execution policy across `TODO.md`, `DESIGN.md`, and `README.md`
+  - made the core delivery lane explicit and locked post-core (`R9+`) milestones behind completion of `R2.2..R8.5` unless explicitly reprioritized
+  - relabeled advanced/niche mission-analysis phases as post-core to reduce planning drift
+- R8.0 scope refinement:
+  - un-deferred minimal severity styling for quicklook markers using an extensible deterministic baseline contract (`info|warning|critical` + 3-color mapping)
 
 ## v0.1.0 (2026-04-02)
 
