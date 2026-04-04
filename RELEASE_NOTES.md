@@ -85,6 +85,10 @@
   - coupled chamber-flow state into nozzle thrust path (including geometry-correction compatibility)
   - added reduced-order leak-jet dynamics model under `fluid/reduced/leak_jet_dynamics.py` (mass-flow, exit velocity, thermal proxy, reaction force/torque)
   - added `propulsion/leak_jet_coupling.py` to propagate leak-jet reaction wrench into 6-DOF body-frame dynamics
+  - added versioned leak-jet boundary payload contract in `fluid/contracts.py` and mapping helper for FSI exchange integration
+  - added analytical consistency tests for leak-jet force decomposition and leak mass-flow vs compartment mass-loss envelope
+  - added reduced-order propulsion latency benchmark helpers (`propulsion/performance.py`) with cadence-guard mode/fallback trigger accounting
+  - added benchmark tests for latency summaries, cadence-guard behavior, and validation paths
   - exported chamber/leak-jet contracts via `brambhand.propulsion`
   - added propulsion contract tests for chamber-flow dynamics, leak-jet dynamics behavior, off-stoich quality degradation, thrust-coupling determinism, and input validation
 - Slosh + CFD planning extension with performance safeguards:
@@ -95,6 +99,9 @@
     - removed propulsion shim modules and migrated canonical imports to `fluid/reduced/*`
   - added design roadmap milestones `R2.3` (reduced-order slosh, core lane) and `R4.1` (optional CFD adapters, post-R8.5)
   - updated `TODO.md` interleaving with `R2.3` before `R3` and `R4.1` between `R8.5` and `R9`
+  - clarified topology semantics across requirements/design/TODO/V&V: connected-topology damage evolution (holes/crack-network without split) is owned under structures/R3; disjoint-body connectivity transitions are owned under assembly-topology/R3.1
+  - added explicit model-graph DAG planning (`FR-138`, `NR-059`) with deterministic topological scheduling and mutation transactions at tick boundaries
+  - updated design runtime/concurrency sections with box-drawing diagrams and explicit note that text definitions are normative while diagrams are supplemental
   - extended `VERIFICATION.md`/`VALIDATION.md` for slosh and CFD-coupled evidence plans
   - updated `docs/PERFORMANCE_SLOS.md` with propulsion flow/slosh SLOs and CFD fallback observability metrics
 

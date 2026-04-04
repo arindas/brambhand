@@ -5,75 +5,58 @@
 [<img alt="command check status" src="https://img.shields.io/github/actions/workflow/status/arindas/brambhand/cli-smoke.yml?branch=main&amp;style=for-the-badge&amp;label=command-check" height="20">](https://github.com/arindas/brambhand/actions/workflows/cli-smoke.yml)
 [<img alt="coverage" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Farindas%2Fbrambhand%2Fmain%2Fbadges%2Fcoverage.json&amp;style=for-the-badge&amp;cacheSeconds=300" height="20">](https://github.com/arindas/brambhand/actions/workflows/coverage.yml)
 
-A scientifically accurate spaceflight sandbox.
+A deterministic spaceflight simulation platform for engineering analysis.
 
-`brambhand` aims to simulate the following:
-- orbital dynamics
-- spacecraft control and dynamics
-- spacecraft trajectory control
-- navigation and guidance
-- datalink and communication
-- spacecraft rendezvous and docking
-- satellite constellation
-- space stations
-- infrastructure in LEO and UEO
-- interplanetary satellite systems
-- interplanetary payload transfer systems
-- asteroid trajectory modification
-- asteroid minding
+`brambhand` is intended for mission and vehicle studies involving:
+- orbit propagation and trajectory analysis
+- spacecraft motion and control
+- propulsion behavior (feed flow, chamber state, thrust, leaks)
+- rendezvous, docking, and relative-motion checks
+- communication visibility and delay effects
+- structural response and failure progression
+- scenario replay, audit, and reproducibility workflows
 
 ## Overview
 
-`brambhand` is a deterministic simulation platform for mission and vehicle analysis,
-organized as modular physics/operations domains under `src/brambhand/`.
+See [`DESIGN.md`](./DESIGN.md) for the architecture and design of `brambhand`.
 
-Today, the project combines:
-- core simulation: deterministic integration, event bus, state snapshots
-- mission baseline: scenario load/save, replay logs, CLI workflows
-- spacecraft operations: mass/propulsion commands, rendezvous and docking screens
-- communication: LOS/occlusion checks and delay channels
-- structures (R3): 2D/3D linear-static FEM with selectable solver backends
+Current implementation supports:
+- deterministic simulation stepping and replay logging
+- scenario validation/run/replay via CLI
+- orbit/relative-motion and rendezvous metric calculations
+- docking contact screening and impulse-response baseline
+- propulsion reduced-order models (feed network, chamber state, thrust, leakage, leak-jet coupling)
+- structural FEM baselines (2D and 3D) with multiple solver backends and telemetry
 
-Design priorities: deterministic replay, explicit solver telemetry, and requirement-to-verification traceability.
+Design constraints used across modules:
+- deterministic replay for fixed inputs/configuration
+- explicit convergence/health telemetry for solver paths
+- requirement -> design -> verification traceability
 
 ## Roadmap
 
 Source of truth: [`TODO.md`](./TODO.md)
 
-### Completed
+- Implemented baseline domains
+  - spacecraft 6-DOF motion and control interfaces
+  - rendezvous metrics and docking contact screening
+  - reduced-order propulsion chain through thrust/leakage/leak-jet coupling
+  - structural FEM baseline stack (2D/3D, backend-selectable, telemetry-enabled)
 
-- R1: 6-DOF dynamics, mechanisms, docking contact baseline, and control interfaces
-- R2: propulsion fluid network, combustion model, thrust estimator, leakage model
-- R2.1: nozzle geometry-aware thrust correction (area ratio and contour loss)
-- R3 foundations:
-  - 2D FEM baseline with validity envelopes
-  - 3D tetrahedral solid FEM baseline
-  - sparse assembly and backend-selectable solves
-  - matrix-free (2D) path and convergence telemetry
-  - model-selection helpers (2D vs 3D)
-  - backend-equivalence/determinism tolerance tests (dense vs sparse)
-  - structural latency/memory benchmark suite (2D vs 3D profiles)
+- Current active development
+  - slosh dynamics and additional propulsion coupling checks
+  - fracture and damage progression behavior in structures
+  - topology-transition handling (connected damage vs disjoint body separation)
+  - early operator feedback views from replay/trajectory data
 
-### In progress (core delivery lane)
+- Next major integrations
+  - two-way fluid-structure coupling (FSI)
+  - STL geometry ingestion and geometry-linked subsystem mapping
+  - persistence/checkpointing and distributed runtime coordination
+  - progressive visualization stack (contracts -> overlays -> dashboards -> renderer)
+  - optional CFD-backed fluid providers behind the same coupling contracts
 
-- R2.2: chamber-flow + leak-jet dynamics coupling baseline
-- R2.3: reduced-order propellant slosh simulation + 6-DOF coupling baseline
-- R3 remaining work:
-  - fracture initiation/propagation baseline
-  - damage-state propagation to mass/stiffness/contact behavior
-- R3.1: topology-transition simulation baseline (fracture separation + dock/undock attach/detach graph propagation)
-- R8.0: early replay/trajectory quicklook feedback
-
-### Planned
-
-- Complete core lane through R8.5:
-  - R4, R8.1, R5, R8.2, R6, R7, R7.1, R8.3, R7.2, R8.4, R8.5
-- Post-core lane (kept from derailing core execution):
-  - R4.1: optional CFD-coupled fluid/combustion adapters (profile-gated, fallback-safe)
-  - R9: debris-risk modeling
-  - R10: docking lifecycle logistics and transfer workflows
-  - R11/R12: trajectory optimization and advanced mission-analysis parity extensions
-  - R13/R14: deferred atmospheric + advanced structural fidelity expansions
+Milestone IDs (R2.2, R3.1, R8.0, etc.) are maintained in `TODO.md` for implementation tracking.
 
 ## Getting started
 

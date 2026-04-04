@@ -51,11 +51,12 @@ Validation covers:
 
 ## R3 / R3.1 / R4 (structures + topology transitions + FSI)
 - Structural loading progression scenarios
+- Connected-topology damage scenarios (hole/crack-network growth without body split)
 - 2D validity-envelope scenarios and 2D-vs-3D model-selection scenarios
 - Structural backend comparison scenarios (dense vs sparse vs matrix-free where available)
 - Structural latency/memory envelope scenarios by profile (operational vs analysis)
 - Fracture initiation/propagation mission consequences
-- Topology-transition scenarios (fracture separation into distinct bodies with contact/constraint updates)
+- Disjoint-topology transition scenarios (fracture separation into distinct bodies with contact/constraint updates)
 - FSI coupled stability and plausibility scenarios
 - FSI failure/recovery scenarios (partitioned coupling instability triggers and controlled fallback/escalation)
 - End-to-end impact-fault scenario: `stray asteroid impact -> localized structural damage -> leak-path creation -> unintended leak thrust/moment contribution -> crew-cabin depressurization progression and alarms`
@@ -68,6 +69,7 @@ Validation covers:
 - Distributed barrier-commit equivalence with single-node baseline
 - Retry/recovery scenarios without partial divergence
 - Replay reconstruction from committed tick order/provenance
+- Model-graph DAG validation scenarios (cycle rejection + deterministic mutation transactions at tick boundaries)
 - Pacing-mode timeline equivalence (real-time vs accelerated vs offline)
 
 ## Mission transfer logistics suite (cross-phase)
@@ -166,7 +168,7 @@ Validation suites in this document cover the following requirement groups:
 - FR-019..FR-021, FR-064..FR-066: persistence/checkpoint/replay auditability
 - FR-022..FR-024, FR-059..FR-063: distributed synchronization, barrier commit, and recovery semantics
 - FR-025..FR-028, FR-038..FR-043: dashboards and rendering validation
-- FR-044..FR-048, FR-049..FR-058: pacing, scheduler ordering, and inter-module orchestration contracts
+- FR-044..FR-048, FR-049..FR-058, FR-138: pacing, scheduler ordering, model-graph DAG orchestration, and inter-module contracts
 - FR-084..FR-085: debris population, fragment generation, and compounding accretion prediction use cases
 - FR-086..FR-090: dock/undock lifecycle, booster-assisted payload transfer, planetary handoff mission phases, Hohmann-transfer, and gravity-assist workflows
 - FR-091..FR-102: trajectory optimization + interplanetary mission-analysis adapter workflows and campaign orchestration

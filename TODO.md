@@ -18,10 +18,10 @@
 - [x] Implement reduced-order injector-to-throat chamber-flow state model with diagnostics (pressure/temperature/mixing proxies)
 - [x] Couple chamber-flow state to thrust estimator/nozzle correction path with deterministic contracts
 - [x] Implement leak-jet dynamics model (mass/momentum/thermal state) for propulsion and structural leak paths
-- [ ] Define versioned leak-jet boundary exchange payload consumed by FSI coupling
+- [x] Define versioned leak-jet boundary exchange payload consumed by FSI coupling
 - [x] Propagate leak-jet forces/torques into 6-DOF rigid-body dynamics
-- [ ] Add analytical/consistency tests for chamber-flow + leak-jet force coupling and conservation envelopes
-- [ ] Add R2.2 latency/cadence benchmark checks against operational profile budgets with explicit reduced-order fallback behavior
+- [x] Add analytical/consistency tests for chamber-flow + leak-jet force coupling and conservation envelopes
+- [x] Add R2.2 latency/cadence benchmark checks against operational profile budgets with explicit reduced-order fallback behavior
 
 ### R2.3 — Reduced-order propellant slosh simulation and 6-DOF coupling
 - [ ] Implement tank slosh state model baseline (lumped pendulum/spring-mass equivalent) with deterministic integration
@@ -50,16 +50,17 @@
 - [x] Add structural latency/memory benchmark suite for 2D vs 3D profiles
 - [ ] Implement fracture initiation/propagation baseline model
 - [ ] Implement damage state propagation to mass/stiffness/contact behavior
+- [ ] Define connected-topology damage payload/state (holes/crack-network evolution without disjoint split) for leak/FSI consumers
 - [ ] Add structural failure scenario tests (including leak path creation)
-- [ ] Add end-to-end asteroid-impact fault-chain scenario test (`impact -> localized damage -> leak thrust/moment -> cabin depressurization -> alarm/event propagation`)
+- [ ] Add end-to-end asteroid-impact fault-chain scenario test for connected-topology damage progression (`impact -> localized damage/hole/crack growth -> leak thrust/moment -> cabin depressurization -> alarm/event propagation`; no disjoint-body split in this R3 test)
 
-### R3.1 — Topology-transition simulation baseline
-- [ ] Implement assembly-topology state graph (attachments/interfaces between rigid bodies/modules)
+### R3.1 — Disjoint-topology transition simulation baseline
+- [ ] Implement assembly-topology state graph for disjoint-body connectivity (attachments/interfaces between rigid bodies/modules)
 - [ ] Implement fracture-driven topology split transitions into distinct rigid bodies with deterministic IDs/provenance
 - [ ] Implement baseline dock/undock attach/detach topology transitions with constraint/contact handoff (lifecycle mission semantics remain in R10)
 - [ ] Define versioned topology-transition payload for FSI/leak-boundary consumers
 - [ ] Propagate topology transitions to mass properties, constraints, contact manifolds, and control authority surfaces (graph-level topology effects; material damage-state evolution remains in R3)
-- [ ] Add determinism/conservation tests for topology transitions and replay reconstruction
+- [ ] Add determinism/conservation tests for disjoint-topology transitions and replay reconstruction (including split-body provenance and downstream coupling continuity)
 
 ### R8.0 — Replay/trajectory quicklook
 - [ ] Define minimal visualization telemetry contract for trajectory/event extraction from replay artifacts
@@ -137,12 +138,14 @@
 
 ### R7.2 — Inter-module orchestration contracts
 - [ ] Define versioned inter-module schema contracts for cross-domain exchange
+- [ ] Implement explicit model-graph DAG structure (node/edge contracts + cycle rejection)
+- [ ] Implement deterministic topological scheduler order derived from model-graph DAG and persist order metadata
+- [ ] Implement controlled model-graph mutation transactions at tick boundaries (including topology split/attach events)
 - [ ] Implement unit/frame validation at module boundaries
-- [ ] Implement deterministic scheduler-order metadata and enforcement
 - [ ] Implement explicit fault-propagation event contracts across domains
 - [ ] Define cross-partition communication exchange contract for endpoints on different workers (e.g., `ground station <-> spacecraft`), including delivery tick semantics
 - [ ] Implement distributed logical tick/barrier compatibility checks
-- [ ] Add integration tests for causal ordering and audit-grade replay reconstruction
+- [ ] Add integration tests for causal ordering, DAG-mutation correctness, and audit-grade replay reconstruction
 
 ### R8.4 — Visualization and dashboards (full UI realization after R8.0..R8.3 contracts)
 - [ ] Implement mission-control dashboard UI consuming R8.1 schemas/view-model builders (no duplicate backend contract logic)

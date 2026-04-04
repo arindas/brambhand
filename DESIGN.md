@@ -16,10 +16,11 @@ This design defines the target architecture for the new high-fidelity requiremen
 ```text
 src/brambhand/
   core/
+    model_graph.py               # DAG nodes/edges, validation, mutation transactions
     simulation_runtime.py         # run loop, time stepping, orchestration
     simulation_clock.py           # simulation time vs wall-clock tracking
     pacing_controller.py          # real-time / accelerated / max-throughput control
-    scheduler.py                  # subsystem update schedule
+    scheduler.py                  # subsystem update schedule (executes model-graph order)
     event_bus.py
     state_snapshot.py
   dynamics/
@@ -67,6 +68,7 @@ src/brambhand/
     buckling_screen.py            # launch-load buckling risk screening
     fatigue_model.py              # cyclic fatigue accumulation and threshold checks
     structural_state.py           # stiffness/mass degradation state
+    connected_topology.py         # connected-topology damage state (holes/crack-networks without body split)
   coupling/
     fsi_coupler.py                # fluid-structure two-way coupling
     coupling_controller.py        # iteration, residual checks, convergence gates
@@ -91,7 +93,7 @@ src/brambhand/
     orchestrator_client.py        # job lifecycle integration
   mission/
     docking_lifecycle.py          # approach/capture/dock/undock state machine + safety-zone/hold-point/abort contracts
-    assembly_topology.py          # attachment graph + topology transition simulation (dock/undock/fracture)
+    assembly_topology.py          # disjoint-body attachment graph + topology transition simulation (dock/undock/fracture splits)
     transfer_logistics.py         # booster payload transfer mission phases
     soi_handoff.py                # planetary sphere-of-influence handoff metadata/contracts
   trajectory/
@@ -134,31 +136,82 @@ src/brambhand/
 ```
 
 ## Runtime data flow
+
+Normative runtime behavior is defined by text in this section and related contract sections.
+The diagrams below are supplemental visual aids only.
+All labeled diagram stages are explicitly defined in the textual stage list below; no additional semantics are implied by diagram layout.
+
+```text
+           ┌──────────────────────────┐    ┌──────────────────────────┐
+           │         scenario         │    │          assets          │
+           └────────────┬─────────────┘    └────────────┬─────────────┘
+                        │                               │
+                        └───────────────┬───────────────┘
+                                        ▼
+                ┌──────────────────────────────────────────────┐
+                │      model_graph_dag.build().validate()      │
+                └───────────────────────┬──────────────────────┘
+                                        │
+                                        ▼
+                ┌──────────────────────────────────────────────┐
+                │               tick loop k -> k+1             │
+                └───────────────────────┬──────────────────────┘
+                                        │
+                                        ▼
+                ┌──────────────────────────────────────────────────┐
+                │ persist_commit_artifacts + emit_telemetry_events │
+                └───────────────────────┬──────────────────────────┘
+                                        │
+                                        ▼
+                ┌──────────────────────────────────────────────┐
+                │   build_scene_graph + render_selected_views  │
+                └───────────────────────┬──────────────────────┘
+                                        │
+                          ┌─────────────┴─────────────┐
+                          ▼                           ▼
+            ┌────────────────────────┐   ┌────────────────────────┐
+            │ mission_control_output │   │     onboard_output     │
+            └────────────────────────┘   └────────────────────────┘
+```
+
+Tick-loop detail (textual, authoritative):
+- controls/commands update
+- atmosphere + aero loads (where applicable)
+- rigid-body/mechanism propagation
+- fluid/combustion solve
+- FSI + structural update (iterative when required)
+- thrust/torque/contact + damage/leak/topology updates
+- debris update
+- mission-phase logistics update
+- communication LOS/delay update
+- diagnostics/events/telemetry emission
+- state persistence/checkpoint
+
+Textual stage definitions (authoritative):
+1. **Scenario + Assets**: load versioned scenario configuration and referenced assets.
+2. **Model Graph DAG build + validation**: instantiate subsystem nodes/edges, validate contracts, reject cycles.
+3. **Tick Loop `k -> k+1`**: execute deterministic topological module order for one logical tick.
+4. **Persist + Telemetry Emit**: emit diagnostics/events/telemetry and persist committed tick artifacts (this is the terminal subphase of each tick loop).
+5. **Pacing Policy**: apply wall-clock synchronization/throttle/throughput control for next tick scheduling.
+6. **Scene Graph + Rendering**: build renderable state from committed simulation state and execute selected render pipeline.
+7. **Mission-Control / Onboard Outputs**: deliver telemetry/view-model/render outputs to operator-facing consumers.
+8. **Distributed sync extension (optional)**: when partitioned, tick progression is gated by barrier protocol before global commit.
+
+Required execution decisions:
 1. Load versioned scenario + geometry assets.
-2. Build model graph (rigid bodies, fluid networks, combustion, structures, couplers).
-3. For each time step:
-   - update controls/commands
-   - evaluate atmosphere profile state and aerodynamic loads (for atmosphere-coupled phases)
-   - propagate rigid-body/mechanism states
-   - solve propulsion fluid/combustion subsystem
-   - execute FSI + structural updates (iterative if required)
-   - compute thrust/torque, contacts, and damage/leak/topology-change updates
-   - update debris population/fragment propagation and accretion-risk state
-   - process mission-phase logistics (dock/undock lifecycle with hold-point authority and abort/escape paths, booster transfer phases, planetary handoff states)
-   - evaluate communication LOS/range and delayed channel deliveries
-   - emit diagnostics/events/telemetry snapshots
-   - persist state and optional checkpoint
-4. Apply pacing controller policy (wall-clock synchronization, throttle mode, or max-throughput).
-5. Build visualization scene graph and update acceleration structures.
-6. Render selected views using profile-specific raster/ray-march pipelines.
-7. Stream telemetry/events and rendered states to mission-control and onboard dashboards.
+2. Build and validate model graph DAG (node contracts, edge contracts, cycle rejection).
+3. Execute each tick in deterministic topological order from the validated DAG.
+4. Apply model-graph mutations only at tick boundaries via explicit mutation transactions.
+5. Apply pacing controller policy (wall-clock sync, throttle, or max-throughput).
+6. Build visualization scene graph and render selected views from committed state.
+7. Stream telemetry/events/rendered state to operator surfaces.
 8. Optionally distribute subsystems across workers with sync barriers.
 
 ## Explicit cross-domain coupling chain (failure-aware)
 
 To avoid integration ambiguity, the following coupling sequence is explicit:
-1. `structures/*` emits damage/fracture/topology transitions (including region IDs and separation events).
-2. `mission/assembly_topology.py` resolves attachment graph updates and affected interfaces.
+1. `structures/*` emits damage/fracture updates in two classes: connected-topology evolution (holes/crack-networks) and disjoint split events (including region IDs and separation markers).
+2. `mission/assembly_topology.py` resolves disjoint-body attachment graph updates and affected interfaces.
 3. `fluid/reduced/*` (reduced-order) or `fluid/cfd/*` (optional CFD) resolves leak-path/slosh/chamber boundary disturbances for affected regions via a shared boundary-provider contract.
 4. `coupling/fsi_coupler.py` ingests structural + propulsion boundary updates through that shared contract and computes coupled residuals.
 5. `dynamics/*` consumes resulting coupled force/torque updates (including leak-jet/slosh contributions).
@@ -193,19 +246,67 @@ All modes share scenario and telemetry contracts; adapter interfaces isolate sol
 ## Concurrency and parallelism model (distributed, no replicas)
 
 ### Execution hierarchy
-1. **Inter-run parallelism**: multiple independent runs can execute in parallel.
-2. **Intra-run partition parallelism**: one run is split into partitions across workers.
-3. **Intra-partition module scheduling**: modules execute by dependency graph per tick.
+
+```text
+Inter-run level:      Run A │ Run B │ Run C
+                      │
+                      ▼
+Intra-run level:      Partition P1 │ Partition P2 │ Partition P3
+                      │
+                      ▼
+Intra-partition:      model-graph DAG execution per tick
+                      (deterministic topological order)
+```
+
+Textual hierarchy definitions (authoritative):
+1. **Inter-run parallelism**: independent runs execute in parallel; no state is shared across runs.
+2. **Intra-run partition parallelism**: one run is split across authoritative partition owners.
+3. **Intra-partition scheduling**: model-graph DAG nodes execute in deterministic topological order per tick.
 
 ### Per-tick protocol (authoritative partition owners)
-For logical tick transition `k -> k+1`:
-1. `LOCAL_COMPUTE`: each partition owner computes tentative next state.
-2. `BOUNDARY_EXCHANGE`: owners exchange required boundary/coupling data.
-3. `RECONCILE`: apply boundary updates and coupling checks.
-4. `BARRIER_PREPARE`: partition reports ready-to-commit for tick `k+1`.
-5. `GLOBAL_COMMIT`: scheduler commits tick only when all required partitions are ready.
-6. `PERSIST_EMIT`: persist tick artifacts and emit telemetry/events.
 
+```text
+Tick k -> k+1
+
+         ┌───────────────────┐
+         │   LOCAL_COMPUTE   │
+         └─────────┬─────────┘
+                   │
+                   ▼
+         ┌───────────────────┐
+         │ BOUNDARY_EXCHANGE │
+         └─────────┬─────────┘
+                   │
+                   ▼
+         ┌───────────────────┐
+         │     RECONCILE     │
+         └─────────┬─────────┘
+                   │
+                   ▼
+         ┌───────────────────┐
+         │  BARRIER_PREPARE  │
+         └─────────┬─────────┘
+                   │ all required partitions ready?
+                   ▼
+         ┌───────────────────┐
+         │   GLOBAL_COMMIT   │
+         └─────────┬─────────┘
+                   │
+                   ▼
+         ┌───────────────────┐
+         │    PERSIST_EMIT   │
+         └───────────────────┘
+```
+
+Protocol step definitions (authoritative):
+1. `LOCAL_COMPUTE`: partition owner computes tentative next state.
+2. `BOUNDARY_EXCHANGE`: owners exchange required coupling/boundary data.
+3. `RECONCILE`: apply boundary updates and coupling checks.
+4. `BARRIER_PREPARE`: report readiness for tick commit.
+5. `GLOBAL_COMMIT`: commit only when all required partitions are ready.
+6. `PERSIST_EMIT`: persist tick artifacts and emit telemetry/events for the committed tick.
+
+Ordering guarantee: `GLOBAL_COMMIT` strictly precedes `PERSIST_EMIT` for a given tick.
 No partition commits early outside this protocol.
 
 ### Recovery policy
@@ -248,9 +349,9 @@ Write semantics:
 | FR-115..FR-118 | `structures/fem/*` decomposition boundaries and namespace policy, `trajectory/*` adapter contracts, shared frame/time provider services across trajectory/navigation/mission modules |
 | FR-119..FR-124 | `atmosphere/*`, `dynamics/aerodynamic_loads.py`, `launch/*`, `structures/buckling_screen.py`, `structures/fatigue_model.py`, coupling into `dynamics/*` + `structures/fracture_model.py` |
 | FR-125..FR-131 | `structures/fem/nonlinear.py`, `structures/fem/materials.py`, `structures/fem/transient.py`, `structures/fem/buckling.py`, `structures/fem/adaptivity.py`, `structures/fem/thermal_coupling.py`, `structures/fracture_model.py`, `geometry/mesh_pipeline.py`, runtime profile/fallback selectors |
-| FR-132..FR-137 | `fluid/reduced/*`, `fluid/cfd/*`, `fluid/contracts.py`, `propulsion/*`, `mission/assembly_topology.py`, `coupling/*`, `dynamics/*`, `structures/*`, replay/persistence topology provenance |
+| FR-132..FR-137 | `fluid/reduced/*`, `fluid/cfd/*`, `fluid/contracts.py`, `propulsion/*`, `mission/assembly_topology.py`, `coupling/*`, `dynamics/*`, `structures/*` (including connected-topology state), replay/persistence topology provenance |
 | FR-044..FR-048 | `core/simulation_clock.py`, `core/pacing_controller.py`, `core/scheduler.py`, replay/persistence metadata |
-| FR-049..FR-058 | `core/scheduler.py`, `core/simulation_runtime.py`, contract schemas, unit/frame validators, distributed sync protocol, replay metadata |
+| FR-049..FR-058, FR-138 | `core/model_graph.py`, `core/scheduler.py`, `core/simulation_runtime.py`, contract schemas, unit/frame validators, distributed sync protocol, replay metadata |
 | FR-067..FR-071 | `physics/*`, `communication/*`, `guidance/*`, `operations/*`, `scenario/*`, `cli.py`, regression test suites |
 | FR-029..FR-030 | diagnostics emitted by all solver domains + run metadata persistence |
 
@@ -484,7 +585,7 @@ Execution policy:
 - **R2.2: Internal thrust-chamber flow and leak-jet dynamics coupling baseline**
 - **R2.3: Reduced-order propellant slosh simulation and 6-DOF coupling baseline**
 - **R3: FEM structural solver + fracture pipeline**
-- **R3.1: Topology-transition simulation baseline (fracture separation + dock/undock attach/detach graph propagation)**
+- **R3.1: Disjoint-topology transition simulation baseline (fracture separation + dock/undock attach/detach graph propagation)**
 - **R8.0 (interleaved after R3): replay/trajectory quicklook for early visual feedback**
 - **R4: FSI coupler and convergence diagnostics**
 - **R8.1 (interleaved after R4): headless dashboard view-model contracts**

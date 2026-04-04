@@ -24,11 +24,20 @@ from brambhand.propulsion.fluid_network import (
     ValveState,
     step_fluid_network,
 )
-from brambhand.propulsion.leak_jet_coupling import propagate_leak_jet_to_rigid_body
+from brambhand.propulsion.leak_jet_coupling import (
+    build_leak_jet_boundary_payload,
+    propagate_leak_jet_to_rigid_body,
+)
 from brambhand.propulsion.leakage_model import (
     CompartmentState,
     LeakagePath,
     apply_leakage,
+)
+from brambhand.propulsion.performance import (
+    PropulsionLatencyBenchmarkResult,
+    ReducedOrderFallbackMode,
+    benchmark_reduced_order_propulsion_latency,
+    cadence_guard_mode,
 )
 from brambhand.propulsion.thrust_estimator import (
     ChamberThrustCouplingParams,
@@ -51,15 +60,20 @@ __all__ = [
     "LeakagePath",
     "LeakJetPath",
     "LeakJetState",
+    "build_leak_jet_boundary_payload",
     "propagate_leak_jet_to_rigid_body",
     "LineState",
     "ChamberThrustCouplingParams",
     "NozzleGeometryCorrection",
+    "PropulsionLatencyBenchmarkResult",
+    "ReducedOrderFallbackMode",
     "NozzleParams",
     "TankState",
     "ThrustEstimate",
     "ValveState",
     "apply_leakage",
+    "benchmark_reduced_order_propulsion_latency",
+    "cadence_guard_mode",
     "estimate_nozzle_thrust",
     "evaluate_leak_jet",
     "estimate_nozzle_thrust_from_chamber_flow",

@@ -42,7 +42,7 @@ This revision formalizes the **next requirement set** focused on:
 - FR-015: The simulator shall model docking contact/impact dynamics with rigid-body contact constraints and damage outcomes.
 - FR-072: Structural FEM capabilities shall define and enforce dimensional validity envelopes (e.g., 2D plane-stress/plane-strain assumptions vs full 3D solid analysis applicability).
 - FR-073: The structural roadmap shall progress from reduced-order 2D FEM baseline to 3D solid FEM for spacecraft chassis/assembly fidelity, with clear model-selection criteria.
-- FR-081: Structural failure modeling shall include aggressive topology-change events (e.g., major structural separation/snapping into distinct bodies) and propagate those events to mass properties, contacts, and downstream dynamics.
+- FR-081: Structural failure modeling shall include topology-change events across two classes: (a) connected-topology evolution (e.g., holes/crack-network growth without body separation) and (b) aggressive disjoint-topology events (e.g., major structural separation/snapping into distinct bodies), and shall propagate both classes to mass properties, contacts, and downstream dynamics.
 
 ## D. Geometry and asset ingestion
 - FR-016: The simulator shall import 3D geometry from STL files.
@@ -109,6 +109,7 @@ This revision formalizes the **next requirement set** focused on:
 - FR-056: Persistence and replay layers shall preserve subsystem-level timing, ordering, and provenance metadata needed for full reconstruction.
 - FR-057: Distributed workers shall synchronize on a shared logical tick/barrier protocol compatible with single-node execution semantics.
 - FR-058: Visualization shall support deterministic interpolation/extrapolation policies when render rate differs from simulation tick rate.
+- FR-138: The runtime shall maintain an explicit model-graph DAG for active subsystems with versioned node/edge contracts, cycle rejection, deterministic topological execution order, and controlled graph-mutation transactions (e.g., topology split/attach events) at tick boundaries.
 
 ## K. Baseline mission simulation continuity
 - FR-067: The simulator shall preserve deterministic Newtonian N-body orbital propagation capability for baseline mission scenarios.
@@ -191,7 +192,7 @@ This revision formalizes the **next requirement set** focused on:
 ## T. Internal propulsion flow and topology-transition simulation fidelity
 - FR-132: The propulsion stack shall simulate thrust-chamber internal flow/combustion state evolution (injector-to-throat reduced-order baseline, extensible to CFD-coupled workflows) and expose physically meaningful chamber-field diagnostics for coupling/analysis.
 - FR-133: The leakage/fault stack shall simulate leak-jet dynamics (mass, momentum, and thermal state) and propagate leak-jet forces/torques into 6-DOF vehicle dynamics.
-- FR-134: The simulator shall maintain an explicit assembly-topology state model (attachment graph and interfaces) and simulate topology transitions from fracture separation and dock/undock operations, propagating changes to mass properties, constraints, contacts, and control authority.
+- FR-134: The simulator shall maintain an explicit assembly-topology state model (attachment graph and interfaces) for disjoint-body connectivity transitions from fracture separation and dock/undock operations, propagating changes to mass properties, constraints, contacts, and control authority.
 - FR-135: The propulsion stack shall simulate propellant slosh effects (reduced-order baseline with geometry-aware parameterization where available) and propagate slosh-induced force/torque and center-of-mass shifts into 6-DOF vehicle dynamics.
 - FR-136: The fluid/combustion stack shall support optional CFD-coupled execution via adapter contracts to external solver packages, while preserving reduced-order fallback modes and deterministic replay metadata/provenance.
 - FR-137: The FSI coupling stack shall consume topology-transition updates and propulsion boundary disturbances (leak-jet/slosh/pressure-field effects where configured) through versioned exchange contracts, and propagate coupled load responses back to dynamics/structures with convergence residual telemetry. This contract shall be backend-neutral across reduced-order and optional CFD fluid providers.
@@ -273,6 +274,7 @@ This revision formalizes the **next requirement set** focused on:
 - NR-056: Thermo-structural coupling workflows shall provide deterministic temperature/material-property provenance and bounded sensitivity drift across repeated runs.
 - NR-057: Topology-transition and leak-jet force propagation workflows shall be deterministic, conservation-consistent (mass/momentum within configured tolerances), and fully traceable in replay metadata.
 - NR-058: Slosh and CFD-coupled fluid workflows shall respect profile-specific latency budgets and cadence safeguards, with explicit degraded-mode fallback to reduced-order models when runtime pressure exceeds configured thresholds.
+- NR-059: Model-graph DAG build/validation and mutation-application costs shall be observable and bounded by profile so scheduler overhead does not violate cadence budgets.
 
 ---
 

@@ -5,6 +5,10 @@ from brambhand.dynamics.rigid_body_6dof import (
     RigidBodyProperties,
     UnitQuaternion,
 )
+from brambhand.fluid.contracts import (
+    LEAK_JET_BOUNDARY_PAYLOAD_SCHEMA_VERSION,
+    LeakJetBoundaryPayload,
+)
 from brambhand.fluid.reduced.chamber_flow import (
     ChamberFlowParams,
     ChamberFlowState,
@@ -24,8 +28,16 @@ from brambhand.propulsion.fluid_network import (
     ValveState,
     step_fluid_network,
 )
-from brambhand.propulsion.leak_jet_coupling import propagate_leak_jet_to_rigid_body
+from brambhand.propulsion.leak_jet_coupling import (
+    build_leak_jet_boundary_payload,
+    propagate_leak_jet_to_rigid_body,
+)
 from brambhand.propulsion.leakage_model import CompartmentState, LeakagePath, apply_leakage
+from brambhand.propulsion.performance import (
+    ReducedOrderFallbackMode,
+    benchmark_reduced_order_propulsion_latency,
+    cadence_guard_mode,
+)
 from brambhand.propulsion.thrust_estimator import (
     ChamberThrustCouplingParams,
     NozzleGeometryCorrection,
@@ -491,6 +503,196 @@ def test_leak_jet_body_frame_coupling_respects_attitude_rotation() -> None:
     assert next_state.velocity_mps.y < 0.0
 
 
+def test_leak_jet_boundary_payload_contract_mapping() -> None:
+    path = LeakJetPath(
+        area_m2=2e-4,
+        discharge_coefficient=0.8,
+        fluid_density_kgpm3=1.2,
+        external_pressure_pa=101_325.0,
+        jet_direction_body=Vector3(1.0, 0.0, 0.0),
+    )
+    leak = evaluate_leak_jet(
+        path=path,
+        compartment_pressure_pa=300_000.0,
+        compartment_temperature_k=320.0,
+        ambient_temperature_k=280.0,
+    )
+
+    payload = build_leak_jet_boundary_payload(leak_jet=leak, interface_id="tank_A_leak_1")
+
+    assert payload.schema_version == LEAK_JET_BOUNDARY_PAYLOAD_SCHEMA_VERSION
+    boundary = payload.to_fluid_boundary_load()
+    assert boundary.interface_id == "tank_A_leak_1"
+    assert boundary.force_body_n == leak.reaction_force_body_n
+    assert boundary.torque_body_nm == leak.reaction_torque_body_nm
+
+
+def test_leak_jet_boundary_payload_rejects_unsupported_version() -> None:
+    try:
+        LeakJetBoundaryPayload(
+            interface_id="ifc",
+            schema_version=999,
+            reaction_force_body_n=Vector3(0.0, 0.0, 0.0),
+            reaction_torque_body_nm=Vector3(0.0, 0.0, 0.0),
+            mass_flow_kgps=0.0,
+            jet_temperature_k=300.0,
+        )
+    except ValueError as exc:
+        assert "schema_version" in str(exc)
+    else:
+        raise AssertionError("Expected leak-jet boundary payload version validation failure")
+
+
+def test_leak_jet_force_is_consistent_with_momentum_plus_pressure_terms() -> None:
+    path = LeakJetPath(
+        area_m2=2e-4,
+        discharge_coefficient=0.8,
+        fluid_density_kgpm3=1.2,
+        external_pressure_pa=101_325.0,
+        jet_direction_body=Vector3(1.0, 0.0, 0.0),
+    )
+    compartment_pressure_pa = 300_000.0
+
+    leak = evaluate_leak_jet(
+        path=path,
+        compartment_pressure_pa=compartment_pressure_pa,
+        compartment_temperature_k=320.0,
+        ambient_temperature_k=280.0,
+    )
+
+    delta_p = compartment_pressure_pa - path.external_pressure_pa
+    expected_thrust = leak.mass_flow_kgps * leak.exit_velocity_mps + delta_p * path.area_m2
+    assert math.isclose(leak.reaction_force_body_n.norm(), expected_thrust)
+
+
+def test_leak_jet_mass_flow_matches_leakage_mass_loss_rate_envelope() -> None:
+    pressure_pa = 300_000.0
+    dt_s = 0.2
+
+    leak_state = CompartmentState(
+        mass_kg=100.0,
+        pressure_pa=pressure_pa,
+        volume_m3=10.0,
+        gas_constant_jpkgk=287.0,
+        temperature_k=320.0,
+    )
+    leakage_path = LeakagePath(
+        area_m2=2e-4,
+        discharge_coefficient=0.8,
+        fluid_density_kgpm3=1.2,
+        external_pressure_pa=101_325.0,
+    )
+    leak_jet_path = LeakJetPath(
+        area_m2=leakage_path.area_m2,
+        discharge_coefficient=leakage_path.discharge_coefficient,
+        fluid_density_kgpm3=leakage_path.fluid_density_kgpm3,
+        external_pressure_pa=leakage_path.external_pressure_pa,
+        jet_direction_body=Vector3(1.0, 0.0, 0.0),
+    )
+
+    leak_jet = evaluate_leak_jet(
+        path=leak_jet_path,
+        compartment_pressure_pa=pressure_pa,
+        compartment_temperature_k=320.0,
+        ambient_temperature_k=280.0,
+    )
+    _, leaked_mass = apply_leakage(leak_state, leakage_path, dt_s=dt_s)
+
+    expected_leaked_mass = leak_jet.mass_flow_kgps * dt_s
+    assert math.isclose(leaked_mass, expected_leaked_mass)
+
+
+def test_reduced_order_propulsion_latency_benchmark_reports_summary() -> None:
+    chamber_state = ChamberFlowState(
+        gas_mass_kg=1.0,
+        pressure_pa=1_000_000.0,
+        temperature_k=1500.0,
+        fuel_mass_fraction=0.25,
+    )
+    chamber_params = ChamberFlowParams(
+        volume_m3=0.2,
+        gas_constant_jpkgk=300.0,
+        stoichiometric_of_ratio=3.0,
+        min_temperature_k=1200.0,
+        max_temperature_k=3200.0,
+        thermal_relaxation_time_constant_s=0.5,
+    )
+    leak_path = LeakJetPath(
+        area_m2=2e-4,
+        discharge_coefficient=0.8,
+        fluid_density_kgpm3=1.2,
+        external_pressure_pa=101_325.0,
+        jet_direction_body=Vector3(1.0, 0.0, 0.0),
+    )
+
+    result = benchmark_reduced_order_propulsion_latency(
+        chamber_state=chamber_state,
+        chamber_params=chamber_params,
+        inflow_fuel_kgps=0.6,
+        inflow_oxidizer_kgps=1.8,
+        throat_outflow_kgps=1.5,
+        leak_path=leak_path,
+        compartment_pressure_pa=300_000.0,
+        compartment_temperature_k=320.0,
+        ambient_temperature_k=280.0,
+        dt_s=0.1,
+        repeats=5,
+        operational_budget_s=0.01,
+    )
+
+    assert result.repeats == 5
+    assert result.p50_step_latency_s > 0.0
+    assert result.p95_step_latency_s > 0.0
+    assert result.p95_step_latency_s >= result.p50_step_latency_s
+
+
+def test_cadence_guard_mode_and_fallback_trigger_behavior() -> None:
+    assert cadence_guard_mode(0.001, 0.01) is ReducedOrderFallbackMode.NOMINAL
+    assert (
+        cadence_guard_mode(0.02, 0.01)
+        is ReducedOrderFallbackMode.REDUCED_ORDER_GUARD_ACTIVE
+    )
+
+    chamber_state = ChamberFlowState(
+        gas_mass_kg=1.0,
+        pressure_pa=1_000_000.0,
+        temperature_k=1500.0,
+        fuel_mass_fraction=0.25,
+    )
+    chamber_params = ChamberFlowParams(
+        volume_m3=0.2,
+        gas_constant_jpkgk=300.0,
+        stoichiometric_of_ratio=3.0,
+        min_temperature_k=1200.0,
+        max_temperature_k=3200.0,
+        thermal_relaxation_time_constant_s=0.5,
+    )
+    leak_path = LeakJetPath(
+        area_m2=2e-4,
+        discharge_coefficient=0.8,
+        fluid_density_kgpm3=1.2,
+        external_pressure_pa=101_325.0,
+        jet_direction_body=Vector3(1.0, 0.0, 0.0),
+    )
+
+    result = benchmark_reduced_order_propulsion_latency(
+        chamber_state=chamber_state,
+        chamber_params=chamber_params,
+        inflow_fuel_kgps=0.6,
+        inflow_oxidizer_kgps=1.8,
+        throat_outflow_kgps=1.5,
+        leak_path=leak_path,
+        compartment_pressure_pa=300_000.0,
+        compartment_temperature_k=320.0,
+        ambient_temperature_k=280.0,
+        dt_s=0.1,
+        repeats=3,
+        operational_budget_s=1e-12,
+    )
+
+    assert result.fallback_trigger_count == result.repeats
+
+
 def test_chamber_flow_validation_rejects_bad_inputs() -> None:
     try:
         ChamberFlowParams(
@@ -558,3 +760,44 @@ def test_chamber_flow_validation_rejects_bad_inputs() -> None:
         assert "jet_direction_body cannot be zero" in str(exc)
     else:
         raise AssertionError("Expected leak-jet validation failure")
+
+    chamber_state = ChamberFlowState(
+        gas_mass_kg=1.0,
+        pressure_pa=1_000_000.0,
+        temperature_k=1500.0,
+        fuel_mass_fraction=0.25,
+    )
+    chamber_params = ChamberFlowParams(
+        volume_m3=0.2,
+        gas_constant_jpkgk=300.0,
+        stoichiometric_of_ratio=3.0,
+        min_temperature_k=1200.0,
+        max_temperature_k=3200.0,
+        thermal_relaxation_time_constant_s=0.5,
+    )
+    leak_path = LeakJetPath(
+        area_m2=2e-4,
+        discharge_coefficient=0.8,
+        fluid_density_kgpm3=1.2,
+        external_pressure_pa=101_325.0,
+        jet_direction_body=Vector3(1.0, 0.0, 0.0),
+    )
+    try:
+        benchmark_reduced_order_propulsion_latency(
+            chamber_state=chamber_state,
+            chamber_params=chamber_params,
+            inflow_fuel_kgps=0.6,
+            inflow_oxidizer_kgps=1.8,
+            throat_outflow_kgps=1.5,
+            leak_path=leak_path,
+            compartment_pressure_pa=300_000.0,
+            compartment_temperature_k=320.0,
+            ambient_temperature_k=280.0,
+            dt_s=0.1,
+            repeats=0,
+            operational_budget_s=0.01,
+        )
+    except ValueError as exc:
+        assert "repeats" in str(exc)
+    else:
+        raise AssertionError("Expected propulsion latency benchmark validation failure")
