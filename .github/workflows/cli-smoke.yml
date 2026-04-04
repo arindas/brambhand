@@ -1,4 +1,4 @@
-name: CLI Smoke
+name: Command Check
 
 on:
   pull_request:
