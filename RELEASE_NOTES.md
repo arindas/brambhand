@@ -57,6 +57,10 @@
   - added FR-125..FR-131 and NR-053..NR-056 for nonlinear/material/transient/buckling/fatigue-growth/thermal-coupling/adaptive-remesh FEM progression
   - added deferred R14 roadmap phase in `TODO.md` (scheduled post-R13 to preserve active milestone cadence)
   - updated `DESIGN.md`, `VERIFICATION.md`, and `VALIDATION.md` with R14 traceability and gate planning
+- Coverage hardening updates:
+  - expanded CLI command-path tests to cover validate/run/replay main flows and invalid run-argument guards
+  - expanded propulsion contract/error-path tests for validation guards and zero-flow/no-leak edge paths
+  - expanded constellation validation tests for empty/duplicate-name/duplicate-slot rejection
 
 ## v0.1.0 (2026-04-02)
 

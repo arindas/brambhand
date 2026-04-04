@@ -120,6 +120,80 @@ def test_nozzle_geometry_contour_loss_reduces_thrust() -> None:
     assert lossy_estimate.thrust_n < ideal_estimate.thrust_n
 
 
+def test_propulsion_contracts_reject_invalid_inputs() -> None:
+    try:
+        CombustionChamberParams(volume_m3=0.0, gas_constant_jpkgk=300.0, temperature_k=2500.0)
+    except ValueError as exc:
+        assert "volume_m3 must be positive" in str(exc)
+    else:
+        raise AssertionError("Expected combustion params validation failure")
+
+    try:
+        step_combustion_chamber(
+            CombustionChamberState(gas_mass_kg=1.0, pressure_pa=1.0),
+            CombustionChamberParams(volume_m3=0.2, gas_constant_jpkgk=300.0, temperature_k=2500.0),
+            inflow_kgps=-1.0,
+            outflow_kgps=0.0,
+            dt_s=1.0,
+        )
+    except ValueError as exc:
+        assert "must be non-negative" in str(exc)
+    else:
+        raise AssertionError("Expected combustion flow validation failure")
+
+    try:
+        TankState(
+            mass_kg=1.0,
+            nominal_mass_kg=10.0,
+            nominal_pressure_pa=2_000_000.0,
+            temperature_k=0.0,
+        )
+    except ValueError as exc:
+        assert "temperature_k must be positive" in str(exc)
+    else:
+        raise AssertionError("Expected tank validation failure")
+
+    try:
+        NozzleGeometryCorrection(throat_area_m2=0.01, contour_loss_factor=1.1)
+    except ValueError as exc:
+        assert "contour_loss_factor" in str(exc)
+    else:
+        raise AssertionError("Expected contour-loss validation failure")
+
+
+def test_propulsion_edge_paths_zero_flow_and_no_leak_delta_p() -> None:
+    closed = FluidNetworkState(
+        tank=TankState(
+            mass_kg=10.0,
+            nominal_mass_kg=10.0,
+            nominal_pressure_pa=2_000_000.0,
+            temperature_k=290.0,
+        ),
+        valve=ValveState(opening=0.0, flow_coefficient=1e-3),
+        line=LineState(max_flow_kgps=2.0),
+        downstream_pressure_pa=1_000_000.0,
+    )
+    closed_next = step_fluid_network(closed, dt_s=1.0)
+    assert closed_next.delivered_mass_flow_kgps == 0.0
+
+    state = CompartmentState(
+        mass_kg=4.0,
+        pressure_pa=100_000.0,
+        volume_m3=1.0,
+        gas_constant_jpkgk=287.0,
+        temperature_k=300.0,
+    )
+    leak = LeakagePath(
+        area_m2=1e-4,
+        discharge_coefficient=0.7,
+        fluid_density_kgpm3=1.2,
+        external_pressure_pa=101_325.0,
+    )
+    unchanged, leaked = apply_leakage(state, leak, dt_s=1.0)
+    assert leaked == 0.0
+    assert unchanged == state
+
+
 def test_leakage_reduces_mass_and_pressure() -> None:
     state = CompartmentState(
         mass_kg=4.0,

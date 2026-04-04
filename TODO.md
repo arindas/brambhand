@@ -195,6 +195,10 @@
 - [x] Add distributed execution protocol spec (`docs/DISTRIBUTED_PROTOCOL.md`) for tick/barrier/commit semantics
 - [x] Add performance and pacing SLO doc (`docs/PERFORMANCE_SLOS.md`) tied to NR-018..NR-024, NR-029..NR-031
 
+## Quality hardening
+- [x] Raise coverage floor by adding targeted edge/error-path tests for CLI command flows, propulsion validation guards, and constellation validation guards
+- [ ] Continue coverage hardening with structural backend failure-branch tests and low-coverage propulsion/dynamics edge paths
+
 ## Documentation and traceability
 - [x] Sync requirements/design/TODO/V&V docs with implemented R1/R2/R2.1/R3 scope, structural scalability roadmap, and legacy communication continuity requirements
 - [ ] Keep requirement-to-design matrix current as architecture evolves
