@@ -24,6 +24,7 @@ from brambhand.propulsion.fluid_network import (
     ValveState,
     step_fluid_network,
 )
+from brambhand.propulsion.leak_jet_coupling import propagate_leak_jet_to_rigid_body
 from brambhand.propulsion.leakage_model import (
     CompartmentState,
     LeakagePath,
@@ -50,6 +51,7 @@ __all__ = [
     "LeakagePath",
     "LeakJetPath",
     "LeakJetState",
+    "propagate_leak_jet_to_rigid_body",
     "LineState",
     "ChamberThrustCouplingParams",
     "NozzleGeometryCorrection",

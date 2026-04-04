@@ -1,5 +1,10 @@
 import math
 
+from brambhand.dynamics.rigid_body_6dof import (
+    RigidBody6DoFState,
+    RigidBodyProperties,
+    UnitQuaternion,
+)
 from brambhand.fluid.reduced.chamber_flow import (
     ChamberFlowParams,
     ChamberFlowState,
@@ -19,6 +24,7 @@ from brambhand.propulsion.fluid_network import (
     ValveState,
     step_fluid_network,
 )
+from brambhand.propulsion.leak_jet_coupling import propagate_leak_jet_to_rigid_body
 from brambhand.propulsion.leakage_model import CompartmentState, LeakagePath, apply_leakage
 from brambhand.propulsion.thrust_estimator import (
     ChamberThrustCouplingParams,
@@ -415,6 +421,74 @@ def test_leak_jet_dynamics_zero_delta_p_returns_zero_wrench() -> None:
     assert state.reaction_force_body_n == Vector3(0.0, 0.0, 0.0)
     assert state.reaction_torque_body_nm == Vector3(0.0, 0.0, 0.0)
     assert state.jet_temperature_k == 280.0
+
+
+def test_leak_jet_propagates_into_6dof_body_frame_dynamics() -> None:
+    leak_path = LeakJetPath(
+        area_m2=2e-4,
+        discharge_coefficient=0.8,
+        fluid_density_kgpm3=1.2,
+        external_pressure_pa=101_325.0,
+        jet_direction_body=Vector3(1.0, 0.0, 0.0),
+    )
+    leak = evaluate_leak_jet(
+        path=leak_path,
+        compartment_pressure_pa=300_000.0,
+        compartment_temperature_k=320.0,
+        ambient_temperature_k=280.0,
+    )
+
+    state = RigidBody6DoFState(
+        position_m=Vector3(0.0, 0.0, 0.0),
+        velocity_mps=Vector3(0.0, 0.0, 0.0),
+        attitude=UnitQuaternion(1.0, 0.0, 0.0, 0.0),
+        angular_velocity_radps=Vector3(0.0, 0.0, 0.0),
+    )
+    props = RigidBodyProperties(mass_kg=100.0, inertia_diag_kgm2=(20.0, 20.0, 20.0))
+
+    next_state = propagate_leak_jet_to_rigid_body(
+        state=state,
+        props=props,
+        leak_jet=leak,
+        dt_s=0.1,
+    )
+
+    assert next_state.velocity_mps.x < 0.0
+
+
+def test_leak_jet_body_frame_coupling_respects_attitude_rotation() -> None:
+    leak_path = LeakJetPath(
+        area_m2=2e-4,
+        discharge_coefficient=0.8,
+        fluid_density_kgpm3=1.2,
+        external_pressure_pa=101_325.0,
+        jet_direction_body=Vector3(1.0, 0.0, 0.0),
+    )
+    leak = evaluate_leak_jet(
+        path=leak_path,
+        compartment_pressure_pa=300_000.0,
+        compartment_temperature_k=320.0,
+        ambient_temperature_k=280.0,
+    )
+
+    q = UnitQuaternion.normalized(math.sqrt(0.5), 0.0, 0.0, math.sqrt(0.5))
+    state = RigidBody6DoFState(
+        position_m=Vector3(0.0, 0.0, 0.0),
+        velocity_mps=Vector3(0.0, 0.0, 0.0),
+        attitude=q,
+        angular_velocity_radps=Vector3(0.0, 0.0, 0.0),
+    )
+    props = RigidBodyProperties(mass_kg=100.0, inertia_diag_kgm2=(20.0, 20.0, 20.0))
+
+    next_state = propagate_leak_jet_to_rigid_body(
+        state=state,
+        props=props,
+        leak_jet=leak,
+        dt_s=0.1,
+    )
+
+    assert abs(next_state.velocity_mps.x) < 1e-9
+    assert next_state.velocity_mps.y < 0.0
 
 
 def test_chamber_flow_validation_rejects_bad_inputs() -> None:

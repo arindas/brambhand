@@ -19,7 +19,7 @@
 - [x] Couple chamber-flow state to thrust estimator/nozzle correction path with deterministic contracts
 - [x] Implement leak-jet dynamics model (mass/momentum/thermal state) for propulsion and structural leak paths
 - [ ] Define versioned leak-jet boundary exchange payload consumed by FSI coupling
-- [ ] Propagate leak-jet forces/torques into 6-DOF rigid-body dynamics
+- [x] Propagate leak-jet forces/torques into 6-DOF rigid-body dynamics
 - [ ] Add analytical/consistency tests for chamber-flow + leak-jet force coupling and conservation envelopes
 - [ ] Add R2.2 latency/cadence benchmark checks against operational profile budgets with explicit reduced-order fallback behavior
 

@@ -84,6 +84,7 @@
   - added deterministic coupling contract `ChamberThrustCouplingParams` and `estimate_nozzle_thrust_from_chamber_flow(...)` in `propulsion/thrust_estimator.py`
   - coupled chamber-flow state into nozzle thrust path (including geometry-correction compatibility)
   - added reduced-order leak-jet dynamics model under `fluid/reduced/leak_jet_dynamics.py` (mass-flow, exit velocity, thermal proxy, reaction force/torque)
+  - added `propulsion/leak_jet_coupling.py` to propagate leak-jet reaction wrench into 6-DOF body-frame dynamics
   - exported chamber/leak-jet contracts via `brambhand.propulsion`
   - added propulsion contract tests for chamber-flow dynamics, leak-jet dynamics behavior, off-stoich quality degradation, thrust-coupling determinism, and input validation
 - Slosh + CFD planning extension with performance safeguards:
