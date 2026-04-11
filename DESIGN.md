@@ -381,7 +381,8 @@ Write semantics:
 | FR-119..FR-124 | `atmosphere/*`, `dynamics/aerodynamic_loads.py`, `launch/*`, `structures/buckling_screen.py`, `structures/fatigue_model.py`, coupling into `dynamics/*` + `structures/fracture_model.py` |
 | FR-125..FR-131 | `structures/fem/nonlinear.py`, `structures/fem/materials.py`, `structures/fem/transient.py`, `structures/fem/buckling.py`, `structures/fem/adaptivity.py`, `structures/fem/thermal_coupling.py`, `structures/fracture_model.py`, `geometry/mesh_pipeline.py`, runtime profile/fallback selectors |
 | FR-132..FR-137 | `fluid/reduced/*`, `fluid/cfd/*`, `fluid/contracts.py`, `propulsion/*`, `mission/assembly_topology.py`, `coupling/*`, `dynamics/*`, `structures/*` (including connected-topology state), replay/persistence topology provenance |
-| FR-139..FR-145 | `bridge/protocol/*`, `bridge/server_py/*`, `client/common/*`, `client/desktop/platform/*`, `client/desktop/ui/*`, `client/desktop/render/vulkan/*`, `visualization/*`, replay/stream equivalence contracts |
+| FR-139..FR-145, FR-148 | `bridge/protocol/*`, `bridge/server_py/*`, `client/common/*`, `client/desktop/platform/*`, `client/desktop/ui/*`, `client/desktop/render/vulkan/*`, `visualization/*`, replay/stream equivalence contracts |
+| FR-146..FR-147 | `visualization/quicklook_contracts.py`, `visualization/quicklook_pipeline.py`, `visualization/trajectory_render_contracts.py`, compact infographic UI adapters, rich-render trajectory overlay adapters |
 | FR-044..FR-048 | `core/simulation_clock.py`, `core/pacing_controller.py`, `core/scheduler.py`, replay/persistence metadata |
 | FR-049..FR-058, FR-138 | `core/model_graph.py`, `core/scheduler.py`, `core/simulation_runtime.py`, contract schemas, unit/frame validators, distributed sync protocol, replay metadata |
 | FR-067..FR-071 | `physics/*`, `communication/*`, `guidance/*`, `operations/*`, `scenario/*`, `cli.py`, regression test suites |
@@ -532,12 +533,14 @@ Execution order (authoritative):
   - trajectory plotting artifacts (2D/3D quicklook)
   - event markers on timeline/trajectory (`simulation_started`, `step_completed`, and later command/fault events)
   - minimal severity encoding (`info|warning|critical`) with deterministic event->severity mapping and basic 3-color styling
-  - optional overlay support for `current` vs `planned` traces.
+  - optional overlay support for `current` vs `planned` traces
+  - renderer-neutral trajectory curve+marker payload that can feed both compact infographic and rich 3D rendering paths.
 - Architecture surface:
   - `visualization/quicklook_contracts.py` (versioned quicklook extraction contracts)
   - `visualization/quicklook_pipeline.py` (headless extraction + 2D/3D pipeline adapters)
   - `visualization/trajectory_overlay.py` (trace alignment utilities)
-- Constraints: no dependence on full scene-graph/BVH/ray-march stack; severity mapping table must be versioned/extendable for later dashboard theming.
+  - `visualization/trajectory_render_contracts.py` (shared 3D curve + moving-object render payload)
+- Constraints: no dependence on full scene-graph/BVH/ray-march stack; severity mapping table must be versioned/extendable for later dashboard theming; infographic and rich-render consumers must share trajectory semantics rather than re-deriving from raw replay independently.
 
 ### R8.1 — Dashboard data contracts and view-models (headless)
 - Inputs: simulation snapshots/events/alarms, replay metadata.
@@ -573,6 +576,7 @@ Execution order (authoritative):
 ### R8.4/R8.5 — Full dashboard and rendering stack
 - Scene graph assembly, BVH acceleration, renderer profiles, and ray-marching pipeline.
 - Desktop stack realization uses SDL3/GLFW platform lifecycle + Dear ImGui shell + Vulkan renderer backend.
+- Trajectory UX is dual-path: a compact infographic widget (curves + icons) and a rich 3D viewport shall both consume the same trajectory render contracts.
 - Live/replay unification policy: both modes feed the same view-model and renderer contracts to preserve deterministic operator semantics.
 
 ## Python simulation <-> desktop renderer integration architecture

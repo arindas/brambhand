@@ -83,6 +83,7 @@ Validation covers:
 - Replay-driven trajectory quicklook acceptance (`current` path + event markers)
 - Quicklook severity readability acceptance using baseline `info|warning|critical` marker styling
 - `Current` vs `planned` overlay interpretability acceptance for planning/what-if review
+- Compact infographic acceptance (small-panel curves + object icons) for rapid trajectory situational awareness
 - Mission-control baseline layout acceptance (top bar, command panel, main viewport, telemetry rail, alarm timeline)
 - Onboard baseline layout acceptance (flight strip, instrument cluster, caution/warning rail, recent-events strip)
 - View-model schema compatibility acceptance across revisions (backward-compatible evolution checks)
@@ -96,7 +97,9 @@ Validation covers:
 - Live Python-stream ingestion acceptance (gRPC baseline, bounded-buffer/backpressure policy observability)
 - Replay-vs-live parity acceptance for timeline/event ordering and view-model continuity
 - Rendering profile acceptance (operational vs analysis)
+- Rich-render trajectory-curve acceptance (current/planned trace readability + moving-object marker behavior)
 - Replay camera/timeline deterministic synchronization
+- Cross-mode infographic-vs-rich semantic parity acceptance (matching `current/planned` interpretation, marker timing, and sampling behavior)
 - Geometry-change visualization acceptance for damage/deformation overlays after impact events
 - Crack/fracture/leak-source visualization acceptance under evolving structural damage
 - Volumetric plume/leak acceptance for nominal engine exhaust and off-nominal leak emissions

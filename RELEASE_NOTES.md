@@ -31,6 +31,11 @@
   - completed structural FEM migration to canonical `brambhand.structures.fem.*` namespace (`contracts`, `geometry`, `backends`, `solver`, `selection`) and removed legacy `fem_*` shim modules
   - added backend-equivalence + deterministic-repeatability tolerance tests for dense-vs-sparse structural solves (2D and 3D)
   - added structural latency/memory benchmark suite utility for 2D-vs-3D profile comparisons (P50/P95 solve timing + `nnz`-derived sparse storage estimate)
+- C++ test/CI baseline update:
+  - integrated GoogleTest in CMake build for native client-side tests (`src/test/*`, `gtest_discover_tests`)
+  - added initial runtime-frame unit tests on C++ side (`brambhand_client_tests`)
+  - updated CI to build and run C++ tests via CMake/CTest alongside Python quality gates
+  - updated repository conventions and docs for nested `python/brambhand` and `c/brambhand` layouts with standard C++ include/src/lib/src/bin organization
 - Visualization architecture decision update:
   - fixed desktop visualization stack to SDL3/GLFW platform layer + Dear ImGui docking UI + Vulkan renderer backend
   - fixed Python integration baseline to process-decoupled live gRPC stream bridge plus replay JSONL offline path
@@ -40,6 +45,30 @@
   - added replay-to-quicklook extraction helper (`extract_quicklook_telemetry`) with deterministic ordering
   - added `visualization/quicklook_pipeline.py` headless trajectory quicklook pipeline (2D/3D) from replay JSONL (`build_headless_quicklook_output`, `load_headless_quicklook_output`)
   - added quicklook contract/pipeline tests for extraction behavior, JSONL load path, and schema-version validation
+- R8.0 quicklook event-marker output baseline:
+  - extended headless quicklook outputs with deterministic event markers (`QuicklookEventMarker`) and optional trajectory anchors
+  - event markers now map each replay event to latest known trajectory position for timeline/trajectory overlay use
+  - expanded quicklook tests to cover marker extraction/anchoring behavior and JSONL load-path marker presence
+- R8.0 quicklook severity-contract baseline:
+  - added versioned severity contract (`QUICKLOOK_SEVERITY_SCHEMA_VERSION`) and deterministic event-kind mapping table (`QUICKLOOK_EVENT_SEVERITY_MAP`)
+  - extended `QuicklookEvent` with `severity` (`info|warning|critical`) using deterministic mapping and `info` fallback for unknown event kinds
+  - added severity mapping helper (`event_kind_to_severity`) and schema-validation tests
+- R8.0 quicklook severity styling baseline:
+  - added style schema version (`QUICKLOOK_STYLE_SCHEMA_VERSION`) and deterministic 3-color severity palette (`QUICKLOOK_SEVERITY_COLOR_MAP`)
+  - extended `QuicklookEventMarker` with `color_hex` resolved via `severity_to_color_hex(...)`
+  - added style mapping tests and pipeline assertions for style-schema/versioned marker coloring
+- R8.0 current-vs-planned trajectory overlay baseline:
+  - extended quicklook telemetry extraction with optional `planned_trajectory` samples from replay payload key `planned_position_m`
+  - added deterministic trace-alignment utilities in `visualization/trajectory_overlay.py` (`build_current_planned_overlay`)
+  - extended headless quicklook output with planned 2D/3D traces and aligned current-vs-planned overlay samples
+  - added tests for planned-trace extraction, overlay alignment, and missing-planned fallback behavior
+- R8.0 3D trajectory render contract baseline:
+  - added `visualization/trajectory_render_contracts.py` with versioned renderer-facing contract (`TrajectoryRenderContract3D`)
+  - exposes deterministic 3D current/planned polyline curves plus moving object markers sampled along curves at requested simulation time
+  - added renderer contract tests for curve generation, marker sampling semantics, and schema-version validation
+- Traceability update for dual trajectory presentation modes:
+  - updated `REQUIREMENTS.md` with explicit compact-infographic + rich-3D trajectory-view requirements and shared-contract parity constraints (`FR-146..FR-148`, `NR-065`)
+  - updated `DESIGN.md`, `TODO.md`, `VERIFICATION.md`, and `VALIDATION.md` to plan/verify/validate both trajectory presentation paths on shared semantics
 - R3.1 assembly-topology state graph baseline:
   - added `mission/assembly_topology.py` with deterministic attachment-graph contracts (`AssemblyTopologyState`, `AttachmentInterface`) and revisioned attach/detach transitions
   - added deterministic connected-component extraction and body-interface query helpers for disjoint-body connectivity state

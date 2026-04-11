@@ -86,6 +86,8 @@ This revision formalizes the **next requirement set** focused on:
 - FR-042: The system shall provide deterministic camera/state replay synchronization with simulation timelines for incident review and validation playback.
 - FR-043: The visualization subsystem shall support selectable rendering backends/profiles (fast operational mode vs high-fidelity analysis mode).
 - FR-083: Visualization shall support severe geometry discontinuities (e.g., partial/total structural separation) with deterministic replay of topology-change states and debris fragments.
+- FR-146: Trajectory visualization shall support two operator-consumable presentation modes from shared contracts: (a) compact infographic mode (curves + object icons) and (b) rich 3D scene mode.
+- FR-147: `current` and `planned` trajectory semantics, event marker timing, and simulation-time sampling rules shall remain consistent between infographic and rich 3D presentation modes.
 
 ## H. Verification hooks and observability
 - FR-029: The simulator shall expose machine-readable diagnostic channels for numerical stability, solver convergence, and coupling residuals.
@@ -119,6 +121,7 @@ This revision formalizes the **next requirement set** focused on:
 - FR-143: The Python simulation runtime shall expose a deterministic bridge contract for timeline/state/event streaming to the desktop client, including schema-version and sequence ordering metadata.
 - FR-144: The topology/overlay/render synchronization path shall preserve deterministic event ordering and replay equivalence between live-streamed and replay-file workflows within documented tolerances.
 - FR-145: The desktop rendering stack shall keep renderer-core and UI-layer boundaries explicit so advanced rendering features (BVH/ray-marching) can evolve without UI contract breakage.
+- FR-148: The visualization contract layer shall provide a renderer-neutral trajectory render payload consumable by both the compact infographic widget and rich 3D renderer without duplicate physics/ordering logic.
 
 ## K. Baseline mission simulation continuity
 - FR-067: The simulator shall preserve deterministic Newtonian N-body orbital propagation capability for baseline mission scenarios.
@@ -289,6 +292,7 @@ This revision formalizes the **next requirement set** focused on:
 - NR-062: Streamed timeline/event ordering shall remain monotonic and replay-equivalent to persisted replay artifacts within configured tolerances.
 - NR-063: Vulkan renderer resource lifecycle, synchronization hazards, and fallback/degraded-mode transitions shall be observable and bounded under operational and analysis profiles.
 - NR-064: UI/renderer integration shall preserve responsiveness under high event rates and avoid blocking simulation-bridge ingestion through bounded buffering policies.
+- NR-065: Infographic and rich 3D trajectory views shall maintain semantic parity (curve alignment, marker timing, `current` vs `planned` interpretation) within documented tolerances under replay and live-stream modes.
 
 ---
 

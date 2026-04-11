@@ -75,6 +75,7 @@ Detailed scenario/benchmark acceptance criteria are maintained in `VALIDATION.md
 | FR-125..FR-131 | nonlinear structural solve tests, material-model contract tests, transient structural integration tests, buckling/post-buckling workflow tests, fatigue-growth coupling tests, deterministic remesh provenance checks, thermo-structural coupling tests | advanced structural reference-benchmark scenarios with profile-class tolerance envelopes, thermal-coupling plausibility checks, and fallback-policy observability checks |
 | FR-132..FR-137 | chamber-flow/leak-jet/slosh unit/integration tests, leak-jet/slosh-to-6DOF coupling tests, topology-transition graph/state tests (fracture split + dock/undock attach/detach), FSI exchange-contract integration tests, CFD-adapter contract/backend-swap tests, replay topology/CFD provenance checks | chamber internal-flow plausibility scenarios, leak-jet disturbance scenarios, slosh-induced attitude disturbance scenarios, CFD-coupled plausibility scenarios, and topology-transition mission scenarios with conservation/replay checks |
 | FR-139..FR-145 | desktop platform abstraction tests (SDL3/GLFW lifecycle contracts), Dear ImGui view-model adapter tests, Vulkan renderer contract tests (frame-graph pass ordering/resource hazards), Python-bridge stream schema/version tests, replay-vs-stream equivalence tests, bounded-buffer/backpressure policy tests | desktop operator workflows in live-stream and replay modes, deterministic timeline parity scenarios, and profile-specific rendering acceptance with UI responsiveness checks |
+| FR-146..FR-148 | trajectory render-contract tests (schema/version checks, curve generation, moving-marker sampling), infographic adapter contract tests, rich-render trajectory adapter parity tests | side-by-side operator acceptance scenarios comparing compact infographic and rich 3D trajectory semantics (`current/planned` alignment, marker timing, sampling parity) |
 | FR-029..FR-030 | diagnostics/metadata emission tests | reproducible run record audits |
 
 ## 4) Non-functional verification plan
@@ -108,6 +109,7 @@ Detailed scenario/benchmark acceptance criteria are maintained in `VALIDATION.md
 - **R7.1 gate:** pacing/time-scale modes meet cadence bounds and preserve simulation timeline equivalence
 - **R7.2 gate:** inter-module/distributed contracts enforce atomic barrier commits, DAG-mutation correctness, and replay-grade persistence provenance
 - **R8.0 gate:** replay/trajectory quicklook outputs are deterministic, event-order preserving, and use a deterministic/extensible severity mapping contract (`info|warning|critical` baseline)
+- **R8 trajectory-view gate:** compact infographic and rich 3D trajectory views both consume shared trajectory render contracts and preserve `current/planned` + marker sampling parity
 - **R8.1 gate:** mission-control/onboard view-model schemas are versioned, validated, and replay-compatible
 - **R8.2 gate:** geometry-overlay contracts are versioned, validated, and replay-compatible
 - **R8.3 gate:** replay timeline/camera-control contracts preserve timeline equivalence across pacing modes

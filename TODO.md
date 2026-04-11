@@ -65,11 +65,12 @@
 ### R8.0 — Replay/trajectory quicklook
 - [x] Define minimal visualization telemetry contract for trajectory/event extraction from replay artifacts
 - [x] Implement headless trajectory quicklook pipeline (2D/3D) from replay JSONL
-- [ ] Add event markers in quicklook outputs
-- [ ] Add minimal severity contract in quicklook (`info|warning|critical`) with deterministic event->severity mapping table
-- [ ] Add basic severity styling in quicklook markers (3-color palette) with backward-compatible extension path for richer UI theming later
-- [ ] Add `current` vs `planned` trajectory overlay baseline (planned from predictor/scenario intent)
+- [x] Add event markers in quicklook outputs
+- [x] Add minimal severity contract in quicklook (`info|warning|critical`) with deterministic event->severity mapping table
+- [x] Add basic severity styling in quicklook markers (3-color palette) with backward-compatible extension path for richer UI theming later
+- [x] Add `current` vs `planned` trajectory overlay baseline (planned from predictor/scenario intent)
 - [ ] Add deterministic snapshot tests for quicklook extraction and ordering
+- [ ] Define compact infographic trajectory widget contract (curve layers + object-icon markers) using shared trajectory render payloads
 
 ### R4 — Fluid-structure interaction coupling
 - [ ] Implement two-way FSI coupler with convergence residuals
@@ -156,6 +157,7 @@
 - [ ] Implement onboard spacecraft dashboard UI consuming R8.1 schemas/view-model builders (no duplicate backend contract logic)
 - [ ] Integrate live Python-stream client (gRPC baseline) with bounded buffering/backpressure observability
 - [ ] Implement replay JSONL ingest path using the same view-model/render contracts as live mode
+- [ ] Implement compact trajectory infographic panel (current/planned curves + object icons) using shared trajectory render contracts
 - [ ] Implement 3D state/damage/leak overlays and event timeline integration consuming R8.2 overlay schemas
 - [ ] Implement explicit crack/fracture-path and leak-source visualization overlays
 - [ ] Implement topology-discontinuity visualization support for severe failures (e.g., structural separation/snapping)
@@ -169,6 +171,7 @@
 - [ ] Implement BVH acceleration structures for dynamic geometry
 - [ ] Implement ray-marching-capable volumetric rendering pipeline (plume/field views)
 - [ ] Implement rendering profiles (operational fast mode vs analysis mode)
+- [ ] Implement rich 3D trajectory-curve and moving-object rendering using shared trajectory render contracts
 - [ ] Implement deterministic replay camera/timeline synchronization
 - [ ] Add rendering V&V tests (frame-time budgets, temporal stability, BVH update costs)
 - [ ] Add rendering V&V scenarios for nominal engine plume and off-nominal leak plume visualization (ray-marching profiles)

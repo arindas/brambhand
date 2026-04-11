@@ -1,29 +1,71 @@
 """Replay-driven visualization contracts and extraction helpers."""
 
 from brambhand.visualization.quicklook_contracts import (
+    QUICKLOOK_EVENT_SEVERITY_MAP,
+    QUICKLOOK_SEVERITY_COLOR_MAP,
+    QUICKLOOK_SEVERITY_SCHEMA_VERSION,
+    QUICKLOOK_STYLE_SCHEMA_VERSION,
     QUICKLOOK_TELEMETRY_SCHEMA_VERSION,
     QuicklookEvent,
+    QuicklookSeverity,
     QuicklookTelemetryContract,
     TrajectorySample,
+    event_kind_to_severity,
     extract_quicklook_telemetry,
+    severity_to_color_hex,
 )
 from brambhand.visualization.quicklook_pipeline import (
     HeadlessQuicklookOutput,
     Quicklook2DPoint,
     Quicklook3DPoint,
+    QuicklookEventMarker,
     build_headless_quicklook_output,
     load_headless_quicklook_output,
 )
+from brambhand.visualization.trajectory_overlay import (
+    CurrentPlannedOverlaySample,
+    build_current_planned_overlay,
+)
+from brambhand.visualization.trajectory_render_contracts import (
+    CURRENT_OBJECT_COLOR_HEX,
+    CURRENT_TRAJECTORY_COLOR_HEX,
+    PLANNED_OBJECT_COLOR_HEX,
+    PLANNED_TRAJECTORY_COLOR_HEX,
+    TRAJECTORY_RENDER_SCHEMA_VERSION,
+    MovingObjectMarker3D,
+    TrajectoryCurve3D,
+    TrajectoryRenderContract3D,
+    build_trajectory_render_contract_3d,
+)
 
 __all__ = [
+    "QUICKLOOK_EVENT_SEVERITY_MAP",
+    "QUICKLOOK_SEVERITY_COLOR_MAP",
+    "QUICKLOOK_SEVERITY_SCHEMA_VERSION",
+    "QUICKLOOK_STYLE_SCHEMA_VERSION",
     "QUICKLOOK_TELEMETRY_SCHEMA_VERSION",
     "QuicklookEvent",
+    "QuicklookSeverity",
     "QuicklookTelemetryContract",
     "TrajectorySample",
     "HeadlessQuicklookOutput",
     "Quicklook2DPoint",
     "Quicklook3DPoint",
+    "QuicklookEventMarker",
+    "CurrentPlannedOverlaySample",
+    "TrajectoryCurve3D",
+    "MovingObjectMarker3D",
+    "TrajectoryRenderContract3D",
+    "TRAJECTORY_RENDER_SCHEMA_VERSION",
+    "CURRENT_TRAJECTORY_COLOR_HEX",
+    "PLANNED_TRAJECTORY_COLOR_HEX",
+    "CURRENT_OBJECT_COLOR_HEX",
+    "PLANNED_OBJECT_COLOR_HEX",
     "build_headless_quicklook_output",
+    "build_current_planned_overlay",
+    "build_trajectory_render_contract_3d",
+    "event_kind_to_severity",
     "extract_quicklook_telemetry",
+    "severity_to_color_hex",
     "load_headless_quicklook_output",
 ]
