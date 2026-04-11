@@ -103,15 +103,17 @@ brambhand replay replay.jsonl --kind step_completed --start-time 100 --end-time 
 
 ## Documentation
 
-- Docs index: [`docs/README.md`](./docs/README.md)
-- Quickstart: [`docs/QUICKSTART.md`](./docs/QUICKSTART.md)
-- Concepts: [`docs/CONCEPTS.md`](./docs/CONCEPTS.md)
-- Workflows: [`docs/WORKFLOWS.md`](./docs/WORKFLOWS.md)
-- Tutorials: [`docs/TUTORIALS.md`](./docs/TUTORIALS.md)
-- API reference: [`docs/API_REFERENCE.md`](./docs/API_REFERENCE.md)
-- Distributed protocol: [`docs/DISTRIBUTED_PROTOCOL.md`](./docs/DISTRIBUTED_PROTOCOL.md)
-- Performance SLOs: [`docs/PERFORMANCE_SLOS.md`](./docs/PERFORMANCE_SLOS.md)
-- Validation criteria: [`VALIDATION.md`](./VALIDATION.md)
+| Document | Link |
+|---|---|
+| Docs index | [`docs/README.md`](./docs/README.md) |
+| Quickstart | [`docs/QUICKSTART.md`](./docs/QUICKSTART.md) |
+| Concepts | [`docs/CONCEPTS.md`](./docs/CONCEPTS.md) |
+| Workflows | [`docs/WORKFLOWS.md`](./docs/WORKFLOWS.md) |
+| Tutorials | [`docs/TUTORIALS.md`](./docs/TUTORIALS.md) |
+| API reference | [`docs/API_REFERENCE.md`](./docs/API_REFERENCE.md) |
+| Distributed protocol | [`docs/DISTRIBUTED_PROTOCOL.md`](./docs/DISTRIBUTED_PROTOCOL.md) |
+| Performance SLOs | [`docs/PERFORMANCE_SLOS.md`](./docs/PERFORMANCE_SLOS.md) |
+| Validation criteria | [`VALIDATION.md`](./VALIDATION.md) |
 
 ## Contributing
 
