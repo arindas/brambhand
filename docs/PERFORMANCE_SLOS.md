@@ -59,6 +59,16 @@ and rendering responsiveness.
 | Cadence-guard fallback trigger | N/A | N/A | required (`CFD -> reduced-order`) |
 | Coupling determinism drift (fallback transition) | <= configured tolerance | <= configured tolerance | <= configured tolerance |
 
+## 6.2) Desktop UI/render + Python bridge SLOs (initial)
+
+| Metric | Operational | Analysis |
+|---|---:|---:|
+| Vulkan render frame time (P95) | <= 16.6 ms (~60 FPS target) | <= 50 ms (~20 FPS) |
+| UI input-to-present latency (P95) | <= 50 ms | <= 120 ms |
+| Live stream ingest lag vs latest committed sim tick (P95) | <= 2 ticks | <= 5 ticks |
+| Stream reorder/drop semantic violations | 0 tolerated | 0 tolerated |
+| Backpressure degraded-mode activation visibility | required | required |
+
 ## 7) Mode-selection thresholds (initial policy)
 
 Suggested automatic mode selection:
@@ -82,6 +92,7 @@ If SLO violations persist:
 - NR-029..NR-031: distributed barrier and persistence stability
 - NR-032..NR-036: structural solver scalability/determinism/fallback observability, including production matrix-free stability expectations
 - NR-058: slosh/CFD cadence-budget controls and explicit fallback behavior
+- NR-060..NR-064: desktop render/input latency, Python-bridge backpressure, stream-ordering parity, Vulkan hazard/fallback observability, and UI/renderer responsiveness targets
 
 ## 10) Observability metrics to publish
 
@@ -95,3 +106,6 @@ If SLO violations persist:
 - matrix-free mode stability/failure-rate metrics by profile
 - propulsion chamber/slosh update latency percentiles by profile
 - CFD-coupled fallback activation counts and transition durations
+- desktop input-to-present latency percentiles
+- live bridge ingest lag and buffer depth percentiles
+- stream continuity/reorder/drop counters

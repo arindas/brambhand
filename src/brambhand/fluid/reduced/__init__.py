@@ -8,7 +8,16 @@ from brambhand.fluid.reduced.chamber_flow import (
     step_chamber_flow,
 )
 from brambhand.fluid.reduced.leak_jet_dynamics import LeakJetPath, LeakJetState, evaluate_leak_jet
-from brambhand.fluid.reduced.slosh_model import SloshLoad
+from brambhand.fluid.reduced.slosh_model import (
+    SloshFallbackParams,
+    SloshGeometryDescriptor,
+    SloshLoad,
+    SloshModelParams,
+    SloshState,
+    SloshStepResult,
+    derive_slosh_model_params,
+    step_slosh_state,
+)
 
 __all__ = [
     "ChamberFlowDiagnostics",
@@ -17,7 +26,14 @@ __all__ = [
     "ChamberFlowStepResult",
     "LeakJetPath",
     "LeakJetState",
+    "SloshFallbackParams",
+    "SloshGeometryDescriptor",
     "SloshLoad",
+    "SloshModelParams",
+    "SloshState",
+    "SloshStepResult",
+    "derive_slosh_model_params",
+    "step_slosh_state",
     "evaluate_leak_jet",
     "step_chamber_flow",
 ]

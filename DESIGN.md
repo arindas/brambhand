@@ -132,6 +132,32 @@ src/brambhand/
     raymarch_pipeline.py          # volumetric rendering pipeline
     renderer_profiles.py          # operational vs analysis render modes
     replay_camera_sync.py         # deterministic camera/timeline sync
+  bridge/
+    protocol/
+      stream_schema.py            # versioned state/event/timeline transport contracts
+    server_py/
+      stream_publisher.py         # Python runtime stream bridge (live mode)
+      replay_adapter.py           # replay-log to stream-contract adapter
+  client_desktop/
+    platform/
+      windowing.py                # SDL3/GLFW lifecycle abstraction
+    stream/
+      grpc_client.py              # live-stream ingestion channel
+      ring_buffer.py              # bounded buffering/backpressure controls
+    replay/
+      replay_ingest.py            # replay JSONL ingest for offline mode
+    ui/
+      imgui_shell.py              # Dear ImGui docking shell and view panes
+    render/
+      vulkan/
+        device.py                 # Vulkan device/swapchain setup
+        frame_graph.py            # render-graph orchestration
+        scene_renderer.py         # scene draw passes
+        bvh_pipeline.py           # acceleration-structure build/update
+        volumetric_pass.py        # ray-marching volumetric pass
+      overlays/
+        event_markers.py
+        damage_overlays.py
   cli.py
 ```
 
@@ -350,6 +376,7 @@ Write semantics:
 | FR-119..FR-124 | `atmosphere/*`, `dynamics/aerodynamic_loads.py`, `launch/*`, `structures/buckling_screen.py`, `structures/fatigue_model.py`, coupling into `dynamics/*` + `structures/fracture_model.py` |
 | FR-125..FR-131 | `structures/fem/nonlinear.py`, `structures/fem/materials.py`, `structures/fem/transient.py`, `structures/fem/buckling.py`, `structures/fem/adaptivity.py`, `structures/fem/thermal_coupling.py`, `structures/fracture_model.py`, `geometry/mesh_pipeline.py`, runtime profile/fallback selectors |
 | FR-132..FR-137 | `fluid/reduced/*`, `fluid/cfd/*`, `fluid/contracts.py`, `propulsion/*`, `mission/assembly_topology.py`, `coupling/*`, `dynamics/*`, `structures/*` (including connected-topology state), replay/persistence topology provenance |
+| FR-139..FR-145 | `bridge/protocol/*`, `bridge/server_py/*`, `client_desktop/platform/*`, `client_desktop/ui/*`, `client_desktop/render/vulkan/*`, `client_desktop/stream/*`, `client_desktop/replay/*`, `visualization/*`, replay/stream equivalence contracts |
 | FR-044..FR-048 | `core/simulation_clock.py`, `core/pacing_controller.py`, `core/scheduler.py`, replay/persistence metadata |
 | FR-049..FR-058, FR-138 | `core/model_graph.py`, `core/scheduler.py`, `core/simulation_runtime.py`, contract schemas, unit/frame validators, distributed sync protocol, replay metadata |
 | FR-067..FR-071 | `physics/*`, `communication/*`, `guidance/*`, `operations/*`, `scenario/*`, `cli.py`, regression test suites |
@@ -502,7 +529,8 @@ Execution order (authoritative):
   - minimal severity encoding (`info|warning|critical`) with deterministic event->severity mapping and basic 3-color styling
   - optional overlay support for `current` vs `planned` traces.
 - Architecture surface:
-  - `visualization/quicklook.py` (headless extraction + plotting adapters)
+  - `visualization/quicklook_contracts.py` (versioned quicklook extraction contracts)
+  - `visualization/quicklook_pipeline.py` (headless extraction + 2D/3D pipeline adapters)
   - `visualization/trajectory_overlay.py` (trace alignment utilities)
 - Constraints: no dependence on full scene-graph/BVH/ray-march stack; severity mapping table must be versioned/extendable for later dashboard theming.
 
@@ -539,6 +567,15 @@ Execution order (authoritative):
 
 ### R8.4/R8.5 — Full dashboard and rendering stack
 - Scene graph assembly, BVH acceleration, renderer profiles, and ray-marching pipeline.
+- Desktop stack realization uses SDL3/GLFW platform lifecycle + Dear ImGui shell + Vulkan renderer backend.
+- Live/replay unification policy: both modes feed the same view-model and renderer contracts to preserve deterministic operator semantics.
+
+## Python simulation <-> desktop renderer integration architecture
+- **Authoritative simulation state:** Python runtime (`src/brambhand/*`) remains source of truth for physics, events, and replay persistence.
+- **Live bridge path:** Python emits versioned stream frames (`state/event/topology`) over gRPC from `bridge/server_py/*`; desktop client consumes and buffers via `client_desktop/stream/*`.
+- **Offline path:** Desktop client ingests replay JSONL via `client_desktop/replay/*` and uses the same visualization contracts as live mode.
+- **Determinism contract:** sequence IDs + schema versions are required on bridge payloads; replay and stream ordering semantics must remain equivalent within documented tolerances.
+- **Backpressure contract:** bounded ring buffers and explicit drop/degrade policies prevent UI/render stalls from blocking simulation bridge ingestion.
 
 ## Baseline UI layout (initial common-sense wireframe spec)
 
@@ -557,12 +594,12 @@ These are initial layout contracts to unblock backend/view-model design before f
 - Secondary mini-view: relative-motion/docking cue and proximity metrics.
 - Bottom strip: recent events and acknowledgment controls.
 
-## Visualization unknowns / decision log (tracked, not blocking)
-- UI framework choice (web stack vs native desktop).
-- Real-time streaming transport (websocket/gRPC/other) and auth model.
-- 3D renderer technology choice and hardware capability envelope.
-- Final interaction model for trajectory overlays (`planned` source vs `optimal` source before R11 availability).
-- Multi-vehicle screen-density policy for high object-count operations.
+## Visualization architecture decisions (resolved baseline)
+- Desktop UI is native and uses **SDL3/GLFW + Dear ImGui (docking baseline)**.
+- 3D rendering core uses **Vulkan APIs** behind explicit renderer-module boundaries.
+- Live simulation-to-UI bridge baseline is **versioned gRPC streaming**, with replay JSONL preserved as authoritative offline artifact.
+- Python simulation runtime and desktop client remain process-decoupled with explicit schema-version and sequence-order contracts.
+- Final interaction model for trajectory overlays (`planned` source vs `optimal` source before R11 availability) and multi-vehicle screen-density policy remain iterative UX refinements.
 
 ## Remaining design decisions to refine
 - Initial latency/SLO targets are documented in `docs/PERFORMANCE_SLOS.md`; refine with benchmark data.
@@ -570,7 +607,7 @@ These are initial layout contracts to unblock backend/view-model design before f
 - Initial persistence durability policy is documented in `docs/DISTRIBUTED_PROTOCOL.md`; finalize per deployment tier.
 - Initial fallback/degraded-mode hierarchy is documented in `docs/DISTRIBUTED_PROTOCOL.md`; refine with coupling stress tests.
 - FSI coupling policy needs explicit first-cut criteria for partitioned baseline operation vs monolithic escalation under instability/additional-mass sensitivity.
-- Visualization unknowns above are tracked as explicit decision items; implementations should proceed with R8.0/R8.1 defaults while preserving adapter boundaries for future swaps.
+- Visualization stack decisions above are now fixed for baseline implementation; remaining UX refinements should preserve the same contract boundaries.
 
 ## Incremental implementation roadmap
 

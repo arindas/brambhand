@@ -90,8 +90,11 @@ Validation covers:
 - Replay-control acceptance (play/pause/scrub/rate) with deterministic seek/timeline behavior
 
 ## R8.4 / R8.5 (dashboards + rendering)
+- Native desktop shell acceptance (SDL3/GLFW lifecycle + Dear ImGui docking workflow behavior)
 - Mission-control workflow acceptance (alerts/timeline/commands)
 - Onboard workflow acceptance (subsystem status readability)
+- Live Python-stream ingestion acceptance (gRPC baseline, bounded-buffer/backpressure policy observability)
+- Replay-vs-live parity acceptance for timeline/event ordering and view-model continuity
 - Rendering profile acceptance (operational vs analysis)
 - Replay camera/timeline deterministic synchronization
 - Geometry-change visualization acceptance for damage/deformation overlays after impact events
@@ -163,6 +166,7 @@ Each validation scenario must define:
 Validation suites in this document cover the following requirement groups:
 - FR-001..FR-005, FR-067..FR-071: dynamics/control and baseline mission continuity
 - FR-006..FR-010, FR-031, FR-132..FR-133, FR-135..FR-137: propulsion/combustion/nozzle behavior, chamber-internal flow, leak-jet/slosh dynamics, FSI-linked boundary exchange, and optional CFD-coupled workflows
+- FR-139..FR-145: desktop visualization stack, Vulkan rendering architecture, Dear ImGui UI integration, Python live-stream bridge contracts, and replay/live parity behaviors
 - FR-011..FR-015, FR-072..FR-073, FR-074..FR-080, FR-081..FR-083, FR-134: structures/fracture/FSI, severe topology-change events, assembly-topology transitions, and structural scalability paths (including matrix-free acceptance)
 - FR-016..FR-018, FR-032..FR-037: geometry ingestion and geometry-to-physics consistency
 - FR-019..FR-021, FR-064..FR-066: persistence/checkpoint/replay auditability
@@ -178,7 +182,7 @@ Validation suites in this document cover the following requirement groups:
 - FR-125..FR-131: advanced structural fidelity workflows (nonlinear/material/transient/buckling/fatigue-growth/thermal coupling/adaptive remeshing)
 - FR-029..FR-030: diagnostics and reproducibility metadata channels
 
-Non-functional validation intent in this document aligns with NR-001..NR-056, with specific SLO-aligned targets governed by `docs/PERFORMANCE_SLOS.md`.
+Non-functional validation intent in this document aligns with NR-001..NR-064, with specific SLO-aligned targets governed by `docs/PERFORMANCE_SLOS.md`.
 
 ## 7) Current validation-progress snapshot (2026-04-02)
 

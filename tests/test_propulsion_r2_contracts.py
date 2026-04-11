@@ -7,7 +7,9 @@ from brambhand.dynamics.rigid_body_6dof import (
 )
 from brambhand.fluid.contracts import (
     LEAK_JET_BOUNDARY_PAYLOAD_SCHEMA_VERSION,
+    SLOSH_BOUNDARY_PAYLOAD_SCHEMA_VERSION,
     LeakJetBoundaryPayload,
+    SloshBoundaryPayload,
 )
 from brambhand.fluid.reduced.chamber_flow import (
     ChamberFlowParams,
@@ -15,6 +17,14 @@ from brambhand.fluid.reduced.chamber_flow import (
     step_chamber_flow,
 )
 from brambhand.fluid.reduced.leak_jet_dynamics import LeakJetPath, evaluate_leak_jet
+from brambhand.fluid.reduced.slosh_model import (
+    SloshFallbackParams,
+    SloshGeometryDescriptor,
+    SloshModelParams,
+    SloshState,
+    derive_slosh_model_params,
+    step_slosh_state,
+)
 from brambhand.physics.vector import Vector3
 from brambhand.propulsion.combustion_model import (
     CombustionChamberParams,
@@ -35,9 +45,13 @@ from brambhand.propulsion.leak_jet_coupling import (
 from brambhand.propulsion.leakage_model import CompartmentState, LeakagePath, apply_leakage
 from brambhand.propulsion.performance import (
     ReducedOrderFallbackMode,
+    apply_slosh_degraded_mode,
     benchmark_reduced_order_propulsion_latency,
+    benchmark_reduced_order_slosh_latency,
     cadence_guard_mode,
 )
+from brambhand.propulsion.slosh_6dof_coupling import propagate_slosh_to_rigid_body
+from brambhand.propulsion.slosh_coupling import build_slosh_boundary_payload
 from brambhand.propulsion.thrust_estimator import (
     ChamberThrustCouplingParams,
     NozzleGeometryCorrection,
@@ -543,6 +557,49 @@ def test_leak_jet_boundary_payload_rejects_unsupported_version() -> None:
         raise AssertionError("Expected leak-jet boundary payload version validation failure")
 
 
+def test_slosh_boundary_payload_contract_mapping() -> None:
+    slosh_result = step_slosh_state(
+        state=SloshState(
+            displacement_body_m=Vector3(0.0, 0.0, 0.0),
+            velocity_body_mps=Vector3(0.0, 0.0, 0.0),
+        ),
+        params=SloshModelParams(
+            slosh_mass_kg=10.0,
+            spring_constant_npm=200.0,
+            damping_nspm=5.0,
+            max_displacement_m=0.2,
+            lever_arm_body_m=Vector3(0.0, 0.5, 0.0),
+        ),
+        body_linear_accel_body_mps2=Vector3(1.0, 0.0, 0.0),
+        dt_s=0.1,
+    )
+
+    payload = build_slosh_boundary_payload(slosh_result.load, interface_id="tank_A_slosh")
+
+    assert payload.schema_version == SLOSH_BOUNDARY_PAYLOAD_SCHEMA_VERSION
+    assert payload.com_offset_body_m == slosh_result.load.com_offset_body_m
+    boundary = payload.to_fluid_boundary_load()
+    assert boundary.interface_id == "tank_A_slosh"
+    assert boundary.force_body_n == slosh_result.load.force_body_n
+    assert boundary.torque_body_nm == slosh_result.load.torque_body_nm
+    assert boundary.mass_flow_kgps == 0.0
+
+
+def test_slosh_boundary_payload_rejects_unsupported_version() -> None:
+    try:
+        SloshBoundaryPayload(
+            interface_id="ifc",
+            schema_version=999,
+            slosh_force_body_n=Vector3(0.0, 0.0, 0.0),
+            slosh_torque_body_nm=Vector3(0.0, 0.0, 0.0),
+            com_offset_body_m=Vector3(0.0, 0.0, 0.0),
+        )
+    except ValueError as exc:
+        assert "schema_version" in str(exc)
+    else:
+        raise AssertionError("Expected slosh boundary payload version validation failure")
+
+
 def test_leak_jet_force_is_consistent_with_momentum_plus_pressure_terms() -> None:
     path = LeakJetPath(
         area_m2=2e-4,
@@ -600,6 +657,228 @@ def test_leak_jet_mass_flow_matches_leakage_mass_loss_rate_envelope() -> None:
 
     expected_leaked_mass = leak_jet.mass_flow_kgps * dt_s
     assert math.isclose(leaked_mass, expected_leaked_mass)
+
+
+def test_slosh_model_baseline_integrates_with_restoring_response() -> None:
+    params = SloshModelParams(
+        slosh_mass_kg=20.0,
+        spring_constant_npm=120.0,
+        damping_nspm=8.0,
+        max_displacement_m=0.3,
+    )
+    state = SloshState(
+        displacement_body_m=Vector3(0.0, 0.0, 0.0),
+        velocity_body_mps=Vector3(0.0, 0.0, 0.0),
+    )
+
+    result = step_slosh_state(
+        state=state,
+        params=params,
+        body_linear_accel_body_mps2=Vector3(1.0, 0.0, 0.0),
+        dt_s=0.1,
+    )
+
+    assert result.state.displacement_body_m.x < 0.0
+    assert result.state.velocity_body_mps.x < 0.0
+    assert result.load.force_body_n.x < 0.0
+    assert result.load.com_offset_body_m == result.state.displacement_body_m
+
+
+def test_slosh_model_emits_torque_from_lever_arm_cross_force() -> None:
+    params = SloshModelParams(
+        slosh_mass_kg=10.0,
+        spring_constant_npm=200.0,
+        damping_nspm=0.0,
+        max_displacement_m=1.0,
+        lever_arm_body_m=Vector3(0.0, 0.5, 0.0),
+    )
+    state = SloshState(
+        displacement_body_m=Vector3(0.1, 0.0, 0.0),
+        velocity_body_mps=Vector3(0.0, 0.0, 0.0),
+    )
+
+    result = step_slosh_state(
+        state=state,
+        params=params,
+        body_linear_accel_body_mps2=Vector3(0.0, 0.0, 0.0),
+        dt_s=0.05,
+    )
+
+    assert result.load.force_body_n.x > 0.0
+    assert result.load.torque_body_nm.z < 0.0
+
+
+def test_slosh_model_validation_rejects_bad_inputs() -> None:
+    try:
+        SloshModelParams(
+            slosh_mass_kg=0.0,
+            spring_constant_npm=100.0,
+            damping_nspm=1.0,
+            max_displacement_m=0.2,
+        )
+    except ValueError as exc:
+        assert "slosh_mass_kg" in str(exc)
+    else:
+        raise AssertionError("Expected slosh parameter validation failure")
+
+    params = SloshModelParams(
+        slosh_mass_kg=5.0,
+        spring_constant_npm=100.0,
+        damping_nspm=1.0,
+        max_displacement_m=0.2,
+    )
+    state = SloshState(
+        displacement_body_m=Vector3(0.0, 0.0, 0.0),
+        velocity_body_mps=Vector3(0.0, 0.0, 0.0),
+    )
+
+    try:
+        step_slosh_state(
+            state=state,
+            params=params,
+            body_linear_accel_body_mps2=Vector3(0.0, 0.0, 0.0),
+            dt_s=0.0,
+        )
+    except ValueError as exc:
+        assert "dt_s must be positive" in str(exc)
+    else:
+        raise AssertionError("Expected slosh step validation failure")
+
+
+def test_slosh_parameter_derivation_uses_geometry_hooks_and_fallback() -> None:
+    fallback = SloshFallbackParams(
+        natural_frequency_hz=0.8,
+        damping_ratio=0.06,
+        max_displacement_m=0.25,
+    )
+    from_geometry = derive_slosh_model_params(
+        slosh_mass_kg=15.0,
+        fallback=fallback,
+        geometry=SloshGeometryDescriptor(
+            source="stl",
+            characteristic_length_m=2.4,
+            equivalent_radius_m=0.5,
+            fill_fraction=0.7,
+            baffle_count=2,
+        ),
+    )
+    from_fallback = derive_slosh_model_params(
+        slosh_mass_kg=15.0,
+        fallback=fallback,
+        geometry=None,
+    )
+
+    assert from_geometry.spring_constant_npm != from_fallback.spring_constant_npm
+    assert from_geometry.damping_nspm > from_fallback.damping_nspm
+    assert from_geometry.max_displacement_m <= from_fallback.max_displacement_m
+
+
+def test_slosh_to_6dof_coupling_propagates_wrench_and_com_offset() -> None:
+    state = RigidBody6DoFState(
+        position_m=Vector3(0.0, 0.0, 0.0),
+        velocity_mps=Vector3(0.0, 0.0, 0.0),
+        attitude=UnitQuaternion(1.0, 0.0, 0.0, 0.0),
+        angular_velocity_radps=Vector3(0.0, 0.0, 0.0),
+    )
+    props = RigidBodyProperties(mass_kg=100.0, inertia_diag_kgm2=(20.0, 20.0, 20.0))
+
+    result = propagate_slosh_to_rigid_body(
+        state=state,
+        props=props,
+        slosh_load=step_slosh_state(
+            state=SloshState(
+                displacement_body_m=Vector3(0.1, 0.0, 0.0),
+                velocity_body_mps=Vector3(0.0, 0.0, 0.0),
+            ),
+            params=SloshModelParams(
+                slosh_mass_kg=10.0,
+                spring_constant_npm=200.0,
+                damping_nspm=0.0,
+                max_displacement_m=0.5,
+                lever_arm_body_m=Vector3(0.0, 0.5, 0.0),
+            ),
+            body_linear_accel_body_mps2=Vector3(0.0, 0.0, 0.0),
+            dt_s=0.1,
+        ).load,
+        dt_s=0.1,
+        nominal_com_body_m=Vector3(0.0, 0.0, 0.0),
+    )
+
+    assert result.state.velocity_mps.x > 0.0
+    assert result.state.angular_velocity_radps.z < 0.0
+    assert result.effective_com_body_m.x > 0.0
+    assert result.effective_com_inertial_m.x > 0.0
+
+
+def test_slosh_energy_sanity_envelope_without_external_forcing() -> None:
+    params = SloshModelParams(
+        slosh_mass_kg=10.0,
+        spring_constant_npm=200.0,
+        damping_nspm=0.5,
+        max_displacement_m=0.5,
+    )
+    state = SloshState(
+        displacement_body_m=Vector3(0.1, 0.0, 0.0),
+        velocity_body_mps=Vector3(0.0, 0.0, 0.0),
+    )
+
+    def slosh_energy(current: SloshState) -> float:
+        kinetic = 0.5 * params.slosh_mass_kg * current.velocity_body_mps.squared_norm()
+        potential = 0.5 * params.spring_constant_npm * current.displacement_body_m.squared_norm()
+        return kinetic + potential
+
+    initial_energy = slosh_energy(state)
+    for _ in range(100):
+        state = step_slosh_state(
+            state=state,
+            params=params,
+            body_linear_accel_body_mps2=Vector3(0.0, 0.0, 0.0),
+            dt_s=0.01,
+        ).state
+
+    final_energy = slosh_energy(state)
+    assert final_energy >= 0.0
+    assert final_energy < initial_energy
+
+
+def test_slosh_latency_benchmark_and_degraded_mode_controls() -> None:
+    slosh_state = SloshState(
+        displacement_body_m=Vector3(0.0, 0.0, 0.0),
+        velocity_body_mps=Vector3(0.0, 0.0, 0.0),
+    )
+    slosh_params = SloshModelParams(
+        slosh_mass_kg=15.0,
+        spring_constant_npm=180.0,
+        damping_nspm=6.0,
+        max_displacement_m=0.25,
+    )
+
+    result = benchmark_reduced_order_slosh_latency(
+        slosh_state=slosh_state,
+        slosh_params=slosh_params,
+        body_linear_accel_body_mps2=Vector3(1.0, 0.0, 0.0),
+        dt_s=0.1,
+        repeats=5,
+        operational_budget_s=0.01,
+    )
+
+    assert result.repeats == 5
+    assert result.p95_step_latency_s >= result.p50_step_latency_s
+
+    nominal_load = step_slosh_state(
+        state=slosh_state,
+        params=slosh_params,
+        body_linear_accel_body_mps2=Vector3(1.0, 0.0, 0.0),
+        dt_s=0.1,
+    ).load
+    degraded_load = apply_slosh_degraded_mode(
+        nominal_load,
+        ReducedOrderFallbackMode.REDUCED_ORDER_GUARD_ACTIVE,
+    )
+
+    assert degraded_load.force_body_n == nominal_load.force_body_n
+    assert degraded_load.torque_body_nm == Vector3(0.0, 0.0, 0.0)
+    assert degraded_load.com_offset_body_m == Vector3(0.0, 0.0, 0.0)
 
 
 def test_reduced_order_propulsion_latency_benchmark_reports_summary() -> None:
@@ -801,3 +1080,25 @@ def test_chamber_flow_validation_rejects_bad_inputs() -> None:
         assert "repeats" in str(exc)
     else:
         raise AssertionError("Expected propulsion latency benchmark validation failure")
+
+    try:
+        benchmark_reduced_order_slosh_latency(
+            slosh_state=SloshState(
+                displacement_body_m=Vector3(0.0, 0.0, 0.0),
+                velocity_body_mps=Vector3(0.0, 0.0, 0.0),
+            ),
+            slosh_params=SloshModelParams(
+                slosh_mass_kg=5.0,
+                spring_constant_npm=100.0,
+                damping_nspm=1.0,
+                max_displacement_m=0.2,
+            ),
+            body_linear_accel_body_mps2=Vector3(0.0, 0.0, 0.0),
+            dt_s=0.1,
+            repeats=0,
+            operational_budget_s=0.01,
+        )
+    except ValueError as exc:
+        assert "repeats" in str(exc)
+    else:
+        raise AssertionError("Expected slosh latency benchmark validation failure")

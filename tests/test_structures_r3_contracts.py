@@ -1,5 +1,7 @@
 import math
 
+from brambhand.core.event_bus import Event, EventBus
+from brambhand.propulsion.leakage_model import CompartmentState, LeakagePath, apply_leakage
 from brambhand.structures.fem.solver import (
     BoundaryConstraint2D,
     BoundaryConstraint3D,
@@ -27,6 +29,15 @@ from brambhand.structures.fem.solver import (
     select_structural_model_dimension,
     solve_linear_static_fem,
     solve_linear_static_fem_3d,
+)
+from brambhand.structures.fracture import (
+    CONNECTED_TOPOLOGY_DAMAGE_PAYLOAD_SCHEMA_VERSION,
+    ConnectedTopologyDamagePayload,
+    FractureInitiationParams,
+    build_connected_topology_damage_payload,
+    evaluate_fracture_initiation,
+    evaluate_fracture_initiation_from_fem_2d,
+    propagate_damage_effects,
 )
 
 
@@ -817,5 +828,198 @@ def test_structural_model_selection_policy_for_2d_vs_3d() -> None:
     )
     assert decision_3d.dimension == StructuralModelDimension.THREE_D
     assert len(decision_3d.reasons) >= 1
+
+
+def test_fracture_initiation_damage_progression_from_stress_levels() -> None:
+    params = FractureInitiationParams(
+        yield_von_mises_pa=100.0,
+        ultimate_von_mises_pa=200.0,
+    )
+    states = evaluate_fracture_initiation((50.0, 150.0, 250.0), params)
+
+    assert states[0].damage_fraction == 0.0
+    assert math.isclose(states[1].damage_fraction, 0.5)
+    assert states[2].damage_fraction == 1.0
+    assert not states[1].fractured
+    assert states[2].fractured
+
+
+def test_fracture_initiation_can_be_evaluated_from_fem_results() -> None:
+    result = solve_linear_static_fem(_build_plate_model(load_scale=1.0))
+    params = FractureInitiationParams(
+        yield_von_mises_pa=1e5,
+        ultimate_von_mises_pa=1e7,
+    )
+
+    states = evaluate_fracture_initiation_from_fem_2d(result, params)
+
+    assert len(states) == len(result.element_results)
+    assert all(state.von_mises_pa >= 0.0 for state in states)
+
+
+def test_damage_propagation_updates_mass_stiffness_contact_and_leak_indicator() -> None:
+    params = FractureInitiationParams(
+        yield_von_mises_pa=100.0,
+        ultimate_von_mises_pa=200.0,
+    )
+    states = evaluate_fracture_initiation((80.0, 140.0, 220.0), params)
+
+    propagated = propagate_damage_effects(
+        states,
+        max_mass_loss_fraction=0.3,
+        min_stiffness_scale=0.1,
+        max_contact_compliance_multiplier=5.0,
+        leak_path_damage_threshold=0.9,
+    )
+
+    assert propagated.mean_damage_fraction > 0.0
+    assert propagated.mass_scale < 1.0
+    assert propagated.stiffness_scale < 1.0
+    assert propagated.contact_stiffness_scale < 1.0
+    assert propagated.leak_path_created
+
+
+def test_connected_topology_damage_payload_mapping_for_leak_fsi_consumers() -> None:
+    params = FractureInitiationParams(
+        yield_von_mises_pa=100.0,
+        ultimate_von_mises_pa=200.0,
+    )
+    states = evaluate_fracture_initiation((80.0, 140.0, 220.0, 260.0), params)
+
+    payload = build_connected_topology_damage_payload(
+        states,
+        component_id="hab_shell",
+        leak_path_damage_threshold=0.9,
+        hole_area_per_failed_element_m2=2e-4,
+    )
+
+    assert payload.schema_version == CONNECTED_TOPOLOGY_DAMAGE_PAYLOAD_SCHEMA_VERSION
+    assert payload.component_id == "hab_shell"
+    assert payload.failed_element_ids == (2, 3)
+    assert payload.leak_path_candidate_element_ids == (2, 3)
+    assert payload.hole_area_proxy_m2 == 4e-4
+    assert len(payload.crack_network_edges) >= 1
+
+
+def test_connected_topology_damage_payload_rejects_invalid_version() -> None:
+    try:
+        ConnectedTopologyDamagePayload(
+            component_id="hab_shell",
+            schema_version=999,
+            damaged_element_ids=(1,),
+            failed_element_ids=(1,),
+            crack_network_edges=((1, 2),),
+            hole_area_proxy_m2=1e-4,
+            leak_path_candidate_element_ids=(1,),
+        )
+    except ValueError as exc:
+        assert "schema_version" in str(exc)
+    else:
+        raise AssertionError("Expected connected-topology payload version validation failure")
+
+
+def test_structural_failure_scenario_generates_leak_path_candidates() -> None:
+    fem_result = solve_linear_static_fem(_build_plate_model(load_scale=3.0))
+    fracture_states = evaluate_fracture_initiation_from_fem_2d(
+        fem_result,
+        FractureInitiationParams(
+            yield_von_mises_pa=2e5,
+            ultimate_von_mises_pa=8e5,
+        ),
+    )
+
+    propagated = propagate_damage_effects(
+        fracture_states,
+        leak_path_damage_threshold=0.6,
+    )
+    payload = build_connected_topology_damage_payload(
+        fracture_states,
+        component_id="pressure_vessel",
+        leak_path_damage_threshold=0.6,
+    )
+
+    assert propagated.leak_path_created
+    assert len(payload.leak_path_candidate_element_ids) >= 1
+    assert payload.component_id == "pressure_vessel"
+
+
+def test_asteroid_impact_fault_chain_connected_topology_progression() -> None:
+    bus = EventBus()
+
+    fem_result = solve_linear_static_fem(_build_plate_model(load_scale=4.0))
+    fracture_states = evaluate_fracture_initiation_from_fem_2d(
+        fem_result,
+        FractureInitiationParams(
+            yield_von_mises_pa=2e5,
+            ultimate_von_mises_pa=7e5,
+        ),
+    )
+    payload = build_connected_topology_damage_payload(
+        fracture_states,
+        component_id="hab_shell",
+        leak_path_damage_threshold=0.6,
+        hole_area_per_failed_element_m2=3e-4,
+    )
+
+    bus.emit(
+        Event(
+            sim_time_s=0.0,
+            kind="impact_detected",
+            payload={"component_id": payload.component_id},
+        )
+    )
+    bus.emit(
+        Event(
+            sim_time_s=0.1,
+            kind="connected_topology_damage_updated",
+            payload={
+                "failed_element_count": len(payload.failed_element_ids),
+                "hole_area_proxy_m2": payload.hole_area_proxy_m2,
+            },
+        )
+    )
+
+    compartment = CompartmentState(
+        mass_kg=25.0,
+        pressure_pa=101_325.0,
+        volume_m3=30.0,
+        gas_constant_jpkgk=287.0,
+        temperature_k=294.0,
+    )
+    leak = LeakagePath(
+        area_m2=max(payload.hole_area_proxy_m2, 1e-5),
+        discharge_coefficient=0.7,
+        fluid_density_kgpm3=1.2,
+        external_pressure_pa=100.0,
+    )
+
+    for step in range(1, 6):
+        compartment, leaked_mass = apply_leakage(compartment, leak, dt_s=0.5)
+        if leaked_mass > 0.0:
+            bus.emit(
+                Event(
+                    sim_time_s=0.1 + 0.5 * step,
+                    kind="depressurization_step",
+                    payload={"pressure_pa": compartment.pressure_pa},
+                )
+            )
+
+    if compartment.pressure_pa < 80_000.0:
+        bus.emit(
+            Event(
+                sim_time_s=3.0,
+                kind="alarm_critical_depressurization",
+                payload={"pressure_pa": compartment.pressure_pa},
+            )
+        )
+
+    events = bus.snapshot()
+
+    assert payload.component_id == "hab_shell"
+    assert payload.schema_version == CONNECTED_TOPOLOGY_DAMAGE_PAYLOAD_SCHEMA_VERSION
+    assert payload.hole_area_proxy_m2 > 0.0
+    assert len(payload.failed_element_ids) >= 1
+    assert compartment.pressure_pa < 101_325.0
+    assert any(event.kind == "alarm_critical_depressurization" for event in events)
 
 

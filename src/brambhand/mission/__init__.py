@@ -1,0 +1,43 @@
+"""Mission-level state and orchestration primitives."""
+
+from brambhand.mission.assembly_topology import (
+    AssemblyTopologyState,
+    AttachmentInterface,
+    DockingTransitionKind,
+    DockingTransitionProvenance,
+    FractureSplitProvenance,
+    TopologyComponent,
+    TopologyPropagationEffects,
+    apply_docking_attach_transition,
+    apply_docking_detach_transition,
+    apply_fracture_split_transition,
+    attach_interface,
+    build_topology_transition_payload,
+    connected_components,
+    create_assembly_topology_state,
+    derive_topology_propagation_effects,
+    detach_interface,
+    interfaces_for_body,
+    reconstruct_topology_from_transition_payloads,
+)
+
+__all__ = [
+    "AssemblyTopologyState",
+    "AttachmentInterface",
+    "DockingTransitionKind",
+    "DockingTransitionProvenance",
+    "FractureSplitProvenance",
+    "TopologyComponent",
+    "TopologyPropagationEffects",
+    "apply_docking_attach_transition",
+    "apply_docking_detach_transition",
+    "apply_fracture_split_transition",
+    "build_topology_transition_payload",
+    "attach_interface",
+    "connected_components",
+    "create_assembly_topology_state",
+    "derive_topology_propagation_effects",
+    "detach_interface",
+    "interfaces_for_body",
+    "reconstruct_topology_from_transition_payloads",
+]

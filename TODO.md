@@ -24,12 +24,12 @@
 - [x] Add R2.2 latency/cadence benchmark checks against operational profile budgets with explicit reduced-order fallback behavior
 
 ### R2.3 — Reduced-order propellant slosh simulation and 6-DOF coupling
-- [ ] Implement tank slosh state model baseline (lumped pendulum/spring-mass equivalent) with deterministic integration
-- [ ] Define versioned slosh load export payload consumed by FSI/coupling controller
-- [ ] Propagate slosh-induced force/torque and effective CoM offsets into rigid-body 6-DOF updates
-- [ ] Add geometry-aware slosh parameter hooks for STL-derived tank descriptors (with non-STL parameter fallback)
-- [ ] Add slosh coupling tests (attitude disturbance response + conservation/energy sanity envelopes)
-- [ ] Add R2.3 latency/cadence benchmark checks against operational profile budgets with explicit degraded-mode controls
+- [x] Implement tank slosh state model baseline (lumped pendulum/spring-mass equivalent) with deterministic integration
+- [x] Define versioned slosh load export payload consumed by FSI/coupling controller
+- [x] Propagate slosh-induced force/torque and effective CoM offsets into rigid-body 6-DOF updates
+- [x] Add geometry-aware slosh parameter hooks for STL-derived tank descriptors (with non-STL parameter fallback)
+- [x] Add slosh coupling tests (attitude disturbance response + conservation/energy sanity envelopes)
+- [x] Add R2.3 latency/cadence benchmark checks against operational profile budgets with explicit degraded-mode controls
 
 ### R3 — Structural FEM and fracture
 - [x] Implement FEM structural evaluation baseline for chassis components
@@ -48,23 +48,23 @@
 - [x] Remove legacy structural FEM shim modules (`fem_solver`, `fem_contracts`, `fem_geometry`, `fem_backends`) and migrate all imports/docs/tests to canonical `structures.fem.*` paths
 - [x] Add backend-equivalence and determinism tolerance tests (dense vs sparse modes)
 - [x] Add structural latency/memory benchmark suite for 2D vs 3D profiles
-- [ ] Implement fracture initiation/propagation baseline model
-- [ ] Implement damage state propagation to mass/stiffness/contact behavior
-- [ ] Define connected-topology damage payload/state (holes/crack-network evolution without disjoint split) for leak/FSI consumers
-- [ ] Add structural failure scenario tests (including leak path creation)
-- [ ] Add end-to-end asteroid-impact fault-chain scenario test for connected-topology damage progression (`impact -> localized damage/hole/crack growth -> leak thrust/moment -> cabin depressurization -> alarm/event propagation`; no disjoint-body split in this R3 test)
+- [x] Implement fracture initiation/propagation baseline model
+- [x] Implement damage state propagation to mass/stiffness/contact behavior
+- [x] Define connected-topology damage payload/state (holes/crack-network evolution without disjoint split) for leak/FSI consumers
+- [x] Add structural failure scenario tests (including leak path creation)
+- [x] Add end-to-end asteroid-impact fault-chain scenario test for connected-topology damage progression (`impact -> localized damage/hole/crack growth -> leak thrust/moment -> cabin depressurization -> alarm/event propagation`; no disjoint-body split in this R3 test)
 
 ### R3.1 — Disjoint-topology transition simulation baseline
-- [ ] Implement assembly-topology state graph for disjoint-body connectivity (attachments/interfaces between rigid bodies/modules)
-- [ ] Implement fracture-driven topology split transitions into distinct rigid bodies with deterministic IDs/provenance
-- [ ] Implement baseline dock/undock attach/detach topology transitions with constraint/contact handoff (lifecycle mission semantics remain in R10)
-- [ ] Define versioned topology-transition payload for FSI/leak-boundary consumers
-- [ ] Propagate topology transitions to mass properties, constraints, contact manifolds, and control authority surfaces (graph-level topology effects; material damage-state evolution remains in R3)
-- [ ] Add determinism/conservation tests for disjoint-topology transitions and replay reconstruction (including split-body provenance and downstream coupling continuity)
+- [x] Implement assembly-topology state graph for disjoint-body connectivity (attachments/interfaces between rigid bodies/modules)
+- [x] Implement fracture-driven topology split transitions into distinct rigid bodies with deterministic IDs/provenance
+- [x] Implement baseline dock/undock attach/detach topology transitions with constraint/contact handoff (lifecycle mission semantics remain in R10)
+- [x] Define versioned topology-transition payload for FSI/leak-boundary consumers
+- [x] Propagate topology transitions to mass properties, constraints, contact manifolds, and control authority surfaces (graph-level topology effects; material damage-state evolution remains in R3)
+- [x] Add determinism/conservation tests for disjoint-topology transitions and replay reconstruction (including split-body provenance and downstream coupling continuity)
 
 ### R8.0 — Replay/trajectory quicklook
-- [ ] Define minimal visualization telemetry contract for trajectory/event extraction from replay artifacts
-- [ ] Implement headless trajectory quicklook pipeline (2D/3D) from replay JSONL
+- [x] Define minimal visualization telemetry contract for trajectory/event extraction from replay artifacts
+- [x] Implement headless trajectory quicklook pipeline (2D/3D) from replay JSONL
 - [ ] Add event markers in quicklook outputs
 - [ ] Add minimal severity contract in quicklook (`info|warning|critical`) with deterministic event->severity mapping table
 - [ ] Add basic severity styling in quicklook markers (3-color palette) with backward-compatible extension path for richer UI theming later
@@ -84,8 +84,11 @@
 ### R8.1 — Dashboard data contracts and headless view-models
 - [ ] Define versioned mission-control view-model schema (telemetry cards, alarms, timeline, command status)
 - [ ] Define versioned onboard view-model schema (flight instruments, subsystem health, cautions/warnings)
+- [ ] Define versioned Python-to-desktop stream schema contracts (`state/event/topology/frame metadata`) shared by live stream and replay adapters
+- [ ] Implement Python bridge publisher baseline for live streaming with explicit sequence/schema metadata
 - [ ] Implement headless view-model builders from committed simulation state + replay metadata
 - [ ] Add schema compatibility tests and deterministic serialization tests
+- [ ] Add replay-vs-live stream equivalence tests for ordering and timeline continuity
 - [ ] Freeze baseline mission-control/onboard layout contracts for downstream UI realization
 
 ### R5 — Geometry pipeline (STL import)
@@ -148,8 +151,11 @@
 - [ ] Add integration tests for causal ordering, DAG-mutation correctness, and audit-grade replay reconstruction
 
 ### R8.4 — Visualization and dashboards (full UI realization after R8.0..R8.3 contracts)
+- [ ] Implement native desktop app shell using SDL3/GLFW platform layer and Dear ImGui docking UI baseline
 - [ ] Implement mission-control dashboard UI consuming R8.1 schemas/view-model builders (no duplicate backend contract logic)
 - [ ] Implement onboard spacecraft dashboard UI consuming R8.1 schemas/view-model builders (no duplicate backend contract logic)
+- [ ] Integrate live Python-stream client (gRPC baseline) with bounded buffering/backpressure observability
+- [ ] Implement replay JSONL ingest path using the same view-model/render contracts as live mode
 - [ ] Implement 3D state/damage/leak overlays and event timeline integration consuming R8.2 overlay schemas
 - [ ] Implement explicit crack/fracture-path and leak-source visualization overlays
 - [ ] Implement topology-discontinuity visualization support for severe failures (e.g., structural separation/snapping)
@@ -157,7 +163,9 @@
 - [ ] Add visualization acceptance scenario for post-impact geometry-change overlays and leak/depressurization operator cues
 
 ### R8.5 — 3D rendering core
+- [ ] Implement Vulkan renderer backend core (device/swapchain/pipeline bootstrap) behind explicit renderer interfaces
 - [ ] Implement render scene graph assembly from simulation state
+- [ ] Implement frame-graph orchestration for multi-pass rendering (geometry/overlay/volumetric/UI composition)
 - [ ] Implement BVH acceleration structures for dynamic geometry
 - [ ] Implement ray-marching-capable volumetric rendering pipeline (plume/field views)
 - [ ] Implement rendering profiles (operational fast mode vs analysis mode)
@@ -254,4 +262,4 @@
 - [ ] Keep VALIDATION scenario/benchmark registry current with new acceptance evidence
 - [ ] Keep inline API docs complete for all new public modules
 - [ ] Maintain release notes for each semver milestone
-- [ ] Track unresolved UI/renderer/transport decisions in DESIGN decision log with explicit owner and due milestone
+- [x] Track unresolved UI/renderer/transport decisions in DESIGN decision log with explicit owner and due milestone (baseline stack fixed to SDL3/GLFW + Dear ImGui + Vulkan + Python gRPC bridge)

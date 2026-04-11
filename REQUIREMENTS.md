@@ -111,6 +111,15 @@ This revision formalizes the **next requirement set** focused on:
 - FR-058: Visualization shall support deterministic interpolation/extrapolation policies when render rate differs from simulation tick rate.
 - FR-138: The runtime shall maintain an explicit model-graph DAG for active subsystems with versioned node/edge contracts, cycle rejection, deterministic topological execution order, and controlled graph-mutation transactions (e.g., topology split/attach events) at tick boundaries.
 
+## U. Desktop visualization stack and Python integration
+- FR-139: The visualization client shall run as a native desktop application and use SDL3 or GLFW for window/input lifecycle management.
+- FR-140: The operator UI stack shall use Dear ImGui (docking baseline) and consume versioned headless view-model contracts without duplicating backend contract logic.
+- FR-141: The 3D rendering core shall use Vulkan APIs with explicit frame-graph/resource-management architecture and profile-aware rendering policies.
+- FR-142: The visualization system shall support both replay-file mode and live-stream mode from the simulation runtime using versioned transport contracts.
+- FR-143: The Python simulation runtime shall expose a deterministic bridge contract for timeline/state/event streaming to the desktop client, including schema-version and sequence ordering metadata.
+- FR-144: The topology/overlay/render synchronization path shall preserve deterministic event ordering and replay equivalence between live-streamed and replay-file workflows within documented tolerances.
+- FR-145: The desktop rendering stack shall keep renderer-core and UI-layer boundaries explicit so advanced rendering features (BVH/ray-marching) can evolve without UI contract breakage.
+
 ## K. Baseline mission simulation continuity
 - FR-067: The simulator shall preserve deterministic Newtonian N-body orbital propagation capability for baseline mission scenarios.
 - FR-068: The simulator shall preserve communication line-of-sight evaluation with occlusion checks using configured occluder geometry.
@@ -275,6 +284,11 @@ This revision formalizes the **next requirement set** focused on:
 - NR-057: Topology-transition and leak-jet force propagation workflows shall be deterministic, conservation-consistent (mass/momentum within configured tolerances), and fully traceable in replay metadata.
 - NR-058: Slosh and CFD-coupled fluid workflows shall respect profile-specific latency budgets and cadence safeguards, with explicit degraded-mode fallback to reduced-order models when runtime pressure exceeds configured thresholds.
 - NR-059: Model-graph DAG build/validation and mutation-application costs shall be observable and bounded by profile so scheduler overhead does not violate cadence budgets.
+- NR-060: Desktop rendering frame-time and input-latency performance shall meet profile-specific SLOs with explicit telemetry for P50/P95/P99 observability.
+- NR-061: Live-stream bridge backpressure, drop policy, and recovery behavior between Python runtime and desktop client shall be explicit, deterministic, and operator-observable.
+- NR-062: Streamed timeline/event ordering shall remain monotonic and replay-equivalent to persisted replay artifacts within configured tolerances.
+- NR-063: Vulkan renderer resource lifecycle, synchronization hazards, and fallback/degraded-mode transitions shall be observable and bounded under operational and analysis profiles.
+- NR-064: UI/renderer integration shall preserve responsiveness under high event rates and avoid blocking simulation-bridge ingestion through bounded buffering policies.
 
 ---
 

@@ -31,6 +31,30 @@
   - completed structural FEM migration to canonical `brambhand.structures.fem.*` namespace (`contracts`, `geometry`, `backends`, `solver`, `selection`) and removed legacy `fem_*` shim modules
   - added backend-equivalence + deterministic-repeatability tolerance tests for dense-vs-sparse structural solves (2D and 3D)
   - added structural latency/memory benchmark suite utility for 2D-vs-3D profile comparisons (P50/P95 solve timing + `nnz`-derived sparse storage estimate)
+- Visualization architecture decision update:
+  - fixed desktop visualization stack to SDL3/GLFW platform layer + Dear ImGui docking UI + Vulkan renderer backend
+  - fixed Python integration baseline to process-decoupled live gRPC stream bridge plus replay JSONL offline path
+  - synchronized `REQUIREMENTS.md`, `DESIGN.md`, `TODO.md`, `VERIFICATION.md`, `VALIDATION.md`, and `docs/PERFORMANCE_SLOS.md` with concrete desktop-renderer/bridge contracts and V&V expectations
+- R8.0 quicklook telemetry contract baseline:
+  - added `visualization/quicklook_contracts.py` with versioned minimal trajectory/event extraction contract (`QuicklookTelemetryContract`)
+  - added replay-to-quicklook extraction helper (`extract_quicklook_telemetry`) with deterministic ordering
+  - added `visualization/quicklook_pipeline.py` headless trajectory quicklook pipeline (2D/3D) from replay JSONL (`build_headless_quicklook_output`, `load_headless_quicklook_output`)
+  - added quicklook contract/pipeline tests for extraction behavior, JSONL load path, and schema-version validation
+- R3.1 assembly-topology state graph baseline:
+  - added `mission/assembly_topology.py` with deterministic attachment-graph contracts (`AssemblyTopologyState`, `AttachmentInterface`) and revisioned attach/detach transitions
+  - added deterministic connected-component extraction and body-interface query helpers for disjoint-body connectivity state
+  - added fracture-driven split transition baseline with deterministic child-body IDs/provenance (`apply_fracture_split_transition`, `FractureSplitProvenance`) and deterministic interface rewiring policy
+  - added baseline dock/undock topology transitions with constraint/contact handoff provenance (`apply_docking_attach_transition`, `apply_docking_detach_transition`, `DockingTransitionProvenance`)
+  - defined versioned topology-transition payload contract for FSI/leak-boundary consumers (`TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION`, `TopologyTransitionPayload`) and mapping helper (`build_topology_transition_payload`)
+  - added graph-level topology effect derivation (`derive_topology_propagation_effects`, `TopologyPropagationEffects`) to target downstream mass-property, constraint/contact-manifold, and control-authority updates
+  - added contract tests covering attach/detach transitions, deterministic canonical ordering, connectivity decomposition, invalid-graph rejection, split-transition provenance behavior, and replay reconstruction/determinism checks with downstream propagation-continuity assertions
+- R3 fracture/damage baseline:
+  - added `structures/fracture.py` with deterministic fracture-initiation thresholds (`FractureInitiationParams`) and per-element damage-state evaluation
+  - added FEM-linked fracture evaluation helpers for 2D/3D solve outputs
+  - added baseline damage propagation modifiers for mass/stiffness/contact behavior plus leak-path indicator contract (`propagate_damage_effects`)
+  - added connected-topology damage payload contract for leak/FSI consumers (`CONNECTED_TOPOLOGY_DAMAGE_PAYLOAD_SCHEMA_VERSION`, `ConnectedTopologyDamagePayload`, `build_connected_topology_damage_payload`) covering holes/crack-network evolution without disjoint split
+  - exported fracture contracts via `brambhand.structures`
+  - added structural contract tests for damage progression, FEM-linked fracture evaluation, propagated behavior modifiers, structural-failure leak-path scenario coverage, and an asteroid-impact connected-topology fault-chain scenario (damage/hole progression -> depressurization -> alarm propagation)
 - Documentation/traceability update for structural scaling:
   - added structural solver scalability requirements (FR-074..FR-079, NR-032..NR-035)
   - updated R3 TODO roadmap for sparse backends, matrix-free path, and 2D/3D performance validation
@@ -91,6 +115,16 @@
   - added benchmark tests for latency summaries, cadence-guard behavior, and validation paths
   - exported chamber/leak-jet contracts via `brambhand.propulsion`
   - added propulsion contract tests for chamber-flow dynamics, leak-jet dynamics behavior, off-stoich quality degradation, thrust-coupling determinism, and input validation
+- R2.3 slosh model baseline:
+  - implemented deterministic lumped spring-mass slosh state update in `fluid/reduced/slosh_model.py`
+  - added `SloshModelParams`, `SloshState`, `SloshStepResult`, and `step_slosh_state(...)`
+  - added geometry-aware slosh parameter hooks (`SloshGeometryDescriptor`, `SloshFallbackParams`, `derive_slosh_model_params(...)`) with fallback behavior for non-STL configuration paths
+  - defined versioned slosh boundary payload contract in `fluid/contracts.py` (`SLOSH_BOUNDARY_PAYLOAD_SCHEMA_VERSION`, `SloshBoundaryPayload`) with backend-neutral mapping support
+  - added `propulsion/slosh_coupling.py` helper to build FSI/coupling slosh payloads from reduced-order slosh loads
+  - added `propulsion/slosh_6dof_coupling.py` to propagate slosh force/torque plus effective CoM offsets into rigid-body 6-DOF updates
+  - extended reduced-order performance helpers with slosh latency/cadence benchmarks and explicit degraded-mode control mapping (`benchmark_reduced_order_slosh_latency`, `apply_slosh_degraded_mode`)
+  - exported slosh contracts and helpers through `fluid/reduced/__init__.py`, `fluid/__init__.py`, and `brambhand.propulsion`
+  - added propulsion contract tests for slosh restoring-response behavior, attitude disturbance/coupling response, energy sanity envelope checks, geometry-hook behavior, payload schema/version checks, and slosh latency/degraded-mode controls
 - Slosh + CFD planning extension with performance safeguards:
   - added requirements `FR-135` (propellant slosh simulation), `FR-136` (optional CFD-coupled adapter contracts), and `FR-137` (FSI integration of topology/leak/slosh boundary exchanges) plus `NR-058` (latency/cadence/fallback safeguards)
   - clarified backend-neutral FSI contract policy: reduced-order and CFD fluid providers share the same FSI-facing boundary interface; R4.1 extends providers only and does not duplicate coupling-controller logic
