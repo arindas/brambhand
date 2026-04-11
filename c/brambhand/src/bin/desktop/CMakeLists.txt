@@ -4,5 +4,5 @@ add_executable(brambhand_desktop
 
 target_link_libraries(brambhand_desktop
   PRIVATE
-    brambhand_client_common
+    brambhand_client
 )

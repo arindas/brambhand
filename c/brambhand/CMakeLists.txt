@@ -7,7 +7,18 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(BRAMBHAND_BUILD_DESKTOP_CLIENT "Build desktop client" ON)
 
-add_subdirectory(src/lib/client_common)
+# Keep artifacts flat in the build root instead of per-subdirectory nesting.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
+foreach(CONFIG_TYPE DEBUG RELEASE RELWITHDEBINFO MINSIZEREL)
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${CONFIG_TYPE} ${CMAKE_BINARY_DIR})
+  set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${CONFIG_TYPE} ${CMAKE_BINARY_DIR})
+  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${CONFIG_TYPE} ${CMAKE_BINARY_DIR})
+endforeach()
+
+add_subdirectory(src/lib/client)
 
 if(BRAMBHAND_BUILD_DESKTOP_CLIENT)
   add_subdirectory(src/bin/desktop)
