@@ -27,7 +27,8 @@ Follow this order for all substantial work:
 ├── .github/               # issue templates, PR template, CI workflows
 ├── assets/                # STL fixtures and metadata manifests
 ├── docs/                  # quickstart, concepts, workflows, tutorials, API reference
-├── pyproject.toml
+├── python/
+│   ├── pyproject.toml
 ├── README.md
 ├── AGENT.md             # canonical agent runbook (session + memory protocol)
 ├── CLAUDE.md            # Claude-facing mirror of AGENT.md
@@ -40,41 +41,49 @@ Follow this order for all substantial work:
 ├── CONTRIBUTING.md
 ├── SKILLS.md
 ├── docs/AGENT_MEMORY.md     # canonical memory entry/compaction protocol
-├── src/
-│   └── brambhand/
-│       ├── cli.py
-│       ├── core/
-│       ├── physics/
-│       ├── spacecraft/
-│       ├── guidance/
-│       ├── communication/
-│       ├── operations/
-│       ├── infrastructure/
-│       ├── dynamics/      # R1: rigid-body 6-DOF, mechanisms, docking contact
-│       ├── propulsion/    # R2/R2.1: fluids, combustion, thrust, leakage, geometry correction
-│       ├── structures/    # R3: baseline FEM structural evaluation
-│       └── scenario/
-└── tests/
+│   ├── src/
+│   │   └── brambhand/
+│   │       ├── cli.py
+│   │       ├── core/
+│   │       ├── physics/
+│   │       ├── spacecraft/
+│   │       ├── guidance/
+│   │       ├── communication/
+│   │       ├── operations/
+│   │       ├── infrastructure/
+│   │       ├── dynamics/      # R1: rigid-body 6-DOF, mechanisms, docking contact
+│   │       ├── propulsion/    # R2/R2.1: fluids, combustion, thrust, leakage, geometry correction
+│   │       ├── structures/    # R3: baseline FEM structural evaluation
+│   │       └── scenario/
+│   └── tests/
+├── c/
+│   ├── CMakeLists.txt
+│   └── client/
+│       ├── common/
+│       └── desktop/
+├── interfaces/
+│   └── runtime_bridge.proto
 ```
 
 ## Python environment and tooling
 
-This project uses **uv** + `pyproject.toml`.
+Python project uses **uv** + `python/pyproject.toml`.
+C++ client project uses **CMake** under `c/`.
 
 ### Setup
 
 ```bash
 uv venv .venv
 source .venv/bin/activate
-uv pip install -e '.[dev]'
+uv pip install -e './python[dev]'
 ```
 
 ### Required local checks before commit
 
 ```bash
-ruff check .
-mypy src tests
-pytest
+ruff check python
+mypy python/src python/tests
+pytest python/tests
 ```
 
 All three should pass before opening a PR.

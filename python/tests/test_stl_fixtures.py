@@ -3,7 +3,8 @@ from pathlib import Path
 
 
 def test_stl_fixture_manifest_and_files_exist() -> None:
-    manifest_path = Path("assets/stl/metadata/fixtures.json")
+    repo_root = Path(__file__).resolve().parents[2]
+    manifest_path = repo_root / "assets/stl/metadata/fixtures.json"
     assert manifest_path.exists()
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -21,7 +22,7 @@ def test_stl_fixture_manifest_and_files_exist() -> None:
 
     for group in ("idealized", "reference"):
         for item in manifest[group]:
-            path = Path(item["path"])
+            path = repo_root / item["path"]
             assert path.exists(), f"missing fixture file: {path}"
             text = path.read_text(encoding="utf-8")
             assert text.lstrip().startswith("solid ")

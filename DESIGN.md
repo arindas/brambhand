@@ -578,6 +578,7 @@ Execution order (authoritative):
 ## Python simulation <-> desktop renderer integration architecture
 - **Authoritative simulation state:** Python runtime (`src/brambhand/*`) remains source of truth for physics, events, and replay persistence.
 - **Live bridge path:** Python emits versioned stream frames (`state/event/topology`) over gRPC from `bridge/server_py/*`; clients consume and buffer via `client/common/stream/*`.
+- **IDL contract source:** `interfaces/runtime_bridge.proto` (package `brambhand.runtime.v1`) defines canonical wire schema for runtime bridge frames.
 - **Offline path:** Clients ingest replay JSONL via `client/common/replay/*` and use the same visualization contracts as live mode.
 - **Determinism contract:** sequence IDs + schema versions are required on bridge payloads; replay and stream ordering semantics must remain equivalent within documented tolerances.
 - **Backpressure contract:** bounded ring buffers and explicit drop/degrade policies prevent UI/render stalls from blocking simulation bridge ingestion.

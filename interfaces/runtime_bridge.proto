@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package brambhand.runtime.v1;
+
+message Vector3 {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+}
+
+message Quaternion {
+  double w = 1;
+  double x = 2;
+  double y = 3;
+  double z = 4;
+}
+
+message BodyState {
+  string body_id = 1;
+  Vector3 position_m = 2;
+  Vector3 velocity_mps = 3;
+  Quaternion attitude = 4;
+  Vector3 angular_velocity_radps = 5;
+}
+
+message EventFrame {
+  uint64 sequence = 1;
+  double sim_time_s = 2;
+  string kind = 3;
+  string severity = 4; // info|warning|critical
+  bytes payload_json = 5;
+}
+
+message TopologyInterface {
+  string interface_id = 1;
+  string body_a_id = 2;
+  string body_b_id = 3;
+  string interface_kind = 4;
+}
+
+message TopologyFrame {
+  uint64 revision = 1;
+  repeated string body_ids = 2;
+  repeated TopologyInterface interfaces = 3;
+  string transition_id = 4;
+  string transition_kind = 5;
+  bytes provenance_json = 6;
+}
+
+message SimulationFrame {
+  uint32 schema_version = 1;
+  string run_id = 2;
+  uint64 tick_id = 3;
+  double sim_time_s = 4;
+  uint64 sequence = 5;
+  repeated BodyState bodies = 6;
+  repeated EventFrame events = 7;
+  TopologyFrame topology = 8;
+}
+
+message StreamRequest {
+  string run_id = 1;
+  uint64 from_sequence = 2;
+}
+
+service RuntimeBridge {
+  rpc StreamSimulation(StreamRequest) returns (stream SimulationFrame);
+}

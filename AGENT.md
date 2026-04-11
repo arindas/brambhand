@@ -15,9 +15,9 @@ Run baseline checks:
 
 ```bash
 source .venv/bin/activate
-ruff check .
-mypy src tests
-pytest -q
+ruff check python
+mypy python/src python/tests
+pytest -q python/tests
 ```
 
 If baseline is red, fix baseline first unless task explicitly says otherwise.

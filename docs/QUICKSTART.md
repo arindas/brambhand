@@ -10,15 +10,15 @@
 ```bash
 uv venv .venv
 source .venv/bin/activate
-uv pip install -e '.[dev]'
+uv pip install -e './python[dev]'
 ```
 
 ## Run quality checks
 
 ```bash
-ruff check .
-mypy src tests
-pytest
+ruff check python
+mypy python/src python/tests
+pytest python/tests
 ```
 
 ## Create a minimal scenario file

@@ -3,18 +3,18 @@ name: CI
 on:
   pull_request:
     paths:
-      - "src/**"
-      - "tests/**"
-      - "pyproject.toml"
-      - "uv.lock"
+      - "python/src/**"
+      - "python/tests/**"
+      - "python/pyproject.toml"
+      - "python/uv.lock"
       - ".github/workflows/ci.yml"
   push:
     branches: [main, master]
     paths:
-      - "src/**"
-      - "tests/**"
-      - "pyproject.toml"
-      - "uv.lock"
+      - "python/src/**"
+      - "python/tests/**"
+      - "python/pyproject.toml"
+      - "python/uv.lock"
       - ".github/workflows/ci.yml"
 
 jobs:
@@ -38,13 +38,17 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Sync dependencies
+        working-directory: python
         run: uv sync --extra dev
 
       - name: Ruff
+        working-directory: python
         run: uv run ruff check .
 
       - name: Mypy
+        working-directory: python
         run: uv run mypy src tests
 
       - name: Pytest
+        working-directory: python
         run: uv run pytest
