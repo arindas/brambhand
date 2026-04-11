@@ -3,18 +3,18 @@ name: CI
 on:
   pull_request:
     paths:
-      - "python/src/**"
-      - "python/tests/**"
-      - "python/pyproject.toml"
-      - "python/uv.lock"
+      - "python/brambhand/src/**"
+      - "python/brambhand/tests/**"
+      - "python/brambhand/pyproject.toml"
+      - "python/brambhand/uv.lock"
       - ".github/workflows/ci.yml"
   push:
     branches: [main, master]
     paths:
-      - "python/src/**"
-      - "python/tests/**"
-      - "python/pyproject.toml"
-      - "python/uv.lock"
+      - "python/brambhand/src/**"
+      - "python/brambhand/tests/**"
+      - "python/brambhand/pyproject.toml"
+      - "python/brambhand/uv.lock"
       - ".github/workflows/ci.yml"
 
 jobs:
@@ -38,17 +38,17 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Sync dependencies
-        working-directory: python
+        working-directory: python/brambhand
         run: uv sync --extra dev
 
       - name: Ruff
-        working-directory: python
+        working-directory: python/brambhand
         run: uv run ruff check .
 
       - name: Mypy
-        working-directory: python
+        working-directory: python/brambhand
         run: uv run mypy src tests
 
       - name: Pytest
-        working-directory: python
+        working-directory: python/brambhand
         run: uv run pytest

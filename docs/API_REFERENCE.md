@@ -1,13 +1,13 @@
 # API reference
 
-The **source of truth for API documentation is inline docstrings in `python/src/brambhand/`**.
+The **source of truth for API documentation is inline docstrings in `python/brambhand/src/brambhand/`**.
 
 This file is intentionally lightweight and points to where to read detailed API
 contracts and rationale.
 
 ## How to read API docs
 
-- Read module/class/function docstrings directly in source files under `python/src/brambhand/`.
+- Read module/class/function docstrings directly in source files under `python/brambhand/src/brambhand/`.
 - Use an interactive shell:
 
 ```python

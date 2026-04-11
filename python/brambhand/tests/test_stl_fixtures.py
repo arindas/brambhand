@@ -3,7 +3,10 @@ from pathlib import Path
 
 
 def test_stl_fixture_manifest_and_files_exist() -> None:
-    repo_root = Path(__file__).resolve().parents[2]
+    here = Path(__file__).resolve()
+    repo_root = next(
+        parent for parent in here.parents if (parent / "assets/stl/metadata/fixtures.json").exists()
+    )
     manifest_path = repo_root / "assets/stl/metadata/fixtures.json"
     assert manifest_path.exists()
 

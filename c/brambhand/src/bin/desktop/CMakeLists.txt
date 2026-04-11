@@ -1,5 +1,5 @@
 add_executable(brambhand_desktop
-  src/main.cpp
+  main.cpp
 )
 
 target_link_libraries(brambhand_desktop

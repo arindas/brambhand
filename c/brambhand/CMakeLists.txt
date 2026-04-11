@@ -7,8 +7,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(BRAMBHAND_BUILD_DESKTOP_CLIENT "Build desktop client" ON)
 
-add_subdirectory(client/common)
+add_subdirectory(src/lib/client_common)
 
 if(BRAMBHAND_BUILD_DESKTOP_CLIENT)
-  add_subdirectory(client/desktop)
+  add_subdirectory(src/bin/desktop)
 endif()

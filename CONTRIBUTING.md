@@ -23,67 +23,55 @@ Follow this order for all substantial work:
 
 ```text
 .
-├── .agent/                # memory summary + session entries
-├── .github/               # issue templates, PR template, CI workflows
-├── assets/                # STL fixtures and metadata manifests
-├── docs/                  # quickstart, concepts, workflows, tutorials, API reference
+├── .agent/
+├── .github/
+├── assets/
+├── docs/
+├── interfaces/
+│   └── runtime_bridge.proto
 ├── python/
-│   ├── pyproject.toml
+│   └── brambhand/
+│       ├── pyproject.toml
+│       ├── src/
+│       │   └── brambhand/
+│       └── tests/
+├── c/
+│   └── brambhand/
+│       ├── CMakeLists.txt
+│       ├── include/
+│       └── src/
+│           ├── lib/
+│           └── bin/
 ├── README.md
-├── AGENT.md             # canonical agent runbook (session + memory protocol)
-├── CLAUDE.md            # Claude-facing mirror of AGENT.md
+├── AGENT.md
+├── CLAUDE.md
 ├── REQUIREMENTS.md
 ├── DESIGN.md
 ├── VERIFICATION.md
 ├── VALIDATION.md
 ├── TODO.md
-├── RELEASE_NOTES.md
-├── CONTRIBUTING.md
-├── SKILLS.md
-├── docs/AGENT_MEMORY.md     # canonical memory entry/compaction protocol
-│   ├── src/
-│   │   └── brambhand/
-│   │       ├── cli.py
-│   │       ├── core/
-│   │       ├── physics/
-│   │       ├── spacecraft/
-│   │       ├── guidance/
-│   │       ├── communication/
-│   │       ├── operations/
-│   │       ├── infrastructure/
-│   │       ├── dynamics/      # R1: rigid-body 6-DOF, mechanisms, docking contact
-│   │       ├── propulsion/    # R2/R2.1: fluids, combustion, thrust, leakage, geometry correction
-│   │       ├── structures/    # R3: baseline FEM structural evaluation
-│   │       └── scenario/
-│   └── tests/
-├── c/
-│   ├── CMakeLists.txt
-│   └── client/
-│       ├── common/
-│       └── desktop/
-├── interfaces/
-│   └── runtime_bridge.proto
+└── RELEASE_NOTES.md
 ```
 
 ## Python environment and tooling
 
-Python project uses **uv** + `python/pyproject.toml`.
-C++ client project uses **CMake** under `c/`.
+Python project uses **uv** + `python/brambhand/pyproject.toml`.
+C++ client project uses **CMake** under `c/brambhand/`.
 
 ### Setup
 
 ```bash
 uv venv .venv
 source .venv/bin/activate
-uv pip install -e './python[dev]'
+uv pip install -e './python/brambhand[dev]'
 ```
 
 ### Required local checks before commit
 
 ```bash
-ruff check python
-mypy python/src python/tests
-pytest python/tests
+ruff check python/brambhand
+mypy python/brambhand/src python/brambhand/tests
+pytest python/brambhand/tests
 ```
 
 All three should pass before opening a PR.

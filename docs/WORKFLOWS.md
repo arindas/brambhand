@@ -25,7 +25,7 @@ brambhand replay replay.jsonl --kind step_completed --start-time 100 --end-time 
 1. Define bodies in scenario JSON (e.g., Earth + satellite).
 2. Run with appropriate `dt` and total steps.
 3. Use replay and final output to verify expected behavior (e.g., bounded radius drift).
-4. Add/update tests for the scenario in `python/tests/`.
+4. Add/update tests for the scenario in `python/brambhand/tests/`.
 
 ## C. Spacecraft burn workflow
 
@@ -66,7 +66,7 @@ brambhand replay replay.jsonl --kind step_completed --start-time 100 --end-time 
 4. Validate expected sensitivity:
    - increasing area ratio should increase thrust estimate (within model bounds)
    - decreasing contour-loss factor should reduce thrust estimate
-5. Add or update tests in `python/tests/test_propulsion_r2_contracts.py`.
+5. Add or update tests in `python/brambhand/tests/test_propulsion_r2_contracts.py`.
 
 ## H. Structural solver workflow (R3 scaling)
 
@@ -89,9 +89,9 @@ brambhand replay replay.jsonl --kind step_completed --start-time 100 --end-time 
 3. Run local quality gates:
 
 ```bash
-ruff check python
-mypy python/src python/tests
-pytest python/tests
+ruff check python/brambhand
+mypy python/brambhand/src python/brambhand/tests
+pytest python/brambhand/tests
 ```
 
 4. Open PR using `.github/pull_request_template.md`.

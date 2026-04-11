@@ -10,15 +10,15 @@
 ```bash
 uv venv .venv
 source .venv/bin/activate
-uv pip install -e './python[dev]'
+uv pip install -e './python/brambhand[dev]'
 ```
 
 ## Run quality checks
 
 ```bash
-ruff check python
-mypy python/src python/tests
-pytest python/tests
+ruff check python/brambhand
+mypy python/brambhand/src python/brambhand/tests
+pytest python/brambhand/tests
 ```
 
 ## Create a minimal scenario file

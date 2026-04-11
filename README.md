@@ -65,10 +65,10 @@ Milestone IDs (R2.2, R3.1, R8.0, etc.) are maintained in `TODO.md` for implement
 ```bash
 uv venv .venv
 source .venv/bin/activate
-uv pip install -e './python[dev]'
-pytest python/tests
-ruff check python
-mypy python/src python/tests
+uv pip install -e './python/brambhand[dev]'
+pytest python/brambhand/tests
+ruff check python/brambhand
+mypy python/brambhand/src python/brambhand/tests
 ```
 
 ### Native desktop client (C++/CMake scaffold)
@@ -76,9 +76,9 @@ mypy python/src python/tests
 Build bootstrap native client:
 
 ```bash
-cmake -S c -B c/build
-cmake --build c/build
-./c/build/client/desktop/brambhand_desktop
+cmake -S c/brambhand -B c/brambhand/build
+cmake --build c/brambhand/build
+./c/brambhand/build/src/bin/desktop/brambhand_desktop
 ```
 
 ## CLI

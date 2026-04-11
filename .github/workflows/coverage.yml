@@ -6,18 +6,18 @@ permissions:
 on:
   pull_request:
     paths:
-      - "python/src/**"
-      - "python/tests/**"
-      - "python/pyproject.toml"
-      - "python/uv.lock"
+      - "python/brambhand/src/**"
+      - "python/brambhand/tests/**"
+      - "python/brambhand/pyproject.toml"
+      - "python/brambhand/uv.lock"
       - ".github/workflows/coverage.yml"
   push:
     branches: [main, master]
     paths:
-      - "python/src/**"
-      - "python/tests/**"
-      - "python/pyproject.toml"
-      - "python/uv.lock"
+      - "python/brambhand/src/**"
+      - "python/brambhand/tests/**"
+      - "python/brambhand/pyproject.toml"
+      - "python/brambhand/uv.lock"
       - ".github/workflows/coverage.yml"
 
 jobs:
@@ -39,11 +39,11 @@ jobs:
           python-version: "3.12"
 
       - name: Sync dependencies
-        working-directory: python
+        working-directory: python/brambhand
         run: uv sync --extra dev
 
       - name: Run tests with coverage
-        working-directory: python
+        working-directory: python/brambhand
         run: uv run pytest --cov=src/brambhand --cov-report=term-missing --cov-report=xml
 
       - name: Build coverage badge endpoint JSON
@@ -52,7 +52,7 @@ jobs:
           from pathlib import Path
           import xml.etree.ElementTree as ET
 
-          tree = ET.parse("python/coverage.xml")
+          tree = ET.parse("python/brambhand/coverage.xml")
           root = tree.getroot()
           rate = float(root.attrib.get("line-rate", "0"))
           pct = int(round(rate * 100))
@@ -90,7 +90,7 @@ jobs:
         with:
           name: coverage-artifacts
           path: |
-            python/coverage.xml
+            python/brambhand/coverage.xml
             badges/coverage.json
 
       - name: Publish coverage badge to badges branch
