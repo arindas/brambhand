@@ -31,6 +31,7 @@
   - added SDL3-based replay window renderer in `c/brambhand/src/bin/desktop/replay_window.cpp` to draw 2D `current/planned` trajectory curves, object markers, and event-severity timeline bars
   - wired `brambhand_desktop` to open a replay visualization window by default (replay-only), with `--no-window` option for non-interactive runs
   - updated desktop CMake wiring to link SDL3 via `find_package(SDL3)` with pkg-config fallback
+- Examples: added `examples/earth_jupiter_hohmann_replay_demo.py` to generate replay JSONL for immediate 2D Earth->Jupiter Hohmann-transfer visualization in desktop replay mode (kept out of main CLI surface)
 
 ## v0.1.1 (2026-04-12)
 
