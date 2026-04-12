@@ -8,6 +8,7 @@ Why this module exists:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Protocol
 
 from brambhand.physics.vector import Vector3
@@ -15,6 +16,15 @@ from brambhand.physics.vector import Vector3
 LEAK_JET_BOUNDARY_PAYLOAD_SCHEMA_VERSION = 1
 SLOSH_BOUNDARY_PAYLOAD_SCHEMA_VERSION = 1
 TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION = 1
+
+
+class TopologyTransitionKind(StrEnum):
+    """Canonical transition kinds shared across topology and coupling contracts."""
+
+    ATTACH = "attach"
+    DETACH = "detach"
+    SPLIT = "split"
+    FRACTURE_SPLIT = "fracture_split"
 
 
 @dataclass(frozen=True)
@@ -125,7 +135,7 @@ class TopologyTransitionPayload:
 
     transition_id: str
     schema_version: int
-    transition_kind: str
+    transition_kind: TopologyTransitionKind
     revision: int
     body_ids_before: tuple[str, ...]
     body_ids_after: tuple[str, ...]
@@ -138,8 +148,8 @@ class TopologyTransitionPayload:
             raise ValueError("transition_id must be non-empty.")
         if self.schema_version != TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION:
             raise ValueError("Unsupported topology transition payload schema_version.")
-        if not self.transition_kind:
-            raise ValueError("transition_kind must be non-empty.")
+        if not isinstance(self.transition_kind, TopologyTransitionKind):
+            raise ValueError("transition_kind must use TopologyTransitionKind enum.")
         if self.revision < 0:
             raise ValueError("revision cannot be negative.")
         if not self.body_ids_before or not self.body_ids_after:

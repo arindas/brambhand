@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
 
 from brambhand.fluid.contracts import (
     TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION,
+    TopologyTransitionKind,
     TopologyTransitionPayload,
 )
 
@@ -86,9 +86,7 @@ class FractureSplitProvenance:
     inherited_interface_ids: tuple[str, ...]
 
 
-class DockingTransitionKind(StrEnum):
-    ATTACH = "attach"
-    DETACH = "detach"
+DockingTransitionKind = TopologyTransitionKind
 
 
 @dataclass(frozen=True)
@@ -314,7 +312,7 @@ def apply_docking_detach_transition(
 
 def build_topology_transition_payload(
     transition_id: str,
-    transition_kind: str,
+    transition_kind: TopologyTransitionKind,
     before_state: AssemblyTopologyState,
     after_state: AssemblyTopologyState,
     provenance: dict[str, str],

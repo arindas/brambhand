@@ -1,5 +1,6 @@
 from brambhand.fluid.contracts import (
     TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION,
+    TopologyTransitionKind,
     TopologyTransitionPayload,
 )
 from brambhand.mission.assembly_topology import (
@@ -159,7 +160,7 @@ def test_topology_transition_payload_mapping_for_fsi_consumers() -> None:
 
     payload = build_topology_transition_payload(
         transition_id="tx-001",
-        transition_kind="dock_attach",
+        transition_kind=TopologyTransitionKind.ATTACH,
         before_state=state,
         after_state=attached,
         provenance={"source": "docking_baseline"},
@@ -167,7 +168,7 @@ def test_topology_transition_payload_mapping_for_fsi_consumers() -> None:
 
     assert payload.schema_version == TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION
     assert payload.transition_id == "tx-001"
-    assert payload.transition_kind == "dock_attach"
+    assert payload.transition_kind == TopologyTransitionKind.ATTACH
     assert payload.body_ids_before == ("a", "b")
     assert payload.interface_ids_after == ("if_ab",)
     assert payload.interface_endpoints_after == (("if_ab", "a", "b", "dock"),)
@@ -178,7 +179,7 @@ def test_topology_transition_payload_rejects_unsupported_version() -> None:
         TopologyTransitionPayload(
             transition_id="tx",
             schema_version=999,
-            transition_kind="dock_attach",
+            transition_kind=TopologyTransitionKind.ATTACH,
             revision=1,
             body_ids_before=("a",),
             body_ids_after=("a", "b"),
@@ -203,7 +204,7 @@ def test_topology_transition_payload_determinism_and_reconstruction() -> None:
     )
     payload_a = build_topology_transition_payload(
         transition_id="tx1",
-        transition_kind="dock_attach",
+        transition_kind=TopologyTransitionKind.ATTACH,
         before_state=initial,
         after_state=state_a,
         provenance={"source": "test"},
@@ -216,7 +217,7 @@ def test_topology_transition_payload_determinism_and_reconstruction() -> None:
     )
     payload_b = build_topology_transition_payload(
         transition_id="tx2",
-        transition_kind="fracture_split",
+        transition_kind=TopologyTransitionKind.FRACTURE_SPLIT,
         before_state=state_a,
         after_state=state_b,
         provenance={"source": "test"},

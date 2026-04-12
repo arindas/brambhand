@@ -12,6 +12,7 @@ from brambhand.fluid.contracts import (
     LEAK_JET_BOUNDARY_PAYLOAD_SCHEMA_VERSION,
     TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION,
     LeakJetBoundaryPayload,
+    TopologyTransitionKind,
     TopologyTransitionPayload,
 )
 from brambhand.physics.vector import Vector3
@@ -75,7 +76,7 @@ def test_fsi_policy_escalates_on_split_topology_transition() -> None:
     topology = TopologyTransitionPayload(
         transition_id="tx-10",
         schema_version=TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION,
-        transition_kind="split",
+        transition_kind=TopologyTransitionKind.SPLIT,
         revision=1,
         body_ids_before=("a",),
         body_ids_after=("a_1", "a_2"),
@@ -156,32 +157,47 @@ def test_fsi_policy_escalates_when_mass_flow_exceeds_threshold() -> None:
 
 
 def test_fsi_policy_threshold_validation_guards() -> None:
-    for kwargs in (
-        dict(
+    try:
+        FSICouplingPolicyThresholds(
             max_partitioned_iterations=0,
             max_partitioned_final_residual=1e-4,
             max_partitioned_total_mass_flow_kgps=1.0,
-        ),
-        dict(
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Expected FSICouplingPolicyThresholds validation failure")
+
+    try:
+        FSICouplingPolicyThresholds(
             max_partitioned_iterations=1,
             max_partitioned_final_residual=-1.0,
             max_partitioned_total_mass_flow_kgps=1.0,
-        ),
-        dict(
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Expected FSICouplingPolicyThresholds validation failure")
+
+    try:
+        FSICouplingPolicyThresholds(
             max_partitioned_iterations=1,
             max_partitioned_final_residual=1e-4,
             max_partitioned_total_mass_flow_kgps=-1.0,
-        ),
-        dict(
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Expected FSICouplingPolicyThresholds validation failure")
+
+    try:
+        FSICouplingPolicyThresholds(
             max_partitioned_iterations=1,
             max_partitioned_final_residual=1e-4,
             max_partitioned_total_mass_flow_kgps=1.0,
-            monolithic_transition_kinds=("",),
-        ),
-    ):
-        try:
-            FSICouplingPolicyThresholds(**kwargs)
-        except ValueError:
-            pass
-        else:
-            raise AssertionError("Expected FSICouplingPolicyThresholds validation failure")
+            monolithic_transition_kinds=("attach",),  # type: ignore[arg-type]
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Expected FSICouplingPolicyThresholds validation failure")

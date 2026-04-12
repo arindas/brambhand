@@ -9,6 +9,7 @@ from brambhand.fluid.contracts import (
     FSIFluidBoundaryProvider,
     LeakJetBoundaryPayload,
     SloshBoundaryPayload,
+    TopologyTransitionKind,
     TopologyTransitionPayload,
 )
 
@@ -21,5 +22,6 @@ __all__ = [
     "FluidBoundaryLoad",
     "LeakJetBoundaryPayload",
     "SloshBoundaryPayload",
+    "TopologyTransitionKind",
     "TopologyTransitionPayload",
 ]
