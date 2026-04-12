@@ -32,12 +32,14 @@
   - wired `brambhand_desktop` to open a replay visualization window by default (replay-only), with `--no-window` option for non-interactive runs
   - updated desktop CMake wiring to link SDL3 via `find_package(SDL3)` with pkg-config fallback
 - Examples: added `examples/earth_jupiter_hohmann_replay_demo.py` to generate replay JSONL for immediate 2D Earth->Jupiter Hohmann-transfer visualization in desktop replay mode (kept out of main CLI surface)
-  - demo replay now includes Sun + Mercury/Venus/Earth/Mars/Jupiter bodies with time-varying orbital positions so planetary markers move over replay time
+  - demo replay now includes Sun + all 8 planets with time-varying orbital positions so planetary markers move over replay time
+  - demo replay now includes staging events for departure/coast/Jupiter approach and an additional mission branch (`mars_probe_undock` + `mars_probe_orbit_insertion`) while the main vehicle remains on Jupiter transfer
 - Replay window solar-context enhancement:
   - `c/brambhand/src/bin/desktop/replay_window.cpp` now renders solar-context orbit rings and body markers (Sun + all 8 planets) instead of transfer-only curves
   - planetary/body markers are animated over replay frames (not stationary), preserving replay-driven motion semantics
   - added labeled side-panel timeline for replay stage markers (moved from unlabeled bottom bars), with explicit meaning text and per-stage severity colors
   - added sim-day/frame/playback-rate labels and playback speed controls (`[` slower, `]` faster)
+  - added zoom/pan controls (`mouse-wheel` or `-`/`=` for zoom, arrow keys for pan) for dense solar-system context inspection
   - desktop replay window now starts resizable + maximized for immediate full-view operation
 
 ## v0.1.1 (2026-04-12)

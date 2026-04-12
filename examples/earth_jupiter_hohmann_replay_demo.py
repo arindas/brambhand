@@ -13,6 +13,8 @@ AU_M = 149_597_870_700.0
 MU_SUN_M3_S2 = 1.32712440018e20
 EARTH_ORBIT_RADIUS_M = 1.0 * AU_M
 JUPITER_ORBIT_RADIUS_M = 5.2044 * AU_M
+MARS_PROBE_ORBIT_RADIUS_M = 8_000_000.0
+MARS_PROBE_ORBIT_PERIOD_S = 12.0 * 3600.0
 
 PLANET_RADII_M = {
     "mercury": 0.3871 * AU_M,
@@ -68,6 +70,10 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
         "neptune": 0.9,
     }
 
+    undock_index = max(2, samples // 4)
+    mars_insertion_index = min(samples - 1, undock_index + max(2, samples // 40))
+    undock_time_s = (undock_index / samples) * transfer_time_s
+
     frames: list[dict[str, Any]] = []
     for i in range(samples + 1):
         frac = i / samples
@@ -89,6 +95,10 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
             events.append(_build_event(i, sim_time_s, "departure_burn_start", "info"))
         if i == max(1, samples // 20):
             events.append(_build_event(i, sim_time_s, "departure_burn_complete", "info"))
+        if i == undock_index:
+            events.append(_build_event(i, sim_time_s, "mars_probe_undock", "warning"))
+        if i == mars_insertion_index:
+            events.append(_build_event(i, sim_time_s, "mars_probe_orbit_insertion", "warning"))
         if i == samples // 3:
             events.append(_build_event(i, sim_time_s, "midcourse_correction", "warning"))
         if i == (2 * samples) // 3:
@@ -110,12 +120,26 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
             },
         ]
 
+        planet_positions: dict[str, tuple[float, float]] = {}
         for planet_name, radius_m in PLANET_RADII_M.items():
             px, py = _planet_position(radius_m, sim_time_s, planet_phase0[planet_name])
+            planet_positions[planet_name] = (px, py)
             bodies.append(
                 {
                     "body_id": planet_name,
                     "position_m": {"x": px, "y": py, "z": 0.0},
+                }
+            )
+
+        if i >= undock_index:
+            mars_x, mars_y = planet_positions["mars"]
+            probe_theta = 2.0 * math.pi * ((sim_time_s - undock_time_s) / MARS_PROBE_ORBIT_PERIOD_S)
+            probe_x = mars_x + MARS_PROBE_ORBIT_RADIUS_M * math.cos(probe_theta)
+            probe_y = mars_y + MARS_PROBE_ORBIT_RADIUS_M * math.sin(probe_theta)
+            bodies.append(
+                {
+                    "body_id": "mars_probe",
+                    "position_m": {"x": probe_x, "y": probe_y, "z": 0.0},
                 }
             )
 

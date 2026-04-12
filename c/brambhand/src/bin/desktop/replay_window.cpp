@@ -105,6 +105,9 @@ Rgba color_for_body_id(const std::string& body_id) {
   if (body_id == "current_vehicle") {
     return parse_hex_color("#00E5FF");
   }
+  if (body_id == "mars_probe") {
+    return parse_hex_color("#A5D6A7");
+  }
   return parse_hex_color("#90A4AE");
 }
 
@@ -218,6 +221,25 @@ std::optional<PlotBounds> compute_bounds_with_context(
   return normalize_bounds(*bounds);
 }
 
+PlotBounds make_view_bounds(
+    const PlotBounds& base,
+    double zoom,
+    double pan_x,
+    double pan_y) {
+  const double base_span_x = base.max_x - base.min_x;
+  const double base_span_y = base.max_y - base.min_y;
+  const double cx = 0.5 * (base.min_x + base.max_x) + pan_x;
+  const double cy = 0.5 * (base.min_y + base.max_y) + pan_y;
+  const double half_x = 0.5 * base_span_x / zoom;
+  const double half_y = 0.5 * base_span_y / zoom;
+  return PlotBounds{
+      .min_x = cx - half_x,
+      .max_x = cx + half_x,
+      .min_y = cy - half_y,
+      .max_y = cy + half_y,
+  };
+}
+
 SDL_FPoint map_point(
     double x,
     double y,
@@ -300,7 +322,8 @@ void draw_sidebar(
     const brambhand::client::common::SimulationFrame* active_frame,
     std::size_t frame_index,
     std::size_t frame_count,
-    double playback_rate) {
+    double playback_rate,
+    double zoom_level) {
   SDL_SetRenderDrawColor(renderer, 22, 28, 40, 255);
   SDL_RenderFillRect(renderer, &panel);
   SDL_SetRenderDrawColor(renderer, 70, 80, 96, 255);
@@ -323,6 +346,10 @@ void draw_sidebar(
   SDL_RenderDebugTextFormat(renderer, x, y, "Frame: %zu / %zu", frame_index + 1, frame_count);
   y += 16.0F;
   SDL_RenderDebugTextFormat(renderer, x, y, "Playback: %.2fx  ([ and ])", playback_rate);
+  y += 16.0F;
+  SDL_RenderDebugTextFormat(renderer, x, y, "Zoom: %.2fx  (- and =, mouse wheel)", zoom_level);
+  y += 16.0F;
+  SDL_RenderDebugText(renderer, x, y, "Pan: arrow keys");
   y += 22.0F;
 
   SDL_RenderDebugText(renderer, x, y, "Mission stage markers (replay events)");
@@ -415,6 +442,17 @@ void draw_solar_context(
         3.0F,
         true);
   }
+  if (const auto* probe = find_body_by_id(frame, "mars_probe"); probe != nullptr) {
+    draw_body_marker(
+        renderer,
+        probe->body_id,
+        probe->position_m.x,
+        probe->position_m.y,
+        bounds,
+        viewport,
+        3.5F,
+        true);
+  }
 }
 
 }  // namespace
@@ -452,6 +490,9 @@ bool run_replay_window(
   std::size_t frame_index = 0;
   std::uint64_t last_advance_ticks = SDL_GetTicks();
   double playback_rate = 1.0;
+  double zoom_level = 1.0;
+  double pan_x = 0.0;
+  double pan_y = 0.0;
 
   bool running = true;
   while (running) {
@@ -469,6 +510,41 @@ bool run_replay_window(
       if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_RIGHTBRACKET) {
         playback_rate = std::min(16.0, playback_rate * 2.0);
       }
+      if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_EQUALS) {
+        zoom_level = std::min(64.0, zoom_level * 1.2);
+      }
+      if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_MINUS) {
+        zoom_level = std::max(0.2, zoom_level / 1.2);
+      }
+      if (event.type == SDL_EVENT_MOUSE_WHEEL) {
+        if (event.wheel.y > 0.0F) {
+          zoom_level = std::min(64.0, zoom_level * 1.1);
+        } else if (event.wheel.y < 0.0F) {
+          zoom_level = std::max(0.2, zoom_level / 1.1);
+        }
+      }
+    }
+
+    const double span_x = (bounds.max_x - bounds.min_x) / zoom_level;
+    const double span_y = (bounds.max_y - bounds.min_y) / zoom_level;
+
+    const bool left = SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_LEFT];
+    const bool right = SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_RIGHT];
+    const bool up = SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_UP];
+    const bool down = SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_DOWN];
+    const double pan_step_x = 0.04 * span_x;
+    const double pan_step_y = 0.04 * span_y;
+    if (left) {
+      pan_x -= pan_step_x;
+    }
+    if (right) {
+      pan_x += pan_step_x;
+    }
+    if (up) {
+      pan_y += pan_step_y;
+    }
+    if (down) {
+      pan_y -= pan_step_y;
     }
 
     const std::uint64_t now_ticks = SDL_GetTicks();
@@ -502,14 +578,16 @@ bool run_replay_window(
     SDL_SetRenderDrawColor(renderer, 60, 66, 80, 255);
     SDL_RenderRect(renderer, &viewport);
 
+    const PlotBounds view_bounds = make_view_bounds(bounds, zoom_level, pan_x, pan_y);
+
     for (const auto& layer : workflow.trajectory_panel.curve_layers) {
-      draw_curve_layer(renderer, layer, bounds, viewport);
+      draw_curve_layer(renderer, layer, view_bounds, viewport);
     }
 
     const brambhand::client::common::SimulationFrame* active_frame = nullptr;
     if (!frames.empty()) {
       active_frame = &frames[frame_index];
-      draw_solar_context(renderer, *active_frame, bounds, viewport);
+      draw_solar_context(renderer, *active_frame, view_bounds, viewport);
     }
 
     draw_sidebar(
@@ -519,7 +597,8 @@ bool run_replay_window(
         active_frame,
         frame_index,
         frames.empty() ? 0 : frames.size(),
-        playback_rate);
+        playback_rate,
+        zoom_level);
 
     SDL_RenderPresent(renderer);
     SDL_Delay(16);
