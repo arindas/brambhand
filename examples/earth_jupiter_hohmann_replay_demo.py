@@ -54,11 +54,11 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
 
         events: list[dict[str, Any]] = []
         if i == 0:
-            events.append(_build_event(10_000 + i, sim_time_s, "simulation_started", "info"))
+            events.append(_build_event(i, sim_time_s, "simulation_started", "info"))
         if i == samples // 2:
-            events.append(_build_event(10_000 + i, sim_time_s, "threshold_crossed", "warning"))
+            events.append(_build_event(i, sim_time_s, "threshold_crossed", "warning"))
         if i == samples:
-            events.append(_build_event(10_000 + i, sim_time_s, "alarm_raised", "critical"))
+            events.append(_build_event(i, sim_time_s, "alarm_raised", "critical"))
 
         frames.append(
             {
