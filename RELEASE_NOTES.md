@@ -22,6 +22,11 @@
   - panel emits shared `current/planned` curve layers and object-icon markers (`ship` / `ghost_ship`) with deterministic color semantics matching R8 trajectory contracts
   - desktop bootstrap now constructs and reports trajectory-panel summary from replay-ingested frames
   - added C++ tests in `c/brambhand/src/test/test_trajectory_infographic.cpp` for layer/icon mapping and current-curve fallback behavior
+- R8.05 replay quicklook workflow acceptance-test baseline:
+  - added replay quicklook workflow builder in `c/brambhand/include/brambhand/client/desktop/replay_quicklook_workflow.hpp` + `c/brambhand/src/lib/client/replay_quicklook_workflow.cpp` to combine trajectory infographic + event markers
+  - event markers are deterministically ordered and severity-colored (`info`/`warning`/`critical`) for operator-readable quicklook output
+  - extended replay ingest to parse `events` payloads from replay JSONL frames for workflow consumption
+  - added C++ acceptance tests in `c/brambhand/src/test/test_replay_quicklook_workflow.cpp` covering trajectory panel presence, event-marker readability fields, and deterministic ordering
 
 ## v0.1.1 (2026-04-12)
 

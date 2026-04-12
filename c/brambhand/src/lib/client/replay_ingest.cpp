@@ -207,6 +207,27 @@ std::optional<BodyState> parse_body_state(const std::string& body_json) {
   return body;
 }
 
+std::optional<EventFrame> parse_event_frame(const std::string& event_json) {
+  const auto sequence = extract_u64(event_json, "sequence");
+  const auto sim_time_s = extract_double(event_json, "sim_time_s");
+  const auto kind = extract_string(event_json, "kind");
+  if (!sequence.has_value() || !sim_time_s.has_value() || !kind.has_value()) {
+    return std::nullopt;
+  }
+
+  EventFrame event{};
+  event.sequence = *sequence;
+  event.sim_time_s = *sim_time_s;
+  event.kind = *kind;
+  event.severity = extract_string(event_json, "severity").value_or("info");
+  if (const auto payload_string = extract_string(event_json, "payload_json"); payload_string.has_value()) {
+    event.payload_json = *payload_string;
+  } else {
+    event.payload_json = extract_object(event_json, "payload_json").value_or("{}");
+  }
+  return event;
+}
+
 std::optional<SimulationFrame> parse_simulation_frame_line(const std::string& line) {
   SimulationFrame frame{};
 
@@ -233,6 +254,15 @@ std::optional<SimulationFrame> parse_simulation_frame_line(const std::string& li
       const auto body = parse_body_state(body_json);
       if (body.has_value()) {
         frame.bodies.push_back(*body);
+      }
+    }
+  }
+
+  if (const auto events_json = extract_array(line, "events"); events_json.has_value()) {
+    for (const auto& event_json : split_json_objects_from_array(*events_json)) {
+      const auto event = parse_event_frame(event_json);
+      if (event.has_value()) {
+        frame.events.push_back(*event);
       }
     }
   }

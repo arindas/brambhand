@@ -4,6 +4,7 @@
 
 #include "brambhand/client/common/replay_ingest.hpp"
 #include "brambhand/client/common/runtime_frame.hpp"
+#include "brambhand/client/desktop/replay_quicklook_workflow.hpp"
 #include "brambhand/client/desktop/shell.hpp"
 #include "brambhand/client/desktop/trajectory_infographic.hpp"
 
@@ -35,8 +36,8 @@ int main(int argc, char** argv) {
 
   brambhand::client::common::SimulationFrame frame{};
   frame.run_id = replay_report.frames.empty() ? "empty_replay" : replay_report.frames.back().run_id;
-  const auto panel =
-      brambhand::client::desktop::build_trajectory_infographic_panel(replay_report.frames);
+  const auto workflow =
+      brambhand::client::desktop::build_replay_quicklook_workflow(replay_report.frames);
 
   brambhand::client::desktop::DesktopShellConfig config{};
   config.backend = brambhand::client::desktop::DesktopPlatformBackend::SDL3;
@@ -57,8 +58,15 @@ int main(int argc, char** argv) {
             << ", imgui_docking=" << (shell.telemetry().imgui_docking_enabled ? "on" : "off")
             << ", status=" << brambhand::client::desktop::status_name(shell.telemetry().status)
             << ", frames=" << shell.telemetry().frames_pumped << "\n";
-  std::cout << "trajectory_panel schema=" << panel.schema_version
-            << ", curve_layers=" << panel.curve_layers.size()
-            << ", object_icons=" << panel.object_icons.size() << "\n";
+  std::cout << "trajectory_panel schema=" << workflow.trajectory_panel.schema_version
+            << ", curve_layers=" << workflow.trajectory_panel.curve_layers.size()
+            << ", object_icons=" << workflow.trajectory_panel.object_icons.size() << "\n";
+  std::cout << "event_markers=" << workflow.event_markers.size();
+  if (!workflow.event_markers.empty()) {
+    const auto& first = workflow.event_markers.front();
+    std::cout << ", first_event={sequence:" << first.sequence << ", kind:" << first.kind
+              << ", severity:" << first.severity << ", color:" << first.color_hex << "}";
+  }
+  std::cout << "\n";
   return 0;
 }
