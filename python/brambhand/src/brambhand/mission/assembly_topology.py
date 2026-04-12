@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from brambhand.fluid.contracts import (
     TOPOLOGY_TRANSITION_SCHEMA_VERSION,
+    DockingTransitionKind,
     TopologyTransition,
     TopologyTransitionKind,
 )
@@ -276,7 +277,7 @@ def apply_docking_attach_transition(
     return (
         next_state,
         DockingTransitionProvenance(
-            transition_kind=TopologyTransitionKind.ATTACH,
+            transition_kind=DockingTransitionKind.ATTACH,
             interface_id=interface_id,
             body_a_id=body_a_id,
             body_b_id=body_b_id,
@@ -299,7 +300,7 @@ def apply_docking_detach_transition(
     return (
         next_state,
         DockingTransitionProvenance(
-            transition_kind=TopologyTransitionKind.DETACH,
+            transition_kind=DockingTransitionKind.DETACH,
             interface_id=interface_id,
             body_a_id=target.body_a_id,
             body_b_id=target.body_b_id,

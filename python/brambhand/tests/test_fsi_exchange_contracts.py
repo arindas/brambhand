@@ -7,9 +7,9 @@ from brambhand.fluid.contracts import (
     LEAK_JET_BOUNDARY_PAYLOAD_SCHEMA_VERSION,
     SLOSH_BOUNDARY_PAYLOAD_SCHEMA_VERSION,
     TOPOLOGY_TRANSITION_SCHEMA_VERSION,
+    DockingTransitionKind,
     LeakJetBoundaryPayload,
     SloshBoundaryPayload,
-    TopologyTransitionKind,
 )
 from brambhand.mission.assembly_topology import (
     AssemblyTopologyState,
@@ -35,7 +35,7 @@ def test_fsi_exchange_contract_integrates_topology_leak_and_slosh_payloads() -> 
     after = AssemblyTopologyState(body_ids=("bus", "module"), interfaces=(), revision=2)
     topology = build_topology_transition_payload(
         transition_id="tx-1",
-        transition_kind=TopologyTransitionKind.DETACH,
+        transition_kind=DockingTransitionKind.DETACH,
         before_state=before,
         after_state=after,
         provenance={"source": "test"},

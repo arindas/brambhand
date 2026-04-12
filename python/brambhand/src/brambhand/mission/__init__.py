@@ -1,6 +1,10 @@
 """Mission-level state and orchestration primitives."""
 
-from brambhand.fluid.contracts import TopologyTransitionKind
+from brambhand.fluid.contracts import (
+    DockingTransitionKind,
+    FaultTransitionKind,
+    TopologyTransitionKind,
+)
 from brambhand.mission.assembly_topology import (
     AssemblyTopologyState,
     AttachmentInterface,
@@ -24,6 +28,8 @@ from brambhand.mission.assembly_topology import (
 __all__ = [
     "AssemblyTopologyState",
     "AttachmentInterface",
+    "DockingTransitionKind",
+    "FaultTransitionKind",
     "TopologyTransitionKind",
     "DockingTransitionProvenance",
     "FractureSplitProvenance",

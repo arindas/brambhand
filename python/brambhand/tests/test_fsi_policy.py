@@ -11,9 +11,10 @@ from brambhand.coupling.policy import (
 from brambhand.fluid.contracts import (
     LEAK_JET_BOUNDARY_PAYLOAD_SCHEMA_VERSION,
     TOPOLOGY_TRANSITION_SCHEMA_VERSION,
+    DockingTransitionKind,
+    FaultTransitionKind,
     LeakJetBoundaryPayload,
     TopologyTransition,
-    TopologyTransitionKind,
 )
 from brambhand.physics.vector import Vector3
 
@@ -76,7 +77,7 @@ def test_fsi_policy_escalates_on_split_topology_transition() -> None:
     topology = TopologyTransition(
         transition_id="tx-10",
         schema_version=TOPOLOGY_TRANSITION_SCHEMA_VERSION,
-        transition_kind=TopologyTransitionKind.SPLIT,
+        transition_kind=FaultTransitionKind.SPLIT,
         revision=1,
         body_ids_before=("a",),
         body_ids_after=("a_1", "a_2"),
@@ -189,6 +190,13 @@ def test_fsi_policy_threshold_validation_guards() -> None:
         pass
     else:
         raise AssertionError("Expected FSICouplingPolicyThresholds validation failure")
+
+    FSICouplingPolicyThresholds(
+        max_partitioned_iterations=1,
+        max_partitioned_final_residual=1e-4,
+        max_partitioned_total_mass_flow_kgps=1.0,
+        monolithic_transition_kinds=(DockingTransitionKind.ATTACH,),
+    )
 
     try:
         FSICouplingPolicyThresholds(

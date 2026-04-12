@@ -18,13 +18,21 @@ SLOSH_BOUNDARY_PAYLOAD_SCHEMA_VERSION = 1
 TOPOLOGY_TRANSITION_SCHEMA_VERSION = 1
 
 
-class TopologyTransitionKind(StrEnum):
-    """Canonical transition kinds shared across topology and coupling contracts."""
+class DockingTransitionKind(StrEnum):
+    """Topology transitions caused by nominal docking lifecycle events."""
 
     ATTACH = "attach"
     DETACH = "detach"
+
+
+class FaultTransitionKind(StrEnum):
+    """Topology transitions caused by fault/failure progression events."""
+
     SPLIT = "split"
     FRACTURE_SPLIT = "fracture_split"
+
+
+type TopologyTransitionKind = DockingTransitionKind | FaultTransitionKind
 
 
 @dataclass(frozen=True)
@@ -148,8 +156,13 @@ class TopologyTransition:
             raise ValueError("transition_id must be non-empty.")
         if self.schema_version != TOPOLOGY_TRANSITION_SCHEMA_VERSION:
             raise ValueError("Unsupported topology transition schema_version.")
-        if not isinstance(self.transition_kind, TopologyTransitionKind):
-            raise ValueError("transition_kind must use TopologyTransitionKind enum.")
+        match self.transition_kind:
+            case kind if type(kind) in (DockingTransitionKind, FaultTransitionKind):
+                pass
+            case _:
+                raise ValueError(
+                    "transition_kind must use DockingTransitionKind or FaultTransitionKind."
+                )
         if self.revision < 0:
             raise ValueError("revision cannot be negative.")
         if not self.body_ids_before or not self.body_ids_after:

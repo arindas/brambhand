@@ -1,7 +1,8 @@
 from brambhand.fluid.contracts import (
     TOPOLOGY_TRANSITION_SCHEMA_VERSION,
+    DockingTransitionKind,
+    FaultTransitionKind,
     TopologyTransition,
-    TopologyTransitionKind,
 )
 from brambhand.mission.assembly_topology import (
     AttachmentInterface,
@@ -137,12 +138,12 @@ def test_docking_attach_detach_transition_emits_handoff_provenance() -> None:
         body_a_id="chaser",
         body_b_id="target",
     )
-    assert attach_provenance.transition_kind == TopologyTransitionKind.ATTACH
+    assert attach_provenance.transition_kind == DockingTransitionKind.ATTACH
     assert attach_provenance.constraint_handoff_state == "constraints_activated"
     assert len(attached.interfaces) == 1
 
     detached, detach_provenance = apply_docking_detach_transition(attached, "dock_if")
-    assert detach_provenance.transition_kind == TopologyTransitionKind.DETACH
+    assert detach_provenance.transition_kind == DockingTransitionKind.DETACH
     assert detach_provenance.contact_handoff_state == "contact_manifold_released"
     assert len(detached.interfaces) == 0
     assert detached.revision == state.revision + 2
@@ -159,7 +160,7 @@ def test_topology_transition_payload_mapping_for_fsi_consumers() -> None:
 
     payload = build_topology_transition_payload(
         transition_id="tx-001",
-        transition_kind=TopologyTransitionKind.ATTACH,
+        transition_kind=DockingTransitionKind.ATTACH,
         before_state=state,
         after_state=attached,
         provenance={"source": "docking_baseline"},
@@ -167,7 +168,7 @@ def test_topology_transition_payload_mapping_for_fsi_consumers() -> None:
 
     assert payload.schema_version == TOPOLOGY_TRANSITION_SCHEMA_VERSION
     assert payload.transition_id == "tx-001"
-    assert payload.transition_kind == TopologyTransitionKind.ATTACH
+    assert payload.transition_kind == DockingTransitionKind.ATTACH
     assert payload.body_ids_before == ("a", "b")
     assert payload.interface_ids_after == ("if_ab",)
     assert payload.interface_endpoints_after == (("if_ab", "a", "b", "dock"),)
@@ -178,7 +179,7 @@ def test_topology_transition_payload_rejects_unsupported_version() -> None:
         TopologyTransition(
             transition_id="tx",
             schema_version=999,
-            transition_kind=TopologyTransitionKind.ATTACH,
+            transition_kind=DockingTransitionKind.ATTACH,
             revision=1,
             body_ids_before=("a",),
             body_ids_after=("a", "b"),
@@ -203,7 +204,7 @@ def test_topology_transition_payload_determinism_and_reconstruction() -> None:
     )
     payload_a = build_topology_transition_payload(
         transition_id="tx1",
-        transition_kind=TopologyTransitionKind.ATTACH,
+        transition_kind=DockingTransitionKind.ATTACH,
         before_state=initial,
         after_state=state_a,
         provenance={"source": "test"},
@@ -216,7 +217,7 @@ def test_topology_transition_payload_determinism_and_reconstruction() -> None:
     )
     payload_b = build_topology_transition_payload(
         transition_id="tx2",
-        transition_kind=TopologyTransitionKind.FRACTURE_SPLIT,
+        transition_kind=FaultTransitionKind.FRACTURE_SPLIT,
         before_state=state_a,
         after_state=state_b,
         provenance={"source": "test"},

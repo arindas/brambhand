@@ -7,7 +7,11 @@ from typing import Literal
 
 from brambhand.coupling.controller import FSICouplingControllerResult
 from brambhand.coupling.exchange_contracts import FSIBoundaryExchangeContract
-from brambhand.fluid.contracts import TopologyTransitionKind
+from brambhand.fluid.contracts import (
+    DockingTransitionKind,
+    FaultTransitionKind,
+    TopologyTransitionKind,
+)
 
 FSICouplingStrategy = Literal["partitioned", "monolithic"]
 
@@ -20,8 +24,8 @@ class FSICouplingPolicyThresholds:
     max_partitioned_final_residual: float
     max_partitioned_total_mass_flow_kgps: float
     monolithic_transition_kinds: tuple[TopologyTransitionKind, ...] = (
-        TopologyTransitionKind.SPLIT,
-        TopologyTransitionKind.FRACTURE_SPLIT,
+        FaultTransitionKind.SPLIT,
+        FaultTransitionKind.FRACTURE_SPLIT,
     )
 
     def __post_init__(self) -> None:
@@ -31,11 +35,14 @@ class FSICouplingPolicyThresholds:
             raise ValueError("max_partitioned_final_residual cannot be negative.")
         if self.max_partitioned_total_mass_flow_kgps < 0.0:
             raise ValueError("max_partitioned_total_mass_flow_kgps cannot be negative.")
-        if any(
-            not isinstance(kind, TopologyTransitionKind)
-            for kind in self.monolithic_transition_kinds
-        ):
-            raise ValueError("monolithic_transition_kinds must use TopologyTransitionKind values.")
+        for kind in self.monolithic_transition_kinds:
+            match kind:
+                case value if type(value) in (DockingTransitionKind, FaultTransitionKind):
+                    continue
+                case _:
+                    raise ValueError(
+                        "monolithic_transition_kinds must use TopologyTransitionKind values."
+                    )
 
 
 @dataclass(frozen=True)
