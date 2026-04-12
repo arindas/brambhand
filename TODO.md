@@ -79,7 +79,7 @@
 - [x] Integrate topology-transition + leak-jet + slosh boundary payloads into FSI exchange contracts
 - [x] Define initial coupling policy: partitioned baseline with explicit criteria for monolithic escalation
 - [x] Add convergence diagnostics and residual telemetry channels
-- [ ] Add FSI benchmark tests for coupled stability (including failure/recovery paths)
+- [x] Add FSI benchmark tests for coupled stability (including failure/recovery paths)
 - [ ] Add integrated chain test: `fracture/topology update -> leak/slosh boundary update -> FSI residual convergence/fallback -> 6-DOF response`
 
 ### R8.1 — Dashboard data contracts and headless view-models

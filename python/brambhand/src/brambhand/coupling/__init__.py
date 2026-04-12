@@ -18,6 +18,10 @@ from brambhand.coupling.fsi_coupler import (
     InterfaceDisplacement,
     couple_fsi_two_way,
 )
+from brambhand.coupling.performance import (
+    FSICoupledStabilityBenchmarkResult,
+    benchmark_fsi_coupled_stability,
+)
 from brambhand.coupling.policy import (
     FSICouplingPolicyDecision,
     FSICouplingPolicyThresholds,
@@ -40,6 +44,7 @@ __all__ = [
     "FSICouplingControllerResult",
     "FSICouplingIterationTelemetry",
     "FSICouplingParams",
+    "FSICoupledStabilityBenchmarkResult",
     "FSICouplingPolicyDecision",
     "FSICouplingPolicyThresholds",
     "FSICouplingResult",
@@ -49,6 +54,7 @@ __all__ = [
     "FSIControllerMode",
     "InterfaceDisplacement",
     "ResidualTelemetryPoint",
+    "benchmark_fsi_coupled_stability",
     "build_fsi_boundary_exchange_contract",
     "build_fsi_convergence_diagnostics",
     "couple_fsi_two_way",

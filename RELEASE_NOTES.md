@@ -107,6 +107,10 @@
   - renamed topology transition contract from `TopologyTransitionPayload` to `TopologyTransition` and schema constant to `TOPOLOGY_TRANSITION_SCHEMA_VERSION` to remove payload-specific type naming
   - added parser helpers (`parse_topology_transition_kind`, `parse_optional_topology_transition_kind`) for safe normalization of raw string inputs at boundaries, while keeping typed contracts canonical internally
   - removed separate mission-level transition-kind alias and standardized all topology/coupling/test paths on the shared union contract (eliminating ad-hoc string kind drift across modules)
+- R4 coupled-stability benchmark baseline:
+  - added `coupling/performance.py` with `benchmark_fsi_coupled_stability(...)` and summary contract (`FSICoupledStabilityBenchmarkResult`)
+  - benchmark summarizes convergence/failure/fallback counts, failure->recovery counts, iteration percentiles, and residual envelope across repeated controller runs
+  - added tests in `tests/test_fsi_benchmarks.py` for stable converged profiles, explicit failure/recovery path accounting, and input validation guards
 - R4 convergence diagnostics and telemetry-channel baseline:
   - added `coupling/telemetry.py` with versioned diagnostics contract (`FSICouplingConvergenceDiagnostics`) and named telemetry channels (`FSICouplingTelemetryChannels`)
   - added deterministic diagnostics builder `build_fsi_convergence_diagnostics(...)` to publish residual-history, convergence flags, iteration usage, and controller mode/termination channels
