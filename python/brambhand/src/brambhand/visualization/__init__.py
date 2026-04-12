@@ -37,6 +37,13 @@ from brambhand.visualization.trajectory_render_contracts import (
     TrajectoryRenderContract3D,
     build_trajectory_render_contract_3d,
 )
+from brambhand.visualization.trajectory_widget_contracts import (
+    TRAJECTORY_WIDGET_SCHEMA_VERSION,
+    TrajectoryWidgetContract,
+    TrajectoryWidgetCurveLayer,
+    TrajectoryWidgetObjectIcon,
+    build_trajectory_widget_contract,
+)
 
 __all__ = [
     "QUICKLOOK_EVENT_SEVERITY_MAP",
@@ -56,7 +63,11 @@ __all__ = [
     "TrajectoryCurve3D",
     "MovingObjectMarker3D",
     "TrajectoryRenderContract3D",
+    "TrajectoryWidgetContract",
+    "TrajectoryWidgetCurveLayer",
+    "TrajectoryWidgetObjectIcon",
     "TRAJECTORY_RENDER_SCHEMA_VERSION",
+    "TRAJECTORY_WIDGET_SCHEMA_VERSION",
     "CURRENT_TRAJECTORY_COLOR_HEX",
     "PLANNED_TRAJECTORY_COLOR_HEX",
     "CURRENT_OBJECT_COLOR_HEX",
@@ -64,6 +75,7 @@ __all__ = [
     "build_headless_quicklook_output",
     "build_current_planned_overlay",
     "build_trajectory_render_contract_3d",
+    "build_trajectory_widget_contract",
     "event_kind_to_severity",
     "extract_quicklook_telemetry",
     "severity_to_color_hex",

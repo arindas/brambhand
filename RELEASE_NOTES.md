@@ -69,6 +69,10 @@
 - R8.0 deterministic quicklook snapshot coverage:
   - added golden snapshot fixtures for quicklook telemetry extraction ordering and headless output rendering (`tests/snapshots/quicklook_telemetry_snapshot.json`, `tests/snapshots/quicklook_output_snapshot.json`)
   - added regression tests in `tests/test_quicklook_contracts.py` to enforce deterministic quicklook extraction/ordering against intentionally unordered replay inputs
+- R8.0 compact trajectory-widget contract baseline:
+  - added `visualization/trajectory_widget_contracts.py` with versioned compact infographic contract (`TrajectoryWidgetContract`) for curve layers + object-icon markers
+  - implemented `build_trajectory_widget_contract(...)` to derive widget payloads directly from shared `TrajectoryRenderContract3D` inputs (no duplicate extraction path)
+  - added tests in `tests/test_trajectory_widget_contracts.py` for curve/icon mapping semantics and schema-version validation
 - Traceability update for dual trajectory presentation modes:
   - updated `REQUIREMENTS.md` with explicit compact-infographic + rich-3D trajectory-view requirements and shared-contract parity constraints (`FR-146..FR-148`, `NR-065`)
   - updated `DESIGN.md`, `TODO.md`, `VERIFICATION.md`, and `VALIDATION.md` to plan/verify/validate both trajectory presentation paths on shared semantics
