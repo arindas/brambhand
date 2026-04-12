@@ -41,7 +41,11 @@
   - added labeled side-panel timeline for replay stage markers (moved from unlabeled bottom bars), with explicit meaning text and per-stage severity colors
   - added sim-day/frame/playback-rate labels and playback speed controls (`[` slower, `]` faster)
   - added zoom/pan controls (`mouse-wheel` or `-`/`=` for zoom, arrow keys for pan) for dense solar-system context inspection
-  - added explicit trajectory trace rendering for both `current_vehicle` (main craft) and `mars_probe` (undocked craft branch)
+  - added explicit trajectory trace rendering for replay bodies
+- Replay window renderer generalization:
+  - removed mission-specific body handling from `c/brambhand/src/bin/desktop/replay_window.cpp`
+  - renderer now auto-discovers body IDs from replay frames, assigns deterministic per-body colors, and renders traces/markers/legend for arbitrary body counts
+  - sidebar wording updated to generic replay semantics (no mission-specific assumptions)
   - desktop replay window now starts resizable + maximized for immediate full-view operation
 
 ## v0.1.1 (2026-04-12)
