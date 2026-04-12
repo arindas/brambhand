@@ -41,6 +41,7 @@
   - added labeled side-panel timeline for replay stage markers (moved from unlabeled bottom bars), with explicit meaning text and per-stage severity colors
   - added sim-day/frame/playback-rate labels and playback speed controls (`[` slower, `]` faster)
   - added zoom/pan controls (`mouse-wheel` or `-`/`=` for zoom, arrow keys for pan) for dense solar-system context inspection
+  - added explicit trajectory trace rendering for both `current_vehicle` (main craft) and `mars_probe` (undocked craft branch)
   - desktop replay window now starts resizable + maximized for immediate full-view operation
 
 ## v0.1.1 (2026-04-12)

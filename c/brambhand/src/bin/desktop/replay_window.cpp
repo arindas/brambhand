@@ -315,6 +315,39 @@ void draw_curve_layer(
   }
 }
 
+void draw_trace_for_body(
+    SDL_Renderer* renderer,
+    const std::vector<brambhand::client::common::SimulationFrame>& frames,
+    std::size_t upto_index,
+    const std::string& body_id,
+    const PlotBounds& bounds,
+    const SDL_FRect& viewport,
+    const Rgba& color) {
+  if (frames.empty()) {
+    return;
+  }
+
+  SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+  const std::size_t end = std::min(upto_index, frames.size() - 1);
+
+  const brambhand::client::common::BodyState* prev_body = nullptr;
+  for (std::size_t i = 0; i <= end; ++i) {
+    const auto* body = find_body_by_id(frames[i], body_id);
+    if (body == nullptr) {
+      prev_body = nullptr;
+      continue;
+    }
+
+    if (prev_body != nullptr) {
+      const auto a = map_point(prev_body->position_m.x, prev_body->position_m.y, bounds, viewport);
+      const auto b = map_point(body->position_m.x, body->position_m.y, bounds, viewport);
+      SDL_RenderLine(renderer, a.x, a.y, b.x, b.y);
+    }
+
+    prev_body = body;
+  }
+}
+
 void draw_sidebar(
     SDL_Renderer* renderer,
     const SDL_FRect& panel,
@@ -352,6 +385,8 @@ void draw_sidebar(
   SDL_RenderDebugText(renderer, x, y, "Pan: arrow keys");
   y += 22.0F;
 
+  SDL_RenderDebugText(renderer, x, y, "Trajectory traces: main (cyan), mars_probe (green)");
+  y += 16.0F;
   SDL_RenderDebugText(renderer, x, y, "Mission stage markers (replay events)");
   y += 16.0F;
   SDL_RenderDebugText(renderer, x, y, "These replaced old bottom bars.");
@@ -586,6 +621,23 @@ bool run_replay_window(
 
     const brambhand::client::common::SimulationFrame* active_frame = nullptr;
     if (!frames.empty()) {
+      draw_trace_for_body(
+          renderer,
+          frames,
+          frame_index,
+          "current_vehicle",
+          view_bounds,
+          viewport,
+          parse_hex_color("#00E5FF"));
+      draw_trace_for_body(
+          renderer,
+          frames,
+          frame_index,
+          "mars_probe",
+          view_bounds,
+          viewport,
+          parse_hex_color("#A5D6A7"));
+
       active_frame = &frames[frame_index];
       draw_solar_context(renderer, *active_frame, view_bounds, viewport);
     }
