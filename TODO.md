@@ -72,6 +72,12 @@
 - [x] Add deterministic snapshot tests for quicklook extraction and ordering
 - [x] Define compact infographic trajectory widget contract (curve layers + object-icon markers) using shared trajectory render payloads
 
+### R8.05 — Early graphical replay visualization
+- [ ] Implement native desktop app shell using SDL3/GLFW platform layer and Dear ImGui docking UI baseline
+- [ ] Implement replay JSONL ingest path using the same trajectory/view-model contracts as downstream live mode
+- [ ] Implement compact trajectory infographic panel (current/planned curves + object icons) using shared trajectory render contracts
+- [ ] Add desktop replay quicklook workflow acceptance tests (trajectory + event-marker readability and deterministic ordering)
+
 ### R4 — Fluid-structure interaction coupling
 - [x] Implement two-way FSI coupler with convergence residuals
 - [x] Implement coupling controller (iteration budget, thresholds, fallback)
@@ -152,12 +158,9 @@
 - [ ] Add integration tests for causal ordering, DAG-mutation correctness, and audit-grade replay reconstruction
 
 ### R8.4 — Visualization and dashboards (full UI realization after R8.0..R8.3 contracts)
-- [ ] Implement native desktop app shell using SDL3/GLFW platform layer and Dear ImGui docking UI baseline
 - [ ] Implement mission-control dashboard UI consuming R8.1 schemas/view-model builders (no duplicate backend contract logic)
 - [ ] Implement onboard spacecraft dashboard UI consuming R8.1 schemas/view-model builders (no duplicate backend contract logic)
 - [ ] Integrate live Python-stream client (gRPC baseline) with bounded buffering/backpressure observability
-- [ ] Implement replay JSONL ingest path using the same view-model/render contracts as live mode
-- [ ] Implement compact trajectory infographic panel (current/planned curves + object icons) using shared trajectory render contracts
 - [ ] Implement 3D state/damage/leak overlays and event timeline integration consuming R8.2 overlay schemas
 - [ ] Implement explicit crack/fracture-path and leak-source visualization overlays
 - [ ] Implement topology-discontinuity visualization support for severe failures (e.g., structural separation/snapping)

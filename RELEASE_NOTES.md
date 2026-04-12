@@ -4,7 +4,10 @@
 
 ### Added
 
-- (none)
+- Visualization roadmap reprioritization:
+  - introduced `R8.05` as a separate milestone for early native graphical replay quicklook realization (desktop shell + replay ingest + compact trajectory panel)
+  - moved those replay-graphical items earlier in the core lane (`R8.0 -> R8.05 -> R4`) while keeping full dashboard and renderer realization in `R8.4/R8.5`
+  - synchronized planning/acceptance docs (`DESIGN.md`, `TODO.md`, `VERIFICATION.md`, `VALIDATION.md`) with the new milestone ordering and gates
 
 ## v0.1.1 (2026-04-12)
 

@@ -109,6 +109,7 @@ Detailed scenario/benchmark acceptance criteria are maintained in `VALIDATION.md
 - **R7.1 gate:** pacing/time-scale modes meet cadence bounds and preserve simulation timeline equivalence
 - **R7.2 gate:** inter-module/distributed contracts enforce atomic barrier commits, DAG-mutation correctness, and replay-grade persistence provenance
 - **R8.0 gate:** replay/trajectory quicklook outputs are deterministic, event-order preserving, and use a deterministic/extensible severity mapping contract (`info|warning|critical` baseline)
+- **R8.05 gate:** desktop replay quicklook shell (SDL3/GLFW + Dear ImGui baseline) preserves replay ordering semantics and contract-parity with headless R8.0 trajectory/event outputs
 - **R8 trajectory-view gate:** compact infographic and rich 3D trajectory views both consume shared trajectory render contracts and preserve `current/planned` + marker sampling parity
 - **R8.1 gate:** mission-control/onboard view-model schemas are versioned, validated, and replay-compatible
 - **R8.2 gate:** geometry-overlay contracts are versioned, validated, and replay-compatible

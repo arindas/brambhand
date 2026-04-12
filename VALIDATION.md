@@ -79,11 +79,12 @@ Validation covers:
 - Hohmann-transfer acceptance scenarios (co-planar baseline transfers)
 - Gravity-assist acceptance scenarios (swing-by deflection and downstream trajectory verification)
 
-## R8.0 / R8.1 / R8.2 / R8.3 (interleaved early visual-feedback track)
+## R8.0 / R8.05 / R8.1 / R8.2 / R8.3 (interleaved early visual-feedback track)
 - Replay-driven trajectory quicklook acceptance (`current` path + event markers)
 - Quicklook severity readability acceptance using baseline `info|warning|critical` marker styling
 - `Current` vs `planned` overlay interpretability acceptance for planning/what-if review
 - Compact infographic acceptance (small-panel curves + object icons) for rapid trajectory situational awareness
+- Native desktop replay quicklook acceptance (SDL3/GLFW + Dear ImGui shell lifecycle, replay ingest, trajectory/event marker readability)
 - Mission-control baseline layout acceptance (top bar, command panel, main viewport, telemetry rail, alarm timeline)
 - Onboard baseline layout acceptance (flight strip, instrument cluster, caution/warning rail, recent-events strip)
 - View-model schema compatibility acceptance across revisions (backward-compatible evolution checks)
@@ -196,7 +197,7 @@ Non-functional validation intent in this document aligns with NR-001..NR-064, wi
 - Matrix-free acceptance-threshold evaluation evidence is available for operational/analysis profiles (including strict-threshold failure-path checks).
 - Structural latency/memory benchmark-prep evidence is available for 2D-vs-3D profile comparisons (P50/P95 solve timing and `nnz`-based sparse storage estimates).
 - Full benchmark-grade validation suites remain milestone-gated and are tracked in `TODO.md`.
-- R8.0..R8.3 suites are now defined for incremental operator feedback prior to full R8.4/R8.5 dashboard+rendering delivery.
+- R8.0..R8.3 suites plus early graphical replay milestone R8.05 are now defined for incremental operator feedback prior to full R8.4/R8.5 dashboard+rendering delivery.
 
 ## 8) Governance
 

@@ -521,11 +521,12 @@ To provide operator-visible feedback earlier, visualization is decomposed into e
 
 Execution order (authoritative):
 1. R8.0 after R3
-2. R8.1 after R4
-3. R8.2 after R5
-4. R8.3 after R7.1
-5. R8.4 after R7.2
-6. R8.5 after R8.4
+2. R8.05 after R8.0
+3. R8.1 after R4
+4. R8.2 after R5
+5. R8.3 after R7.1
+6. R8.4 after R7.2
+7. R8.5 after R8.4
 
 ### R8.0 — Replay/trajectory quicklook (low risk, immediate)
 - Inputs: `scenario/replay_log.py` records + deterministic body summaries emitted by run workflows.
@@ -541,6 +542,18 @@ Execution order (authoritative):
   - `visualization/trajectory_overlay.py` (trace alignment utilities)
   - `visualization/trajectory_render_contracts.py` (shared 3D curve + moving-object render payload)
 - Constraints: no dependence on full scene-graph/BVH/ray-march stack; severity mapping table must be versioned/extendable for later dashboard theming; infographic and rich-render consumers must share trajectory semantics rather than re-deriving from raw replay independently.
+
+### R8.05 — Early graphical replay visualization
+- Inputs: replay JSONL + R8.0 shared trajectory/event contracts.
+- Outputs:
+  - native desktop shell lifecycle (SDL3/GLFW + Dear ImGui docking baseline)
+  - replay-driven trajectory/event quicklook panel rendering
+  - compact infographic panel using shared trajectory render/widget contracts.
+- Architecture surface:
+  - `client/desktop/platform/*`
+  - `client/desktop/ui/*` (replay quicklook panels)
+  - replay ingest adapters under `client/common/replay/*`.
+- Determinism policy: replay ingestion and panel ordering preserve R8.0 sequence semantics; no divergence from contract ordering.
 
 ### R8.1 — Dashboard data contracts and view-models (headless)
 - Inputs: simulation snapshots/events/alarms, replay metadata.
@@ -575,8 +588,8 @@ Execution order (authoritative):
 
 ### R8.4/R8.5 — Full dashboard and rendering stack
 - Scene graph assembly, BVH acceleration, renderer profiles, and ray-marching pipeline.
-- Desktop stack realization uses SDL3/GLFW platform lifecycle + Dear ImGui shell + Vulkan renderer backend.
-- Trajectory UX is dual-path: a compact infographic widget (curves + icons) and a rich 3D viewport shall both consume the same trajectory render contracts.
+- R8.4 extends the already-established desktop replay shell (R8.05) to full mission-control/onboard dashboards and live-stream integration.
+- Trajectory UX is dual-path: compact infographic (established in early replay UI) and rich 3D viewport shall both consume the same trajectory render contracts.
 - Live/replay unification policy: both modes feed the same view-model and renderer contracts to preserve deterministic operator semantics.
 
 ## Python simulation <-> desktop renderer integration architecture
@@ -622,7 +635,7 @@ These are initial layout contracts to unblock backend/view-model design before f
 ## Incremental implementation roadmap
 
 Execution policy:
-- **Core delivery lane (anti-derailment):** `R2.2 -> R2.3 -> R3 -> R3.1 -> R8.0 -> R4 -> R8.1 -> R5 -> R8.2 -> R6 -> R7 -> R7.1 -> R8.3 -> R7.2 -> R8.4 -> R8.5`.
+- **Core delivery lane (anti-derailment):** `R2.2 -> R2.3 -> R3 -> R3.1 -> R8.0 -> R8.05 -> R4 -> R8.1 -> R5 -> R8.2 -> R6 -> R7 -> R7.1 -> R8.3 -> R7.2 -> R8.4 -> R8.5`.
 - Do not pull post-core milestones forward unless explicitly prioritized.
 - Core lane focuses on simulation correctness/coupling/replay determinism and only minimal operator-feedback surfaces needed for validation.
 
@@ -634,6 +647,7 @@ Execution policy:
 - **R3: FEM structural solver + fracture pipeline**
 - **R3.1: Disjoint-topology transition simulation baseline (fracture separation + dock/undock attach/detach graph propagation)**
 - **R8.0 (interleaved after R3): replay/trajectory quicklook for early visual feedback**
+- **R8.05 (interleaved after R8.0): native desktop replay quicklook realization**
 - **R4: FSI coupler and convergence diagnostics**
 - **R8.1 (interleaved after R4): headless dashboard view-model contracts**
 - **R5: STL ingestion and geometry-to-physics pipeline**
