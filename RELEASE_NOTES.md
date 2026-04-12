@@ -34,6 +34,7 @@
 - Examples: added `examples/earth_jupiter_hohmann_replay_demo.py` to generate replay JSONL for immediate 2D Earth->Jupiter Hohmann-transfer visualization in desktop replay mode (kept out of main CLI surface)
   - demo replay now includes Sun + all 8 planets with time-varying orbital positions so planetary markers move over replay time
   - demo replay now includes staging events for departure/coast/Jupiter approach and an additional mission branch (`mars_probe_undock` + `mars_probe_orbit_insertion`) while the main vehicle remains on Jupiter transfer
+  - fixed Mars-probe branch continuity: probe now undocks from the main vehicle, transits toward Mars, then enters Mars orbit (no sudden ghost appearance at Mars)
 - Replay window solar-context enhancement:
   - `c/brambhand/src/bin/desktop/replay_window.cpp` now renders solar-context orbit rings and body markers (Sun + all 8 planets) instead of transfer-only curves
   - planetary/body markers are animated over replay frames (not stationary), preserving replay-driven motion semantics

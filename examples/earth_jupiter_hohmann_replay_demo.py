@@ -70,24 +70,43 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
         "neptune": 0.9,
     }
 
-    undock_index = max(2, samples // 4)
-    mars_insertion_index = min(samples - 1, undock_index + max(2, samples // 40))
-    undock_time_s = (undock_index / samples) * transfer_time_s
+    sim_times = [(i / samples) * transfer_time_s for i in range(samples + 1)]
+    planned_positions: list[tuple[float, float]] = []
+    current_positions: list[tuple[float, float]] = []
+    radii: list[float] = []
+    planet_positions_over_time: list[dict[str, tuple[float, float]]] = []
 
-    frames: list[dict[str, Any]] = []
-    for i in range(samples + 1):
-        frac = i / samples
-        sim_time_s = frac * transfer_time_s
-
+    for sim_time_s in sim_times:
         true_anomaly = transfer_mean_motion * sim_time_s
         radius = a * (1.0 - e**2) / (1.0 + e * math.cos(true_anomaly))
+        radii.append(radius)
 
         planned_x = radius * math.cos(true_anomaly)
         planned_y = radius * math.sin(true_anomaly)
+        planned_positions.append((planned_x, planned_y))
 
         perturb = 1.0 + 0.015 * math.sin(4.0 * true_anomaly)
-        current_x = planned_x * perturb
-        current_y = planned_y * perturb
+        current_positions.append((planned_x * perturb, planned_y * perturb))
+
+        planet_positions: dict[str, tuple[float, float]] = {}
+        for planet_name, radius_m in PLANET_RADII_M.items():
+            planet_positions[planet_name] = _planet_position(radius_m, sim_time_s, planet_phase0[planet_name])
+        planet_positions_over_time.append(planet_positions)
+
+    mars_radius = PLANET_RADII_M["mars"]
+    mars_encounter_index = min(range(samples + 1), key=lambda idx: abs(radii[idx] - mars_radius))
+    undock_index = max(2, mars_encounter_index - max(2, samples // 40))
+    mars_insertion_index = mars_encounter_index
+
+    undock_time_s = sim_times[undock_index]
+    insertion_time_s = sim_times[mars_insertion_index]
+    undock_x, undock_y = current_positions[undock_index]
+    insertion_mars_x, insertion_mars_y = planet_positions_over_time[mars_insertion_index]["mars"]
+
+    frames: list[dict[str, Any]] = []
+    for i, sim_time_s in enumerate(sim_times):
+        planned_x, planned_y = planned_positions[i]
+        current_x, current_y = current_positions[i]
 
         events: list[dict[str, Any]] = []
         if i == 0:
@@ -120,10 +139,8 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
             },
         ]
 
-        planet_positions: dict[str, tuple[float, float]] = {}
-        for planet_name, radius_m in PLANET_RADII_M.items():
-            px, py = _planet_position(radius_m, sim_time_s, planet_phase0[planet_name])
-            planet_positions[planet_name] = (px, py)
+        planet_positions = planet_positions_over_time[i]
+        for planet_name, (px, py) in planet_positions.items():
             bodies.append(
                 {
                     "body_id": planet_name,
@@ -132,10 +149,16 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
             )
 
         if i >= undock_index:
-            mars_x, mars_y = planet_positions["mars"]
-            probe_theta = 2.0 * math.pi * ((sim_time_s - undock_time_s) / MARS_PROBE_ORBIT_PERIOD_S)
-            probe_x = mars_x + MARS_PROBE_ORBIT_RADIUS_M * math.cos(probe_theta)
-            probe_y = mars_y + MARS_PROBE_ORBIT_RADIUS_M * math.sin(probe_theta)
+            if i < mars_insertion_index and insertion_time_s > undock_time_s:
+                alpha = (sim_time_s - undock_time_s) / (insertion_time_s - undock_time_s)
+                probe_x = (1.0 - alpha) * undock_x + alpha * insertion_mars_x
+                probe_y = (1.0 - alpha) * undock_y + alpha * insertion_mars_y
+            else:
+                mars_x, mars_y = planet_positions["mars"]
+                probe_theta = 2.0 * math.pi * ((sim_time_s - insertion_time_s) / MARS_PROBE_ORBIT_PERIOD_S)
+                probe_x = mars_x + MARS_PROBE_ORBIT_RADIUS_M * math.cos(probe_theta)
+                probe_y = mars_y + MARS_PROBE_ORBIT_RADIUS_M * math.sin(probe_theta)
+
             bodies.append(
                 {
                     "body_id": "mars_probe",
