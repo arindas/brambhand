@@ -101,6 +101,10 @@
   - added `coupling/exchange_contracts.py` with versioned integrated exchange contract (`FSIBoundaryExchangeContract`) combining topology-transition, leak-jet, and slosh payload channels for FSI coupling paths
   - added deterministic builder `build_fsi_boundary_exchange_contract(...)` with canonical ordering and per-interface fluid-load aggregation from leak/slosh boundary payloads
   - added tests in `tests/test_fsi_exchange_contracts.py` for integrated payload mapping, deterministic ordering, aggregation semantics, and schema-version validation
+- R4 initial coupling-policy baseline:
+  - added `coupling/policy.py` with explicit partitioned-vs-monolithic strategy decision contract (`FSICouplingPolicyThresholds`, `FSICouplingPolicyDecision`)
+  - implemented deterministic policy evaluator `decide_fsi_coupling_strategy(...)` using explicit escalation criteria (topology transition kind, convergence status, residual threshold, iteration budget, and total mass-flow threshold)
+  - added tests in `tests/test_fsi_policy.py` covering partitioned-nominal retention, monolithic escalation triggers, and policy-threshold validation guards
 - R3 fracture/damage baseline:
   - added `structures/fracture.py` with deterministic fracture-initiation thresholds (`FractureInitiationParams`) and per-element damage-state evaluation
   - added FEM-linked fracture evaluation helpers for 2D/3D solve outputs

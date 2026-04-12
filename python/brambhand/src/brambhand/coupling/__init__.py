@@ -18,6 +18,12 @@ from brambhand.coupling.fsi_coupler import (
     InterfaceDisplacement,
     couple_fsi_two_way,
 )
+from brambhand.coupling.policy import (
+    FSICouplingPolicyDecision,
+    FSICouplingPolicyThresholds,
+    FSICouplingStrategy,
+    decide_fsi_coupling_strategy,
+)
 
 __all__ = [
     "FSI_BOUNDARY_EXCHANGE_SCHEMA_VERSION",
@@ -26,10 +32,14 @@ __all__ = [
     "FSICouplingControllerResult",
     "FSICouplingIterationTelemetry",
     "FSICouplingParams",
+    "FSICouplingPolicyDecision",
+    "FSICouplingPolicyThresholds",
     "FSICouplingResult",
+    "FSICouplingStrategy",
     "FSIControllerMode",
     "InterfaceDisplacement",
     "build_fsi_boundary_exchange_contract",
     "couple_fsi_two_way",
+    "decide_fsi_coupling_strategy",
     "run_fsi_coupling_with_controller",
 ]
