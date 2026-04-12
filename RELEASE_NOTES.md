@@ -89,6 +89,10 @@
   - added convergence controls/telemetry contracts (`FSICouplingParams`, `FSICouplingIterationTelemetry`, `FSICouplingResult`) with residual tracking and termination reasons
   - added baseline interface displacement feedback contract (`InterfaceDisplacement`) and provider protocols for fluid/structural iteration wiring
   - added tests in `tests/test_fsi_coupler.py` for convergence behavior, max-iteration failure behavior, deterministic interface ordering, and parameter validation guards
+- R4 FSI coupling-controller baseline:
+  - added `coupling/controller.py` with controller policy/result contracts (`FSICouplingControllerPolicy`, `FSICouplingControllerResult`) for iteration budgets, residual thresholds, and explicit fallback behavior
+  - added `run_fsi_coupling_with_controller(...)` to execute nominal coupling first, then optional fallback with deterministic termination provenance (`nominal_converged`, `fallback_converged`, explicit failure reasons)
+  - added tests in `tests/test_fsi_controller.py` for nominal success, fallback activation, fallback-disabled failure, and controller-policy validation guards
 - R3 fracture/damage baseline:
   - added `structures/fracture.py` with deterministic fracture-initiation thresholds (`FractureInitiationParams`) and per-element damage-state evaluation
   - added FEM-linked fracture evaluation helpers for 2D/3D solve outputs
