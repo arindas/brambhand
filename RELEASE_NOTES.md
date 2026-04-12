@@ -4,6 +4,12 @@
 
 ### Added
 
+- (none)
+
+## v0.1.1 (2026-04-12)
+
+### Added
+
 - R1 dynamics verification expansion:
   - gyroscopic coupling test coverage for non-spherical inertia in `dynamics/rigid_body_6dof.py`
   - docking threshold boundary coverage in `dynamics/contact_docking.py`
