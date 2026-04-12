@@ -14,6 +14,14 @@ MU_SUN_M3_S2 = 1.32712440018e20
 EARTH_ORBIT_RADIUS_M = 1.0 * AU_M
 JUPITER_ORBIT_RADIUS_M = 5.2044 * AU_M
 
+PLANET_RADII_M = {
+    "mercury": 0.3871 * AU_M,
+    "venus": 0.7233 * AU_M,
+    "earth": 1.0 * AU_M,
+    "mars": 1.5237 * AU_M,
+    "jupiter": 5.2044 * AU_M,
+}
+
 
 def _build_event(sequence: int, sim_time_s: float, kind: str, severity: str) -> dict[str, Any]:
     return {
@@ -23,6 +31,12 @@ def _build_event(sequence: int, sim_time_s: float, kind: str, severity: str) -> 
         "severity": severity,
         "payload_json": {},
     }
+
+
+def _planet_position(radius_m: float, sim_time_s: float, phase0_rad: float) -> tuple[float, float]:
+    mean_motion = math.sqrt(MU_SUN_M3_S2 / radius_m**3)
+    theta = phase0_rad + mean_motion * sim_time_s
+    return radius_m * math.cos(theta), radius_m * math.sin(theta)
 
 
 def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
@@ -35,14 +49,25 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
     e = (r2 - r1) / (r2 + r1)
 
     transfer_time_s = math.pi * math.sqrt(a**3 / MU_SUN_M3_S2)
-    mean_motion = math.sqrt(MU_SUN_M3_S2 / a**3)
+    transfer_mean_motion = math.sqrt(MU_SUN_M3_S2 / a**3)
+
+    jupiter_mean_motion = math.sqrt(MU_SUN_M3_S2 / r2**3)
+    jupiter_phase0 = math.pi - jupiter_mean_motion * transfer_time_s
+
+    planet_phase0 = {
+        "mercury": 1.1,
+        "venus": 2.2,
+        "earth": 0.0,
+        "mars": 0.4,
+        "jupiter": jupiter_phase0,
+    }
 
     frames: list[dict[str, Any]] = []
     for i in range(samples + 1):
         frac = i / samples
         sim_time_s = frac * transfer_time_s
 
-        true_anomaly = mean_motion * sim_time_s
+        true_anomaly = transfer_mean_motion * sim_time_s
         radius = a * (1.0 - e**2) / (1.0 + e * math.cos(true_anomaly))
 
         planned_x = radius * math.cos(true_anomaly)
@@ -60,6 +85,27 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
         if i == samples:
             events.append(_build_event(i, sim_time_s, "alarm_raised", "critical"))
 
+        bodies: list[dict[str, Any]] = [
+            {"body_id": "sun", "position_m": {"x": 0.0, "y": 0.0, "z": 0.0}},
+            {
+                "body_id": "current_vehicle",
+                "position_m": {"x": current_x, "y": current_y, "z": 0.0},
+            },
+            {
+                "body_id": "planned_vehicle",
+                "position_m": {"x": planned_x, "y": planned_y, "z": 0.0},
+            },
+        ]
+
+        for planet_name, radius_m in PLANET_RADII_M.items():
+            px, py = _planet_position(radius_m, sim_time_s, planet_phase0[planet_name])
+            bodies.append(
+                {
+                    "body_id": planet_name,
+                    "position_m": {"x": px, "y": py, "z": 0.0},
+                }
+            )
+
         frames.append(
             {
                 "schema_version": 1,
@@ -67,16 +113,7 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
                 "tick_id": i,
                 "sim_time_s": sim_time_s,
                 "sequence": i,
-                "bodies": [
-                    {
-                        "body_id": "current_vehicle",
-                        "position_m": {"x": current_x, "y": current_y, "z": 0.0},
-                    },
-                    {
-                        "body_id": "planned_vehicle",
-                        "position_m": {"x": planned_x, "y": planned_y, "z": 0.0},
-                    },
-                ],
+                "bodies": bodies,
                 "events": events,
             }
         )

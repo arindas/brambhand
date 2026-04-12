@@ -76,7 +76,7 @@ int main(int argc, char** argv) {
   std::cout << "\n";
 
   if (!no_window) {
-    if (!brambhand::client::desktop::run_replay_window(workflow)) {
+    if (!brambhand::client::desktop::run_replay_window(workflow, replay_report.frames)) {
       std::cerr << "failed to open replay window\n";
       return 1;
     }
