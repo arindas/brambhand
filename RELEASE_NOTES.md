@@ -12,6 +12,10 @@
   - added deterministic desktop shell lifecycle scaffold (`DesktopShell`) with SDL3/GLFW backend selection and Dear ImGui docking enablement flag in `c/brambhand/include/brambhand/client/desktop/shell.hpp` + `c/brambhand/src/lib/client/desktop_shell.cpp`
   - updated `c/brambhand/src/bin/desktop/main.cpp` to bootstrap the shell, pump one frame, and print shell telemetry
   - added C++ tests in `c/brambhand/src/test/test_desktop_shell.cpp` for lifecycle behavior and invalid-window validation
+- R8.05 replay-only ingest baseline:
+  - added replay JSONL ingest contracts/helpers in `c/brambhand/include/brambhand/client/common/replay_ingest.hpp` + `c/brambhand/src/lib/client/replay_ingest.cpp`
+  - wired desktop bootstrap to replay-only mode (`--replay <path>`) and explicit live-mode guard (`--live` unsupported in R8.05)
+  - added C++ replay-ingest tests in `c/brambhand/src/test/test_replay_ingest.cpp` for parse success, run-id consistency, and monotonic sequence validation
 
 ## v0.1.1 (2026-04-12)
 

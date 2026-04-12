@@ -39,6 +39,7 @@ if(BUILD_TESTING)
   add_executable(brambhand_test_suite
     src/test/test_runtime_frame.cpp
     src/test/test_desktop_shell.cpp
+    src/test/test_replay_ingest.cpp
   )
 
   target_link_libraries(brambhand_test_suite

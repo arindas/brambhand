@@ -74,7 +74,7 @@
 
 ### R8.05 — Early graphical replay visualization
 - [x] Implement native desktop app shell using SDL3/GLFW platform layer and Dear ImGui docking UI baseline
-- [ ] Implement replay JSONL ingest path using the same trajectory/view-model contracts as downstream live mode
+- [x] Implement replay JSONL ingest path using the same trajectory/view-model contracts as downstream live mode
 - [ ] Implement compact trajectory infographic panel (current/planned curves + object icons) using shared trajectory render contracts
 - [ ] Add desktop replay quicklook workflow acceptance tests (trajectory + event-marker readability and deterministic ordering)
 
