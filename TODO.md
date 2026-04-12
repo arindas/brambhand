@@ -73,7 +73,7 @@
 - [x] Define compact infographic trajectory widget contract (curve layers + object-icon markers) using shared trajectory render payloads
 
 ### R4 — Fluid-structure interaction coupling
-- [ ] Implement two-way FSI coupler with convergence residuals
+- [x] Implement two-way FSI coupler with convergence residuals
 - [ ] Implement coupling controller (iteration budget, thresholds, fallback)
 - [ ] Define backend-neutral FSI fluid-boundary provider contract (shared by reduced-order and optional CFD providers)
 - [ ] Integrate topology-transition + leak-jet + slosh boundary payloads into FSI exchange contracts

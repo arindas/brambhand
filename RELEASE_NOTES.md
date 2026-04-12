@@ -84,6 +84,11 @@
   - defined versioned topology-transition payload contract for FSI/leak-boundary consumers (`TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION`, `TopologyTransitionPayload`) and mapping helper (`build_topology_transition_payload`)
   - added graph-level topology effect derivation (`derive_topology_propagation_effects`, `TopologyPropagationEffects`) to target downstream mass-property, constraint/contact-manifold, and control-authority updates
   - added contract tests covering attach/detach transitions, deterministic canonical ordering, connectivity decomposition, invalid-graph rejection, split-transition provenance behavior, and replay reconstruction/determinism checks with downstream propagation-continuity assertions
+- R4 two-way FSI coupler baseline:
+  - added `coupling/fsi_coupler.py` with deterministic partitioned two-way coupling iterations (`couple_fsi_two_way`)
+  - added convergence controls/telemetry contracts (`FSICouplingParams`, `FSICouplingIterationTelemetry`, `FSICouplingResult`) with residual tracking and termination reasons
+  - added baseline interface displacement feedback contract (`InterfaceDisplacement`) and provider protocols for fluid/structural iteration wiring
+  - added tests in `tests/test_fsi_coupler.py` for convergence behavior, max-iteration failure behavior, deterministic interface ordering, and parameter validation guards
 - R3 fracture/damage baseline:
   - added `structures/fracture.py` with deterministic fracture-initiation thresholds (`FractureInitiationParams`) and per-element damage-state evaluation
   - added FEM-linked fracture evaluation helpers for 2D/3D solve outputs
