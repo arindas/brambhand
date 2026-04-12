@@ -6,6 +6,11 @@ from brambhand.coupling.controller import (
     FSICouplingControllerResult,
     run_fsi_coupling_with_controller,
 )
+from brambhand.coupling.exchange_contracts import (
+    FSI_BOUNDARY_EXCHANGE_SCHEMA_VERSION,
+    FSIBoundaryExchangeContract,
+    build_fsi_boundary_exchange_contract,
+)
 from brambhand.coupling.fsi_coupler import (
     FSICouplingIterationTelemetry,
     FSICouplingParams,
@@ -15,6 +20,8 @@ from brambhand.coupling.fsi_coupler import (
 )
 
 __all__ = [
+    "FSI_BOUNDARY_EXCHANGE_SCHEMA_VERSION",
+    "FSIBoundaryExchangeContract",
     "FSICouplingControllerPolicy",
     "FSICouplingControllerResult",
     "FSICouplingIterationTelemetry",
@@ -22,6 +29,7 @@ __all__ = [
     "FSICouplingResult",
     "FSIControllerMode",
     "InterfaceDisplacement",
+    "build_fsi_boundary_exchange_contract",
     "couple_fsi_two_way",
     "run_fsi_coupling_with_controller",
 ]

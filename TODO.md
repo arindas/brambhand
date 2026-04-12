@@ -76,7 +76,7 @@
 - [x] Implement two-way FSI coupler with convergence residuals
 - [x] Implement coupling controller (iteration budget, thresholds, fallback)
 - [x] Define backend-neutral FSI fluid-boundary provider contract (shared by reduced-order and optional CFD providers)
-- [ ] Integrate topology-transition + leak-jet + slosh boundary payloads into FSI exchange contracts
+- [x] Integrate topology-transition + leak-jet + slosh boundary payloads into FSI exchange contracts
 - [ ] Define initial coupling policy: partitioned baseline with explicit criteria for monolithic escalation
 - [ ] Add convergence diagnostics and residual telemetry channels
 - [ ] Add FSI benchmark tests for coupled stability (including failure/recovery paths)

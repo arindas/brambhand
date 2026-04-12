@@ -97,6 +97,10 @@
   - extended `fluid/contracts.py` with backend-neutral FSI provider interface (`FSIFluidBoundaryProvider`) and displacement feedback payload (`FluidBoundaryDisplacement`) shared across reduced-order and future CFD adapters
   - aligned coupling module usage by binding `coupling/fsi_coupler.py` provider/displacement typing to the fluid-domain contract aliases (single contract surface for coupling + adapters)
   - added tests in `tests/test_fluid_fsi_provider_contracts.py` validating reduced-order and CFD-style adapter compatibility under the shared provider contract
+- R4 integrated FSI exchange-contract baseline:
+  - added `coupling/exchange_contracts.py` with versioned integrated exchange contract (`FSIBoundaryExchangeContract`) combining topology-transition, leak-jet, and slosh payload channels for FSI coupling paths
+  - added deterministic builder `build_fsi_boundary_exchange_contract(...)` with canonical ordering and per-interface fluid-load aggregation from leak/slosh boundary payloads
+  - added tests in `tests/test_fsi_exchange_contracts.py` for integrated payload mapping, deterministic ordering, aggregation semantics, and schema-version validation
 - R3 fracture/damage baseline:
   - added `structures/fracture.py` with deterministic fracture-initiation thresholds (`FractureInitiationParams`) and per-element damage-state evaluation
   - added FEM-linked fracture evaluation helpers for 2D/3D solve outputs
