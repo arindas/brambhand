@@ -7,9 +7,11 @@
 #include "brambhand/client/desktop/replay_quicklook_workflow.hpp"
 #include "brambhand/client/desktop/shell.hpp"
 #include "brambhand/client/desktop/trajectory_infographic.hpp"
+#include "replay_window.hpp"
 
 int main(int argc, char** argv) {
   std::optional<std::string> replay_path;
+  bool no_window = false;
 
   for (int i = 1; i < argc; ++i) {
     const std::string arg = argv[i];
@@ -21,10 +23,14 @@ int main(int argc, char** argv) {
       replay_path = argv[++i];
       continue;
     }
+    if (arg == "--no-window") {
+      no_window = true;
+      continue;
+    }
   }
 
   if (!replay_path.has_value()) {
-    std::cerr << "usage: brambhand_desktop --replay <replay.jsonl>\n";
+    std::cerr << "usage: brambhand_desktop --replay <replay.jsonl> [--no-window]\n";
     return 2;
   }
 
@@ -68,5 +74,13 @@ int main(int argc, char** argv) {
               << ", severity:" << first.severity << ", color:" << first.color_hex << "}";
   }
   std::cout << "\n";
+
+  if (!no_window) {
+    if (!brambhand::client::desktop::run_replay_window(workflow)) {
+      std::cerr << "failed to open replay window\n";
+      return 1;
+    }
+  }
+
   return 0;
 }

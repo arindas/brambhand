@@ -27,6 +27,10 @@
   - event markers are deterministically ordered and severity-colored (`info`/`warning`/`critical`) for operator-readable quicklook output
   - extended replay ingest to parse `events` payloads from replay JSONL frames for workflow consumption
   - added C++ acceptance tests in `c/brambhand/src/test/test_replay_quicklook_workflow.cpp` covering trajectory panel presence, event-marker readability fields, and deterministic ordering
+- R8.05 first-pixels replay window baseline:
+  - added SDL3-based replay window renderer in `c/brambhand/src/bin/desktop/replay_window.cpp` to draw 2D `current/planned` trajectory curves, object markers, and event-severity timeline bars
+  - wired `brambhand_desktop` to open a replay visualization window by default (replay-only), with `--no-window` option for non-interactive runs
+  - updated desktop CMake wiring to link SDL3 via `find_package(SDL3)` with pkg-config fallback
 
 ## v0.1.1 (2026-04-12)
 
