@@ -93,6 +93,10 @@
   - added `coupling/controller.py` with controller policy/result contracts (`FSICouplingControllerPolicy`, `FSICouplingControllerResult`) for iteration budgets, residual thresholds, and explicit fallback behavior
   - added `run_fsi_coupling_with_controller(...)` to execute nominal coupling first, then optional fallback with deterministic termination provenance (`nominal_converged`, `fallback_converged`, explicit failure reasons)
   - added tests in `tests/test_fsi_controller.py` for nominal success, fallback activation, fallback-disabled failure, and controller-policy validation guards
+- R4 backend-neutral fluid-boundary provider contract baseline:
+  - extended `fluid/contracts.py` with backend-neutral FSI provider interface (`FSIFluidBoundaryProvider`) and displacement feedback payload (`FluidBoundaryDisplacement`) shared across reduced-order and future CFD adapters
+  - aligned coupling module usage by binding `coupling/fsi_coupler.py` provider/displacement typing to the fluid-domain contract aliases (single contract surface for coupling + adapters)
+  - added tests in `tests/test_fluid_fsi_provider_contracts.py` validating reduced-order and CFD-style adapter compatibility under the shared provider contract
 - R3 fracture/damage baseline:
   - added `structures/fracture.py` with deterministic fracture-initiation thresholds (`FractureInitiationParams`) and per-element damage-state evaluation
   - added FEM-linked fracture evaluation helpers for 2D/3D solve outputs

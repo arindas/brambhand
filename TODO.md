@@ -75,7 +75,7 @@
 ### R4 — Fluid-structure interaction coupling
 - [x] Implement two-way FSI coupler with convergence residuals
 - [x] Implement coupling controller (iteration budget, thresholds, fallback)
-- [ ] Define backend-neutral FSI fluid-boundary provider contract (shared by reduced-order and optional CFD providers)
+- [x] Define backend-neutral FSI fluid-boundary provider contract (shared by reduced-order and optional CFD providers)
 - [ ] Integrate topology-transition + leak-jet + slosh boundary payloads into FSI exchange contracts
 - [ ] Define initial coupling policy: partitioned baseline with explicit criteria for monolithic escalation
 - [ ] Add convergence diagnostics and residual telemetry channels

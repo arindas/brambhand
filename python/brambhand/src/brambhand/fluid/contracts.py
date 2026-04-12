@@ -8,6 +8,7 @@ Why this module exists:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Protocol
 
 from brambhand.physics.vector import Vector3
 
@@ -33,6 +34,27 @@ class FluidBoundaryLoad:
             raise ValueError("mass_flow_kgps cannot be negative.")
         if self.temperature_k <= 0.0:
             raise ValueError("temperature_k must be positive.")
+
+
+@dataclass(frozen=True)
+class FluidBoundaryDisplacement:
+    """Backend-neutral interface displacement feedback from structures to fluid."""
+
+    interface_id: str
+    displacement_body_m: Vector3
+
+    def __post_init__(self) -> None:
+        if not self.interface_id:
+            raise ValueError("interface_id must be non-empty.")
+
+
+class FSIFluidBoundaryProvider(Protocol):
+    """Backend-neutral FSI provider contract for reduced-order and CFD adapters."""
+
+    def evaluate(
+        self,
+        interface_displacements: tuple[FluidBoundaryDisplacement, ...],
+    ) -> tuple[FluidBoundaryLoad, ...]: ...
 
 
 @dataclass(frozen=True)

@@ -5,20 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from brambhand.fluid.contracts import FluidBoundaryLoad
+from brambhand.fluid.contracts import (
+    FluidBoundaryDisplacement,
+    FluidBoundaryLoad,
+    FSIFluidBoundaryProvider,
+)
 from brambhand.physics.vector import Vector3
 
-
-@dataclass(frozen=True)
-class InterfaceDisplacement:
-    """Structural interface displacement feedback consumed by fluid solvers."""
-
-    interface_id: str
-    displacement_body_m: Vector3
-
-    def __post_init__(self) -> None:
-        if not self.interface_id:
-            raise ValueError("interface_id must be non-empty.")
+InterfaceDisplacement = FluidBoundaryDisplacement
+FluidBoundaryProvider = FSIFluidBoundaryProvider
 
 
 @dataclass(frozen=True)
@@ -57,15 +52,6 @@ class FSICouplingResult:
     residual_history: tuple[FSICouplingIterationTelemetry, ...]
     fluid_loads: tuple[FluidBoundaryLoad, ...]
     interface_displacements: tuple[InterfaceDisplacement, ...]
-
-
-class FluidBoundaryProvider(Protocol):
-    """Provider that computes fluid-side interface loads from structure feedback."""
-
-    def evaluate(
-        self,
-        interface_displacements: tuple[InterfaceDisplacement, ...],
-    ) -> tuple[FluidBoundaryLoad, ...]: ...
 
 
 class StructuralBoundaryProvider(Protocol):
