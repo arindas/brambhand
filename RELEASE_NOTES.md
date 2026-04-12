@@ -105,6 +105,7 @@
   - standardized `TopologyTransitionKind` as a union type (`DockingTransitionKind | FaultTransitionKind`) in `fluid/contracts.py`
   - `DockingTransitionKind` now explicitly carries only `attach|detach`; `FaultTransitionKind` carries `split|fracture_split`
   - renamed topology transition contract from `TopologyTransitionPayload` to `TopologyTransition` and schema constant to `TOPOLOGY_TRANSITION_SCHEMA_VERSION` to remove payload-specific type naming
+  - added parser helpers (`parse_topology_transition_kind`, `parse_optional_topology_transition_kind`) for safe normalization of raw string inputs at boundaries, while keeping typed contracts canonical internally
   - removed separate mission-level transition-kind alias and standardized all topology/coupling/test paths on the shared union contract (eliminating ad-hoc string kind drift across modules)
 - R4 initial coupling-policy baseline:
   - added `coupling/policy.py` with explicit partitioned-vs-monolithic strategy decision contract (`FSICouplingPolicyThresholds`, `FSICouplingPolicyDecision`)

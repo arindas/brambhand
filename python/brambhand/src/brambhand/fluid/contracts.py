@@ -35,6 +35,39 @@ class FaultTransitionKind(StrEnum):
 type TopologyTransitionKind = DockingTransitionKind | FaultTransitionKind
 
 
+def parse_topology_transition_kind(value: object) -> TopologyTransitionKind:
+    """Parse raw transition kind into canonical docking/fault transition enums."""
+    match value:
+        case DockingTransitionKind.ATTACH:
+            return DockingTransitionKind.ATTACH
+        case DockingTransitionKind.DETACH:
+            return DockingTransitionKind.DETACH
+        case FaultTransitionKind.SPLIT:
+            return FaultTransitionKind.SPLIT
+        case FaultTransitionKind.FRACTURE_SPLIT:
+            return FaultTransitionKind.FRACTURE_SPLIT
+        case str() as raw:
+            normalized = raw.strip().lower()
+            if normalized == DockingTransitionKind.ATTACH.value:
+                return DockingTransitionKind.ATTACH
+            if normalized == DockingTransitionKind.DETACH.value:
+                return DockingTransitionKind.DETACH
+            if normalized == FaultTransitionKind.SPLIT.value:
+                return FaultTransitionKind.SPLIT
+            if normalized == FaultTransitionKind.FRACTURE_SPLIT.value:
+                return FaultTransitionKind.FRACTURE_SPLIT
+            raise ValueError("Unsupported topology transition kind string.")
+        case _:
+            raise ValueError("Unsupported topology transition kind value.")
+
+
+def parse_optional_topology_transition_kind(value: object) -> TopologyTransitionKind | None:
+    """Parse optional raw transition kind into canonical enum value."""
+    if value is None:
+        return None
+    return parse_topology_transition_kind(value)
+
+
 @dataclass(frozen=True)
 class FluidBoundaryLoad:
     """Backend-neutral fluid-side load contribution at an interface."""
@@ -156,13 +189,8 @@ class TopologyTransition:
             raise ValueError("transition_id must be non-empty.")
         if self.schema_version != TOPOLOGY_TRANSITION_SCHEMA_VERSION:
             raise ValueError("Unsupported topology transition schema_version.")
-        match self.transition_kind:
-            case kind if type(kind) in (DockingTransitionKind, FaultTransitionKind):
-                pass
-            case _:
-                raise ValueError(
-                    "transition_kind must use DockingTransitionKind or FaultTransitionKind."
-                )
+        parsed_kind = parse_topology_transition_kind(self.transition_kind)
+        object.__setattr__(self, "transition_kind", parsed_kind)
         if self.revision < 0:
             raise ValueError("revision cannot be negative.")
         if not self.body_ids_before or not self.body_ids_after:

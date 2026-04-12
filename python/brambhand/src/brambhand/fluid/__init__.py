@@ -13,6 +13,8 @@ from brambhand.fluid.contracts import (
     SloshBoundaryPayload,
     TopologyTransition,
     TopologyTransitionKind,
+    parse_optional_topology_transition_kind,
+    parse_topology_transition_kind,
 )
 
 __all__ = [
@@ -28,4 +30,6 @@ __all__ = [
     "SloshBoundaryPayload",
     "TopologyTransitionKind",
     "TopologyTransition",
+    "parse_optional_topology_transition_kind",
+    "parse_topology_transition_kind",
 ]
