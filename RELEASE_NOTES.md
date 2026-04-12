@@ -8,6 +8,10 @@
   - introduced `R8.05` as a separate milestone for early native graphical replay quicklook realization (desktop shell + replay ingest + compact trajectory panel)
   - moved those replay-graphical items earlier in the core lane (`R8.0 -> R8.05 -> R4`) while keeping full dashboard and renderer realization in `R8.4/R8.5`
   - synchronized planning/acceptance docs (`DESIGN.md`, `TODO.md`, `VERIFICATION.md`, `VALIDATION.md`) with the new milestone ordering and gates
+- R8.05 native desktop shell baseline:
+  - added deterministic desktop shell lifecycle scaffold (`DesktopShell`) with SDL3/GLFW backend selection and Dear ImGui docking enablement flag in `c/brambhand/include/brambhand/client/desktop/shell.hpp` + `c/brambhand/src/lib/client/desktop_shell.cpp`
+  - updated `c/brambhand/src/bin/desktop/main.cpp` to bootstrap the shell, pump one frame, and print shell telemetry
+  - added C++ tests in `c/brambhand/src/test/test_desktop_shell.cpp` for lifecycle behavior and invalid-window validation
 
 ## v0.1.1 (2026-04-12)
 
