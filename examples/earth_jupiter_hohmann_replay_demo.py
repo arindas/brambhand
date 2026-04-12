@@ -20,6 +20,9 @@ PLANET_RADII_M = {
     "earth": 1.0 * AU_M,
     "mars": 1.5237 * AU_M,
     "jupiter": 5.2044 * AU_M,
+    "saturn": 9.5826 * AU_M,
+    "uranus": 19.1913 * AU_M,
+    "neptune": 30.07 * AU_M,
 }
 
 
@@ -60,6 +63,9 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
         "earth": 0.0,
         "mars": 0.4,
         "jupiter": jupiter_phase0,
+        "saturn": 2.9,
+        "uranus": 1.7,
+        "neptune": 0.9,
     }
 
     frames: list[dict[str, Any]] = []
@@ -80,10 +86,17 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
         events: list[dict[str, Any]] = []
         if i == 0:
             events.append(_build_event(i, sim_time_s, "simulation_started", "info"))
-        if i == samples // 2:
-            events.append(_build_event(i, sim_time_s, "threshold_crossed", "warning"))
+            events.append(_build_event(i, sim_time_s, "departure_burn_start", "info"))
+        if i == max(1, samples // 20):
+            events.append(_build_event(i, sim_time_s, "departure_burn_complete", "info"))
+        if i == samples // 3:
+            events.append(_build_event(i, sim_time_s, "midcourse_correction", "warning"))
+        if i == (2 * samples) // 3:
+            events.append(_build_event(i, sim_time_s, "jupiter_soi_entry", "warning"))
+        if i == max(samples - max(1, samples // 20), 1):
+            events.append(_build_event(i, sim_time_s, "arrival_insertion_burn_start", "warning"))
         if i == samples:
-            events.append(_build_event(i, sim_time_s, "alarm_raised", "critical"))
+            events.append(_build_event(i, sim_time_s, "arrival_insertion_burn_complete", "critical"))
 
         bodies: list[dict[str, Any]] = [
             {"body_id": "sun", "position_m": {"x": 0.0, "y": 0.0, "z": 0.0}},

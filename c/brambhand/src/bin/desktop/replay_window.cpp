@@ -27,15 +27,19 @@ struct Rgba {
   std::uint8_t a{255};
 };
 
-constexpr std::array<const char*, 5> kContextPlanets = {
+constexpr std::array<const char*, 8> kContextPlanets = {
     "mercury",
     "venus",
     "earth",
     "mars",
     "jupiter",
+    "saturn",
+    "uranus",
+    "neptune",
 };
 
 constexpr double kPi = 3.14159265358979323846;
+constexpr double kSecondsPerDay = 86400.0;
 
 int hex_digit(char ch) {
   if (ch >= '0' && ch <= '9') {
@@ -86,11 +90,20 @@ Rgba color_for_body_id(const std::string& body_id) {
   if (body_id == "jupiter") {
     return parse_hex_color("#D7CCC8");
   }
+  if (body_id == "saturn") {
+    return parse_hex_color("#FFE0B2");
+  }
+  if (body_id == "uranus") {
+    return parse_hex_color("#80DEEA");
+  }
+  if (body_id == "neptune") {
+    return parse_hex_color("#90CAF9");
+  }
   if (body_id == "planned_vehicle") {
-    return parse_hex_color("#9AA4B2");
+    return parse_hex_color("#C77DFF");
   }
   if (body_id == "current_vehicle") {
-    return parse_hex_color("#FFFFFF");
+    return parse_hex_color("#00E5FF");
   }
   return parse_hex_color("#90A4AE");
 }
@@ -246,7 +259,8 @@ void draw_body_marker(
     double y,
     const PlotBounds& bounds,
     const SDL_FRect& viewport,
-    float half_size) {
+    float half_size,
+    bool draw_label) {
   const auto color = color_for_body_id(body_id);
   SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
 
@@ -258,6 +272,10 @@ void draw_body_marker(
       .h = 2.0F * half_size,
   };
   SDL_RenderFillRect(renderer, &r);
+
+  if (draw_label) {
+    SDL_RenderDebugText(renderer, p.x + 5.0F, p.y - 5.0F, body_id.c_str());
+  }
 }
 
 void draw_curve_layer(
@@ -275,30 +293,63 @@ void draw_curve_layer(
   }
 }
 
-void draw_event_bar(
+void draw_sidebar(
     SDL_Renderer* renderer,
+    const SDL_FRect& panel,
     const ReplayQuicklookWorkflowOutput& workflow,
-    float x,
-    float y,
-    float width,
-    float height) {
-  if (workflow.event_markers.empty()) {
-    return;
+    const brambhand::client::common::SimulationFrame* active_frame,
+    std::size_t frame_index,
+    std::size_t frame_count,
+    double playback_rate) {
+  SDL_SetRenderDrawColor(renderer, 22, 28, 40, 255);
+  SDL_RenderFillRect(renderer, &panel);
+  SDL_SetRenderDrawColor(renderer, 70, 80, 96, 255);
+  SDL_RenderRect(renderer, &panel);
+
+  float x = panel.x + 10.0F;
+  float y = panel.y + 10.0F;
+  SDL_RenderDebugText(renderer, x, y, "Replay Context");
+  y += 16.0F;
+  SDL_RenderDebugText(renderer, x, y, "Sun + all 8 planets shown");
+  y += 16.0F;
+  SDL_RenderDebugText(renderer, x, y, "Transfer curves: current(cyan), planned(purple)");
+  y += 22.0F;
+
+  if (active_frame != nullptr) {
+    const double day = active_frame->sim_time_s / kSecondsPerDay;
+    SDL_RenderDebugTextFormat(renderer, x, y, "Sim day: %.1f", day);
+    y += 16.0F;
   }
+  SDL_RenderDebugTextFormat(renderer, x, y, "Frame: %zu / %zu", frame_index + 1, frame_count);
+  y += 16.0F;
+  SDL_RenderDebugTextFormat(renderer, x, y, "Playback: %.2fx  ([ and ])", playback_rate);
+  y += 22.0F;
 
-  const std::size_t count = workflow.event_markers.size();
-  const float bar_width = width / static_cast<float>(count);
+  SDL_RenderDebugText(renderer, x, y, "Mission stage markers (replay events)");
+  y += 16.0F;
+  SDL_RenderDebugText(renderer, x, y, "These replaced old bottom bars.");
+  y += 16.0F;
+  SDL_RenderDebugText(renderer, x, y, "Each row = stage event + severity color.");
+  y += 18.0F;
 
-  for (std::size_t i = 0; i < count; ++i) {
-    const auto color = parse_hex_color(workflow.event_markers[i].color_hex);
+  const float row_h = 14.0F;
+  const std::size_t show = std::min<std::size_t>(workflow.event_markers.size(), 18);
+  for (std::size_t i = 0; i < show; ++i) {
+    const auto& m = workflow.event_markers[i];
+    const auto color = parse_hex_color(m.color_hex);
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-    SDL_FRect rect{
-        .x = x + static_cast<float>(i) * bar_width,
-        .y = y,
-        .w = std::max(1.0F, bar_width - 1.0F),
-        .h = height,
-    };
-    SDL_RenderFillRect(renderer, &rect);
+    SDL_FRect swatch{.x = x, .y = y + 2.0F, .w = 10.0F, .h = 10.0F};
+    SDL_RenderFillRect(renderer, &swatch);
+
+    SDL_RenderDebugTextFormat(
+        renderer,
+        x + 14.0F,
+        y,
+        "t=%.1fd  %s  (%s)",
+        m.sim_time_s / kSecondsPerDay,
+        m.kind.c_str(),
+        m.severity.c_str());
+    y += row_h;
   }
 }
 
@@ -311,7 +362,7 @@ void draw_solar_context(
   const double cx = sun == nullptr ? 0.0 : sun->position_m.x;
   const double cy = sun == nullptr ? 0.0 : sun->position_m.y;
 
-  draw_body_marker(renderer, "sun", cx, cy, bounds, viewport, 5.0F);
+  draw_body_marker(renderer, "sun", cx, cy, bounds, viewport, 5.0F, true);
 
   for (const auto* name : kContextPlanets) {
     const auto* planet = find_body_by_id(frame, name);
@@ -338,7 +389,8 @@ void draw_solar_context(
         planet->position_m.y,
         bounds,
         viewport,
-        3.0F);
+        3.0F,
+        true);
   }
 
   if (const auto* current = find_body_by_id(frame, "current_vehicle"); current != nullptr) {
@@ -349,7 +401,8 @@ void draw_solar_context(
         current->position_m.y,
         bounds,
         viewport,
-        4.0F);
+        4.0F,
+        true);
   }
   if (const auto* planned = find_body_by_id(frame, "planned_vehicle"); planned != nullptr) {
     draw_body_marker(
@@ -359,7 +412,8 @@ void draw_solar_context(
         planned->position_m.y,
         bounds,
         viewport,
-        3.0F);
+        3.0F,
+        true);
   }
 }
 
@@ -372,7 +426,8 @@ bool run_replay_window(
     return false;
   }
 
-  SDL_Window* window = SDL_CreateWindow("brambhand replay quicklook", 1280, 720, 0);
+  const SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
+  SDL_Window* window = SDL_CreateWindow("brambhand replay quicklook", 1280, 720, flags);
   if (window == nullptr) {
     SDL_Quit();
     return false;
@@ -396,6 +451,7 @@ bool run_replay_window(
 
   std::size_t frame_index = 0;
   std::uint64_t last_advance_ticks = SDL_GetTicks();
+  double playback_rate = 1.0;
 
   bool running = true;
   while (running) {
@@ -407,10 +463,17 @@ bool run_replay_window(
       if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE) {
         running = false;
       }
+      if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_LEFTBRACKET) {
+        playback_rate = std::max(0.25, playback_rate * 0.5);
+      }
+      if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_RIGHTBRACKET) {
+        playback_rate = std::min(16.0, playback_rate * 2.0);
+      }
     }
 
     const std::uint64_t now_ticks = SDL_GetTicks();
-    if (!frames.empty() && now_ticks - last_advance_ticks >= 33) {
+    const std::uint64_t frame_period_ms = static_cast<std::uint64_t>(std::max(1.0, 33.0 / playback_rate));
+    if (!frames.empty() && now_ticks - last_advance_ticks >= frame_period_ms) {
       frame_index = (frame_index + 1) % frames.size();
       last_advance_ticks = now_ticks;
     }
@@ -422,11 +485,18 @@ bool run_replay_window(
     SDL_SetRenderDrawColor(renderer, 12, 14, 20, 255);
     SDL_RenderClear(renderer);
 
+    const float sidebar_w = 340.0F;
     const SDL_FRect viewport{
-        .x = 40.0F,
-        .y = 40.0F,
-        .w = static_cast<float>(width) - 80.0F,
-        .h = static_cast<float>(height) - 120.0F,
+        .x = 20.0F,
+        .y = 20.0F,
+        .w = std::max(200.0F, static_cast<float>(width) - sidebar_w - 40.0F),
+        .h = static_cast<float>(height) - 40.0F,
+    };
+    const SDL_FRect sidebar{
+        .x = viewport.x + viewport.w + 10.0F,
+        .y = 20.0F,
+        .w = sidebar_w - 30.0F,
+        .h = static_cast<float>(height) - 40.0F,
     };
 
     SDL_SetRenderDrawColor(renderer, 60, 66, 80, 255);
@@ -436,17 +506,20 @@ bool run_replay_window(
       draw_curve_layer(renderer, layer, bounds, viewport);
     }
 
+    const brambhand::client::common::SimulationFrame* active_frame = nullptr;
     if (!frames.empty()) {
-      draw_solar_context(renderer, frames[frame_index], bounds, viewport);
+      active_frame = &frames[frame_index];
+      draw_solar_context(renderer, *active_frame, bounds, viewport);
     }
 
-    draw_event_bar(
+    draw_sidebar(
         renderer,
+        sidebar,
         workflow,
-        viewport.x,
-        viewport.y + viewport.h + 12.0F,
-        viewport.w,
-        16.0F);
+        active_frame,
+        frame_index,
+        frames.empty() ? 0 : frames.size(),
+        playback_rate);
 
     SDL_RenderPresent(renderer);
     SDL_Delay(16);
