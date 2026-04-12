@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from brambhand.fluid.contracts import (
-    TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION,
+    TOPOLOGY_TRANSITION_SCHEMA_VERSION,
+    TopologyTransition,
     TopologyTransitionKind,
-    TopologyTransitionPayload,
 )
 
 
@@ -86,14 +86,13 @@ class FractureSplitProvenance:
     inherited_interface_ids: tuple[str, ...]
 
 
-DockingTransitionKind = TopologyTransitionKind
 
 
 @dataclass(frozen=True)
 class DockingTransitionProvenance:
     """Provenance for baseline dock/undock topology transitions."""
 
-    transition_kind: DockingTransitionKind
+    transition_kind: TopologyTransitionKind
     interface_id: str
     body_a_id: str
     body_b_id: str
@@ -277,7 +276,7 @@ def apply_docking_attach_transition(
     return (
         next_state,
         DockingTransitionProvenance(
-            transition_kind=DockingTransitionKind.ATTACH,
+            transition_kind=TopologyTransitionKind.ATTACH,
             interface_id=interface_id,
             body_a_id=body_a_id,
             body_b_id=body_b_id,
@@ -300,7 +299,7 @@ def apply_docking_detach_transition(
     return (
         next_state,
         DockingTransitionProvenance(
-            transition_kind=DockingTransitionKind.DETACH,
+            transition_kind=TopologyTransitionKind.DETACH,
             interface_id=interface_id,
             body_a_id=target.body_a_id,
             body_b_id=target.body_b_id,
@@ -316,7 +315,7 @@ def build_topology_transition_payload(
     before_state: AssemblyTopologyState,
     after_state: AssemblyTopologyState,
     provenance: dict[str, str],
-) -> TopologyTransitionPayload:
+) -> TopologyTransition:
     """Build versioned topology transition payload for FSI/leak consumers."""
     interface_endpoints_after = tuple(
         (
@@ -327,9 +326,9 @@ def build_topology_transition_payload(
         )
         for edge in after_state.interfaces
     )
-    return TopologyTransitionPayload(
+    return TopologyTransition(
         transition_id=transition_id,
-        schema_version=TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION,
+        schema_version=TOPOLOGY_TRANSITION_SCHEMA_VERSION,
         transition_kind=transition_kind,
         revision=after_state.revision,
         body_ids_before=before_state.body_ids,
@@ -342,7 +341,7 @@ def build_topology_transition_payload(
 
 def reconstruct_topology_from_transition_payloads(
     initial_state: AssemblyTopologyState,
-    payloads: tuple[TopologyTransitionPayload, ...],
+    payloads: tuple[TopologyTransition, ...],
 ) -> AssemblyTopologyState:
     """Reconstruct topology state from ordered transition payload sequence."""
     state = initial_state

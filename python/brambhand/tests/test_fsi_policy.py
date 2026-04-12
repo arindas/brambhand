@@ -10,10 +10,10 @@ from brambhand.coupling.policy import (
 )
 from brambhand.fluid.contracts import (
     LEAK_JET_BOUNDARY_PAYLOAD_SCHEMA_VERSION,
-    TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION,
+    TOPOLOGY_TRANSITION_SCHEMA_VERSION,
     LeakJetBoundaryPayload,
+    TopologyTransition,
     TopologyTransitionKind,
-    TopologyTransitionPayload,
 )
 from brambhand.physics.vector import Vector3
 
@@ -73,9 +73,9 @@ def test_fsi_policy_keeps_partitioned_strategy_within_thresholds() -> None:
 
 def test_fsi_policy_escalates_on_split_topology_transition() -> None:
     controller_result = _controller_result(converged=True, iterations_used=3, residual=1e-6)
-    topology = TopologyTransitionPayload(
+    topology = TopologyTransition(
         transition_id="tx-10",
-        schema_version=TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION,
+        schema_version=TOPOLOGY_TRANSITION_SCHEMA_VERSION,
         transition_kind=TopologyTransitionKind.SPLIT,
         revision=1,
         body_ids_before=("a",),

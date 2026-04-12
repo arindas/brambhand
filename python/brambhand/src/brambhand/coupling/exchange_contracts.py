@@ -7,11 +7,11 @@ from dataclasses import dataclass
 from brambhand.fluid.contracts import (
     LEAK_JET_BOUNDARY_PAYLOAD_SCHEMA_VERSION,
     SLOSH_BOUNDARY_PAYLOAD_SCHEMA_VERSION,
-    TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION,
+    TOPOLOGY_TRANSITION_SCHEMA_VERSION,
     FluidBoundaryLoad,
     LeakJetBoundaryPayload,
     SloshBoundaryPayload,
-    TopologyTransitionPayload,
+    TopologyTransition,
 )
 from brambhand.physics.vector import Vector3
 
@@ -23,7 +23,7 @@ class FSIBoundaryExchangeContract:
     """Versioned contract consumed by FSI coupler/controller exchange paths."""
 
     schema_version: int
-    topology_transition: TopologyTransitionPayload | None
+    topology_transition: TopologyTransition | None
     leak_jet_payloads: tuple[LeakJetBoundaryPayload, ...]
     slosh_payloads: tuple[SloshBoundaryPayload, ...]
     fluid_boundary_loads: tuple[FluidBoundaryLoad, ...]
@@ -34,7 +34,7 @@ class FSIBoundaryExchangeContract:
         if self.topology_transition is not None:
             if (
                 self.topology_transition.schema_version
-                != TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION
+                != TOPOLOGY_TRANSITION_SCHEMA_VERSION
             ):
                 raise ValueError("Unsupported topology transition payload schema_version.")
         if any(
@@ -119,7 +119,7 @@ def _aggregate_boundary_loads(
 
 def build_fsi_boundary_exchange_contract(
     *,
-    topology_transition: TopologyTransitionPayload | None,
+    topology_transition: TopologyTransition | None,
     leak_jet_payloads: tuple[LeakJetBoundaryPayload, ...],
     slosh_payloads: tuple[SloshBoundaryPayload, ...],
 ) -> FSIBoundaryExchangeContract:

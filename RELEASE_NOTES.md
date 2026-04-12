@@ -102,7 +102,9 @@
   - added deterministic builder `build_fsi_boundary_exchange_contract(...)` with canonical ordering and per-interface fluid-load aggregation from leak/slosh boundary payloads
   - added tests in `tests/test_fsi_exchange_contracts.py` for integrated payload mapping, deterministic ordering, aggregation semantics, and schema-version validation
 - Topology-transition kind contract hardening:
-  - added shared enum `TopologyTransitionKind` in `fluid/contracts.py` (`attach`, `detach`, `split`, `fracture_split`) and enforced enum-typed `TopologyTransitionPayload.transition_kind`
+  - added shared enum `TopologyTransitionKind` in `fluid/contracts.py` (`attach`, `detach`, `split`, `fracture_split`) and enforced enum-typed topology transition contracts
+  - renamed topology transition contract from `TopologyTransitionPayload` to `TopologyTransition` and schema constant to `TOPOLOGY_TRANSITION_SCHEMA_VERSION` to remove payload-specific type naming
+  - removed separate mission-level transition-kind alias and standardized all topology/coupling paths on the single shared `TopologyTransitionKind`
   - aligned topology builders/tests and FSI policy thresholds to use the shared enum (eliminating ad-hoc string kind drift across modules)
 - R4 initial coupling-policy baseline:
   - added `coupling/policy.py` with explicit partitioned-vs-monolithic strategy decision contract (`FSICouplingPolicyThresholds`, `FSICouplingPolicyDecision`)

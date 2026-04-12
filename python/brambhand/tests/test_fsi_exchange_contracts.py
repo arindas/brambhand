@@ -6,7 +6,7 @@ from brambhand.coupling.exchange_contracts import (
 from brambhand.fluid.contracts import (
     LEAK_JET_BOUNDARY_PAYLOAD_SCHEMA_VERSION,
     SLOSH_BOUNDARY_PAYLOAD_SCHEMA_VERSION,
-    TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION,
+    TOPOLOGY_TRANSITION_SCHEMA_VERSION,
     LeakJetBoundaryPayload,
     SloshBoundaryPayload,
     TopologyTransitionKind,
@@ -66,7 +66,7 @@ def test_fsi_exchange_contract_integrates_topology_leak_and_slosh_payloads() -> 
 
     assert contract.schema_version == FSI_BOUNDARY_EXCHANGE_SCHEMA_VERSION
     assert contract.topology_transition is not None
-    assert contract.topology_transition.schema_version == TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION
+    assert contract.topology_transition.schema_version == TOPOLOGY_TRANSITION_SCHEMA_VERSION
     assert tuple(item.interface_id for item in contract.leak_jet_payloads) == ("tank_A",)
     assert tuple(item.interface_id for item in contract.slosh_payloads) == ("tank_A",)
 

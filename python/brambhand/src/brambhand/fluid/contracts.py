@@ -15,7 +15,7 @@ from brambhand.physics.vector import Vector3
 
 LEAK_JET_BOUNDARY_PAYLOAD_SCHEMA_VERSION = 1
 SLOSH_BOUNDARY_PAYLOAD_SCHEMA_VERSION = 1
-TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION = 1
+TOPOLOGY_TRANSITION_SCHEMA_VERSION = 1
 
 
 class TopologyTransitionKind(StrEnum):
@@ -130,8 +130,8 @@ class SloshBoundaryPayload:
 
 
 @dataclass(frozen=True)
-class TopologyTransitionPayload:
-    """Versioned topology-transition payload for FSI/leak-boundary consumers."""
+class TopologyTransition:
+    """Versioned topology-transition contract for FSI/leak-boundary consumers."""
 
     transition_id: str
     schema_version: int
@@ -146,8 +146,8 @@ class TopologyTransitionPayload:
     def __post_init__(self) -> None:
         if not self.transition_id:
             raise ValueError("transition_id must be non-empty.")
-        if self.schema_version != TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION:
-            raise ValueError("Unsupported topology transition payload schema_version.")
+        if self.schema_version != TOPOLOGY_TRANSITION_SCHEMA_VERSION:
+            raise ValueError("Unsupported topology transition schema_version.")
         if not isinstance(self.transition_kind, TopologyTransitionKind):
             raise ValueError("transition_kind must use TopologyTransitionKind enum.")
         if self.revision < 0:

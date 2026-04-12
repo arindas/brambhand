@@ -1,11 +1,10 @@
 from brambhand.fluid.contracts import (
-    TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION,
+    TOPOLOGY_TRANSITION_SCHEMA_VERSION,
+    TopologyTransition,
     TopologyTransitionKind,
-    TopologyTransitionPayload,
 )
 from brambhand.mission.assembly_topology import (
     AttachmentInterface,
-    DockingTransitionKind,
     apply_docking_attach_transition,
     apply_docking_detach_transition,
     apply_fracture_split_transition,
@@ -138,12 +137,12 @@ def test_docking_attach_detach_transition_emits_handoff_provenance() -> None:
         body_a_id="chaser",
         body_b_id="target",
     )
-    assert attach_provenance.transition_kind == DockingTransitionKind.ATTACH
+    assert attach_provenance.transition_kind == TopologyTransitionKind.ATTACH
     assert attach_provenance.constraint_handoff_state == "constraints_activated"
     assert len(attached.interfaces) == 1
 
     detached, detach_provenance = apply_docking_detach_transition(attached, "dock_if")
-    assert detach_provenance.transition_kind == DockingTransitionKind.DETACH
+    assert detach_provenance.transition_kind == TopologyTransitionKind.DETACH
     assert detach_provenance.contact_handoff_state == "contact_manifold_released"
     assert len(detached.interfaces) == 0
     assert detached.revision == state.revision + 2
@@ -166,7 +165,7 @@ def test_topology_transition_payload_mapping_for_fsi_consumers() -> None:
         provenance={"source": "docking_baseline"},
     )
 
-    assert payload.schema_version == TOPOLOGY_TRANSITION_PAYLOAD_SCHEMA_VERSION
+    assert payload.schema_version == TOPOLOGY_TRANSITION_SCHEMA_VERSION
     assert payload.transition_id == "tx-001"
     assert payload.transition_kind == TopologyTransitionKind.ATTACH
     assert payload.body_ids_before == ("a", "b")
@@ -176,7 +175,7 @@ def test_topology_transition_payload_mapping_for_fsi_consumers() -> None:
 
 def test_topology_transition_payload_rejects_unsupported_version() -> None:
     try:
-        TopologyTransitionPayload(
+        TopologyTransition(
             transition_id="tx",
             schema_version=999,
             transition_kind=TopologyTransitionKind.ATTACH,
