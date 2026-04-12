@@ -2,6 +2,7 @@ add_library(brambhand_client STATIC
   client_common.cpp
   desktop_shell.cpp
   replay_ingest.cpp
+  trajectory_infographic.cpp
 )
 
 target_include_directories(brambhand_client

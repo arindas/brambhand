@@ -118,6 +118,95 @@ std::optional<double> extract_double(const std::string& json, const std::string&
   }
 }
 
+std::optional<std::string> extract_object(const std::string& json, const std::string& key) {
+  const auto value_pos = find_after_colon(json, key);
+  if (value_pos == std::string::npos || value_pos >= json.size() || json[value_pos] != '{') {
+    return std::nullopt;
+  }
+
+  std::size_t depth = 0;
+  for (std::size_t i = value_pos; i < json.size(); ++i) {
+    if (json[i] == '{') {
+      depth += 1;
+    } else if (json[i] == '}') {
+      depth -= 1;
+      if (depth == 0) {
+        return json.substr(value_pos, i - value_pos + 1);
+      }
+    }
+  }
+
+  return std::nullopt;
+}
+
+std::optional<std::string> extract_array(const std::string& json, const std::string& key) {
+  const auto value_pos = find_after_colon(json, key);
+  if (value_pos == std::string::npos || value_pos >= json.size() || json[value_pos] != '[') {
+    return std::nullopt;
+  }
+
+  std::size_t depth = 0;
+  for (std::size_t i = value_pos; i < json.size(); ++i) {
+    if (json[i] == '[') {
+      depth += 1;
+    } else if (json[i] == ']') {
+      depth -= 1;
+      if (depth == 0) {
+        return json.substr(value_pos, i - value_pos + 1);
+      }
+    }
+  }
+
+  return std::nullopt;
+}
+
+std::vector<std::string> split_json_objects_from_array(const std::string& array_json) {
+  std::vector<std::string> objects;
+
+  std::size_t depth = 0;
+  std::size_t start = std::string::npos;
+  for (std::size_t i = 0; i < array_json.size(); ++i) {
+    const char ch = array_json[i];
+    if (ch == '{') {
+      if (depth == 0) {
+        start = i;
+      }
+      depth += 1;
+    } else if (ch == '}') {
+      if (depth == 0) {
+        continue;
+      }
+      depth -= 1;
+      if (depth == 0 && start != std::string::npos) {
+        objects.push_back(array_json.substr(start, i - start + 1));
+        start = std::string::npos;
+      }
+    }
+  }
+
+  return objects;
+}
+
+std::optional<BodyState> parse_body_state(const std::string& body_json) {
+  const auto body_id = extract_string(body_json, "body_id");
+  const auto position_json = extract_object(body_json, "position_m");
+  if (!body_id.has_value() || !position_json.has_value()) {
+    return std::nullopt;
+  }
+
+  const auto x = extract_double(*position_json, "x");
+  const auto y = extract_double(*position_json, "y");
+  const auto z = extract_double(*position_json, "z");
+  if (!x.has_value() || !y.has_value() || !z.has_value()) {
+    return std::nullopt;
+  }
+
+  BodyState body{};
+  body.body_id = *body_id;
+  body.position_m = Vector3{.x = *x, .y = *y, .z = *z};
+  return body;
+}
+
 std::optional<SimulationFrame> parse_simulation_frame_line(const std::string& line) {
   SimulationFrame frame{};
 
@@ -138,6 +227,16 @@ std::optional<SimulationFrame> parse_simulation_frame_line(const std::string& li
   frame.tick_id = *tick_id;
   frame.sim_time_s = *sim_time_s;
   frame.sequence = *sequence;
+
+  if (const auto bodies_json = extract_array(line, "bodies"); bodies_json.has_value()) {
+    for (const auto& body_json : split_json_objects_from_array(*bodies_json)) {
+      const auto body = parse_body_state(body_json);
+      if (body.has_value()) {
+        frame.bodies.push_back(*body);
+      }
+    }
+  }
+
   return frame;
 }
 

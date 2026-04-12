@@ -40,6 +40,7 @@ if(BUILD_TESTING)
     src/test/test_runtime_frame.cpp
     src/test/test_desktop_shell.cpp
     src/test/test_replay_ingest.cpp
+    src/test/test_trajectory_infographic.cpp
   )
 
   target_link_libraries(brambhand_test_suite

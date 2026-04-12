@@ -16,6 +16,12 @@
   - added replay JSONL ingest contracts/helpers in `c/brambhand/include/brambhand/client/common/replay_ingest.hpp` + `c/brambhand/src/lib/client/replay_ingest.cpp`
   - wired desktop bootstrap to replay-only mode (`--replay <path>`) and explicit live-mode guard (`--live` unsupported in R8.05)
   - added C++ replay-ingest tests in `c/brambhand/src/test/test_replay_ingest.cpp` for parse success, run-id consistency, and monotonic sequence validation
+  - extended replay ingest parsing to include body-position samples from `SimulationFrame.bodies[*].position_m` for trajectory consumers
+- R8.05 compact trajectory infographic-panel baseline:
+  - added deterministic panel contracts/builders in `c/brambhand/include/brambhand/client/desktop/trajectory_infographic.hpp` + `c/brambhand/src/lib/client/trajectory_infographic.cpp`
+  - panel emits shared `current/planned` curve layers and object-icon markers (`ship` / `ghost_ship`) with deterministic color semantics matching R8 trajectory contracts
+  - desktop bootstrap now constructs and reports trajectory-panel summary from replay-ingested frames
+  - added C++ tests in `c/brambhand/src/test/test_trajectory_infographic.cpp` for layer/icon mapping and current-curve fallback behavior
 
 ## v0.1.1 (2026-04-12)
 
