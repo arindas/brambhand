@@ -1,6 +1,8 @@
+import json
+from dataclasses import asdict
 from pathlib import Path
 
-from brambhand.scenario.replay_log import ReplayLog
+from brambhand.scenario.replay_log import ReplayLog, ReplayRecord
 from brambhand.visualization.quicklook_contracts import (
     QUICKLOOK_SEVERITY_COLOR_MAP,
     QUICKLOOK_SEVERITY_SCHEMA_VERSION,
@@ -15,6 +17,44 @@ from brambhand.visualization.quicklook_pipeline import (
     build_headless_quicklook_output,
     load_headless_quicklook_output,
 )
+
+SNAPSHOT_DIR = Path(__file__).parent / "snapshots"
+
+
+def _build_unordered_quicklook_snapshot_replay() -> ReplayLog:
+    return ReplayLog(
+        records=[
+            ReplayRecord(sequence=5, sim_time_s=10.0, kind="alarm", payload={"message": "warn"}),
+            ReplayRecord(
+                sequence=2,
+                sim_time_s=4.0,
+                kind="step_completed",
+                payload={"position_m": {"x": 4.0, "y": 5.0, "z": 6.0}},
+            ),
+            ReplayRecord(
+                sequence=1,
+                sim_time_s=2.0,
+                kind="step_started",
+                payload={"position_m": [1.0, 2.0, 3.0], "planned_position_m": [1.2, 2.2, 3.2]},
+            ),
+            ReplayRecord(
+                sequence=3,
+                sim_time_s=6.0,
+                kind="step",
+                payload={
+                    "position_m": [7.0, 8.0, 9.0],
+                    "planned_position_m": {"x": 7.1, "y": 8.1, "z": 9.1},
+                },
+            ),
+        ]
+    )
+
+
+def _assert_matches_snapshot(snapshot_name: str, value: object) -> None:
+    snapshot_path = SNAPSHOT_DIR / snapshot_name
+    expected = snapshot_path.read_text(encoding="utf-8")
+    rendered = json.dumps(value, indent=2, sort_keys=True) + "\n"
+    assert rendered == expected
 
 
 def test_quicklook_contract_extracts_trajectory_and_events_in_sequence_order() -> None:
@@ -142,6 +182,22 @@ def test_current_vs_planned_overlay_handles_missing_planned_samples() -> None:
     assert len(output.current_planned_overlay) == 2
     assert output.current_planned_overlay[0].planned_position_m == (0.0, 0.1, 0.0)
     assert output.current_planned_overlay[1].planned_position_m is None
+
+
+def test_quicklook_telemetry_extraction_snapshot_is_deterministic() -> None:
+    replay = _build_unordered_quicklook_snapshot_replay()
+
+    telemetry = extract_quicklook_telemetry(replay)
+
+    _assert_matches_snapshot("quicklook_telemetry_snapshot.json", asdict(telemetry))
+
+
+def test_headless_quicklook_output_snapshot_is_deterministic() -> None:
+    replay = _build_unordered_quicklook_snapshot_replay()
+
+    output = build_headless_quicklook_output(replay)
+
+    _assert_matches_snapshot("quicklook_output_snapshot.json", asdict(output))
 
 
 def test_headless_quicklook_pipeline_loads_from_jsonl(tmp_path: Path) -> None:

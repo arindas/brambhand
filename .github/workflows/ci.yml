@@ -7,6 +7,8 @@ on:
       - "python/brambhand/tests/**"
       - "python/brambhand/pyproject.toml"
       - "python/brambhand/uv.lock"
+      - "c/brambhand/**"
+      - "interfaces/runtime_bridge.proto"
       - ".github/workflows/ci.yml"
   push:
     branches: [main, master]
@@ -15,6 +17,8 @@ on:
       - "python/brambhand/tests/**"
       - "python/brambhand/pyproject.toml"
       - "python/brambhand/uv.lock"
+      - "c/brambhand/**"
+      - "interfaces/runtime_bridge.proto"
       - ".github/workflows/ci.yml"
 
 jobs:
@@ -52,3 +56,19 @@ jobs:
       - name: Pytest
         working-directory: python/brambhand
         run: uv run pytest
+
+  cpp-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: cmake -S c/brambhand -B c/brambhand/build
+
+      - name: Build C++ targets
+        run: cmake --build c/brambhand/build --config Release -j2
+
+      - name: Run C++ tests
+        run: ctest --test-dir c/brambhand/build --output-on-failure

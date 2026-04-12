@@ -69,7 +69,7 @@
 - [x] Add minimal severity contract in quicklook (`info|warning|critical`) with deterministic event->severity mapping table
 - [x] Add basic severity styling in quicklook markers (3-color palette) with backward-compatible extension path for richer UI theming later
 - [x] Add `current` vs `planned` trajectory overlay baseline (planned from predictor/scenario intent)
-- [ ] Add deterministic snapshot tests for quicklook extraction and ordering
+- [x] Add deterministic snapshot tests for quicklook extraction and ordering
 - [ ] Define compact infographic trajectory widget contract (curve layers + object-icon markers) using shared trajectory render payloads
 
 ### R4 — Fluid-structure interaction coupling

@@ -45,4 +45,6 @@ struct SimulationFrame {
   std::vector<EventFrame> events;
 };
 
+int brambhand_client_link_anchor();
+
 }  // namespace brambhand::client::common

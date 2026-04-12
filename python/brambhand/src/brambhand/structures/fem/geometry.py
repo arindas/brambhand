@@ -279,7 +279,10 @@ def assemble_global_stiffness_sparse(
                 col_idx.append(j_global)
                 data.append(float(ke[i_local, j_local]))
 
-    return sparse.coo_matrix((data, (row_idx, col_idx)), shape=(dof_count, dof_count)).tocsr()
+    row = np.asarray(row_idx, dtype=np.int64)
+    col = np.asarray(col_idx, dtype=np.int64)
+    values = np.asarray(data, dtype=float)
+    return sparse.coo_matrix((values, (row, col)), shape=(dof_count, dof_count)).tocsr()
 
 
 def apply_element_terms(

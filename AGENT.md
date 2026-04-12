@@ -15,9 +15,12 @@ Run baseline checks:
 
 ```bash
 source .venv/bin/activate
-ruff check python
+ruff check python/brambhand
 mypy python/brambhand/src python/brambhand/tests
 pytest -q python/brambhand/tests
+cmake -S c/brambhand -B c/brambhand/build
+cmake --build c/brambhand/build -j2
+ctest --test-dir c/brambhand/build --output-on-failure
 ```
 
 If baseline is red, fix baseline first unless task explicitly says otherwise.

@@ -66,6 +66,9 @@
   - added `visualization/trajectory_render_contracts.py` with versioned renderer-facing contract (`TrajectoryRenderContract3D`)
   - exposes deterministic 3D current/planned polyline curves plus moving object markers sampled along curves at requested simulation time
   - added renderer contract tests for curve generation, marker sampling semantics, and schema-version validation
+- R8.0 deterministic quicklook snapshot coverage:
+  - added golden snapshot fixtures for quicklook telemetry extraction ordering and headless output rendering (`tests/snapshots/quicklook_telemetry_snapshot.json`, `tests/snapshots/quicklook_output_snapshot.json`)
+  - added regression tests in `tests/test_quicklook_contracts.py` to enforce deterministic quicklook extraction/ordering against intentionally unordered replay inputs
 - Traceability update for dual trajectory presentation modes:
   - updated `REQUIREMENTS.md` with explicit compact-infographic + rich-3D trajectory-view requirements and shared-contract parity constraints (`FR-146..FR-148`, `NR-065`)
   - updated `DESIGN.md`, `TODO.md`, `VERIFICATION.md`, and `VALIDATION.md` to plan/verify/validate both trajectory presentation paths on shared semantics

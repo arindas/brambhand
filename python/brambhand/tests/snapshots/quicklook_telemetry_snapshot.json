@@ -1,0 +1,79 @@
+{
+  "events": [
+    {
+      "kind": "step_started",
+      "sequence": 1,
+      "severity": "info",
+      "sim_time_s": 2.0
+    },
+    {
+      "kind": "step_completed",
+      "sequence": 2,
+      "severity": "info",
+      "sim_time_s": 4.0
+    },
+    {
+      "kind": "step",
+      "sequence": 3,
+      "severity": "info",
+      "sim_time_s": 6.0
+    },
+    {
+      "kind": "alarm",
+      "sequence": 5,
+      "severity": "warning",
+      "sim_time_s": 10.0
+    }
+  ],
+  "planned_trajectory": [
+    {
+      "position_m": [
+        1.2,
+        2.2,
+        3.2
+      ],
+      "sequence": 1,
+      "sim_time_s": 2.0
+    },
+    {
+      "position_m": [
+        7.1,
+        8.1,
+        9.1
+      ],
+      "sequence": 3,
+      "sim_time_s": 6.0
+    }
+  ],
+  "schema_version": 1,
+  "severity_schema_version": 1,
+  "trajectory": [
+    {
+      "position_m": [
+        1.0,
+        2.0,
+        3.0
+      ],
+      "sequence": 1,
+      "sim_time_s": 2.0
+    },
+    {
+      "position_m": [
+        4.0,
+        5.0,
+        6.0
+      ],
+      "sequence": 2,
+      "sim_time_s": 4.0
+    },
+    {
+      "position_m": [
+        7.0,
+        8.0,
+        9.0
+      ],
+      "sequence": 3,
+      "sim_time_s": 6.0
+    }
+  ]
+}

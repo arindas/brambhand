@@ -78,7 +78,8 @@ Build bootstrap native client:
 ```bash
 cmake -S c/brambhand -B c/brambhand/build
 cmake --build c/brambhand/build
-./c/brambhand/build/src/bin/desktop/brambhand_desktop
+ctest --test-dir c/brambhand/build --output-on-failure
+./c/brambhand/build/brambhand_desktop
 ```
 
 ## CLI

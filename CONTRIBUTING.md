@@ -72,6 +72,9 @@ uv pip install -e './python/brambhand[dev]'
 ruff check python/brambhand
 mypy python/brambhand/src python/brambhand/tests
 pytest python/brambhand/tests
+cmake -S c/brambhand -B c/brambhand/build
+cmake --build c/brambhand/build -j2
+ctest --test-dir c/brambhand/build --output-on-failure
 ```
 
 All three should pass before opening a PR.
@@ -128,7 +131,7 @@ PRs should include:
 
 - Purpose and scope
 - Requirement/design linkage (FR/NR or milestone items)
-- Test evidence (`ruff`, `mypy`, `pytest` results)
+- Test evidence (`ruff`, `mypy`, `pytest`, and C++ `ctest` results)
 - Notable risks/assumptions
 
 Keep commits/PRs focused and reviewable.
