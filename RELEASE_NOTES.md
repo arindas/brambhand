@@ -107,6 +107,10 @@
   - renamed topology transition contract from `TopologyTransitionPayload` to `TopologyTransition` and schema constant to `TOPOLOGY_TRANSITION_SCHEMA_VERSION` to remove payload-specific type naming
   - added parser helpers (`parse_topology_transition_kind`, `parse_optional_topology_transition_kind`) for safe normalization of raw string inputs at boundaries, while keeping typed contracts canonical internally
   - removed separate mission-level transition-kind alias and standardized all topology/coupling/test paths on the shared union contract (eliminating ad-hoc string kind drift across modules)
+- R4 convergence diagnostics and telemetry-channel baseline:
+  - added `coupling/telemetry.py` with versioned diagnostics contract (`FSICouplingConvergenceDiagnostics`) and named telemetry channels (`FSICouplingTelemetryChannels`)
+  - added deterministic diagnostics builder `build_fsi_convergence_diagnostics(...)` to publish residual-history, convergence flags, iteration usage, and controller mode/termination channels
+  - added tests in `tests/test_fsi_telemetry.py` covering diagnostics-channel emission and telemetry schema-version validation
 - R4 initial coupling-policy baseline:
   - added `coupling/policy.py` with explicit partitioned-vs-monolithic strategy decision contract (`FSICouplingPolicyThresholds`, `FSICouplingPolicyDecision`)
   - implemented deterministic policy evaluator `decide_fsi_coupling_strategy(...)` using explicit escalation criteria (topology transition kind, convergence status, residual threshold, iteration budget, and total mass-flow threshold)
