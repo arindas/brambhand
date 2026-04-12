@@ -111,6 +111,9 @@
   - added `coupling/performance.py` with `benchmark_fsi_coupled_stability(...)` and summary contract (`FSICoupledStabilityBenchmarkResult`)
   - benchmark summarizes convergence/failure/fallback counts, failure->recovery counts, iteration percentiles, and residual envelope across repeated controller runs
   - added tests in `tests/test_fsi_benchmarks.py` for stable converged profiles, explicit failure/recovery path accounting, and input validation guards
+- R4 integrated chain test baseline:
+  - added `tests/test_fsi_integrated_chain.py` covering the end-to-end path: fracture damage signal -> topology split transition payload -> leak/slosh boundary payload integration -> FSI controller convergence/fallback path -> 6-DOF rigid-body response
+  - validates that coupled boundary loads derived from integrated exchange contracts produce non-zero translational and rotational 6-DOF responses under deterministic setup
 - R4 convergence diagnostics and telemetry-channel baseline:
   - added `coupling/telemetry.py` with versioned diagnostics contract (`FSICouplingConvergenceDiagnostics`) and named telemetry channels (`FSICouplingTelemetryChannels`)
   - added deterministic diagnostics builder `build_fsi_convergence_diagnostics(...)` to publish residual-history, convergence flags, iteration usage, and controller mode/termination channels
