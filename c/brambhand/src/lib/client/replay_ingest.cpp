@@ -203,6 +203,7 @@ std::optional<BodyState> parse_body_state(const std::string& body_json) {
 
   BodyState body{};
   body.body_id = *body_id;
+  body.visualization_role = extract_string(body_json, "visualization_role").value_or("");
   body.position_m = Vector3{.x = *x, .y = *y, .z = *z};
   return body;
 }

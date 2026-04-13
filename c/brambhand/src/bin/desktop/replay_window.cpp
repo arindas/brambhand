@@ -5,9 +5,12 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <functional>
 #include <optional>
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace brambhand::client::desktop {
@@ -206,12 +209,15 @@ SDL_FPoint map_point(
     double y,
     const PlotBounds& bounds,
     const SDL_FRect& viewport) {
-  const double tx = (x - bounds.min_x) / (bounds.max_x - bounds.min_x);
-  const double ty = (y - bounds.min_y) / (bounds.max_y - bounds.min_y);
+  const double span_x = bounds.max_x - bounds.min_x;
+  const double span_y = bounds.max_y - bounds.min_y;
+  const double scale = std::min(viewport.w / span_x, viewport.h / span_y);
+  const double center_x = 0.5 * (bounds.min_x + bounds.max_x);
+  const double center_y = 0.5 * (bounds.min_y + bounds.max_y);
 
   return SDL_FPoint{
-      .x = static_cast<float>(viewport.x + tx * viewport.w),
-      .y = static_cast<float>(viewport.y + (1.0 - ty) * viewport.h),
+      .x = static_cast<float>(viewport.x + (0.5 * viewport.w) + ((x - center_x) * scale)),
+      .y = static_cast<float>(viewport.y + (0.5 * viewport.h) - ((y - center_y) * scale)),
   };
 }
 
@@ -230,6 +236,21 @@ void draw_curve_layer(
   }
 }
 
+std::optional<std::pair<double, double>> find_focus_point(
+    const std::vector<brambhand::client::common::SimulationFrame>& frames,
+    const brambhand::client::common::ReplayRenderConfig& render_config) {
+  if (frames.empty() || !render_config.focus_body_id.has_value()) {
+    return std::nullopt;
+  }
+
+  const auto* body = find_body_by_id(frames.front(), *render_config.focus_body_id);
+  if (body == nullptr) {
+    return std::nullopt;
+  }
+
+  return std::pair<double, double>{body->position_m.x, body->position_m.y};
+}
+
 void draw_trace_for_body(
     SDL_Renderer* renderer,
     const std::vector<brambhand::client::common::SimulationFrame>& frames,
@@ -237,29 +258,72 @@ void draw_trace_for_body(
     const std::string& body_id,
     const PlotBounds& bounds,
     const SDL_FRect& viewport,
-    const Rgba& color) {
+    const Rgba& color,
+    std::uint8_t alpha) {
   if (frames.empty()) {
     return;
   }
 
-  SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, 170);
+  SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, alpha);
   const std::size_t end = std::min(upto_index, frames.size() - 1);
 
+  constexpr double kJumpDiscontinuityFactor = 6.0;
+  constexpr double kMinReferenceDistanceM = 1.0;
+
   const brambhand::client::common::BodyState* prev_body = nullptr;
+  std::optional<double> prev_step_distance_m;
   for (std::size_t i = 0; i <= end; ++i) {
     const auto* body = find_body_by_id(frames[i], body_id);
     if (body == nullptr) {
       prev_body = nullptr;
+      prev_step_distance_m = std::nullopt;
       continue;
     }
 
     if (prev_body != nullptr) {
-      const auto a = map_point(prev_body->position_m.x, prev_body->position_m.y, bounds, viewport);
-      const auto b = map_point(body->position_m.x, body->position_m.y, bounds, viewport);
-      SDL_RenderLine(renderer, a.x, a.y, b.x, b.y);
+      const double dx = body->position_m.x - prev_body->position_m.x;
+      const double dy = body->position_m.y - prev_body->position_m.y;
+      const double distance_m = std::sqrt(dx * dx + dy * dy);
+
+      bool draw_segment = true;
+      if (prev_step_distance_m.has_value()) {
+        const double reference_m = std::max(*prev_step_distance_m, kMinReferenceDistanceM);
+        if (distance_m > (kJumpDiscontinuityFactor * reference_m)) {
+          draw_segment = false;
+        }
+      }
+
+      if (draw_segment) {
+        const auto a = map_point(prev_body->position_m.x, prev_body->position_m.y, bounds, viewport);
+        const auto b = map_point(body->position_m.x, body->position_m.y, bounds, viewport);
+        SDL_RenderLine(renderer, a.x, a.y, b.x, b.y);
+      }
+
+      prev_step_distance_m = distance_m;
     }
 
     prev_body = body;
+  }
+}
+
+enum class MarkerKind {
+  Generic,
+  Probe,
+  Planet,
+  Sun,
+};
+
+void draw_circle_outline(SDL_Renderer* renderer, float cx, float cy, float radius, int segments) {
+  constexpr double kTau = 6.283185307179586;
+  for (int i = 0; i < segments; ++i) {
+    const float a0 = static_cast<float>((kTau * static_cast<double>(i)) / static_cast<double>(segments));
+    const float a1 = static_cast<float>((kTau * static_cast<double>(i + 1)) / static_cast<double>(segments));
+    SDL_RenderLine(
+        renderer,
+        cx + (radius * std::cos(a0)),
+        cy + (radius * std::sin(a0)),
+        cx + (radius * std::cos(a1)),
+        cy + (radius * std::sin(a1)));
   }
 }
 
@@ -269,22 +333,67 @@ void draw_body_marker(
     const PlotBounds& bounds,
     const SDL_FRect& viewport,
     float half_size,
-    bool draw_label) {
+    bool draw_label,
+    MarkerKind marker_kind) {
   const auto color = color_for_id(body.body_id);
   SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
 
   const auto p = map_point(body.position_m.x, body.position_m.y, bounds, viewport);
-  SDL_FRect r{
-      .x = p.x - half_size,
-      .y = p.y - half_size,
-      .w = 2.0F * half_size,
-      .h = 2.0F * half_size,
-  };
-  SDL_RenderFillRect(renderer, &r);
+
+  if (marker_kind == MarkerKind::Sun) {
+    draw_circle_outline(renderer, p.x, p.y, half_size + 2.0F, 14);
+    SDL_RenderLine(renderer, p.x - (half_size + 4.0F), p.y, p.x + (half_size + 4.0F), p.y);
+    SDL_RenderLine(renderer, p.x, p.y - (half_size + 4.0F), p.x, p.y + (half_size + 4.0F));
+  } else if (marker_kind == MarkerKind::Planet) {
+    draw_circle_outline(renderer, p.x, p.y, half_size + 1.5F, 12);
+    SDL_RenderPoint(renderer, p.x, p.y);
+  } else if (marker_kind == MarkerKind::Probe) {
+    SDL_RenderLine(renderer, p.x, p.y - (half_size + 2.0F), p.x - (half_size + 2.0F), p.y + (half_size + 2.0F));
+    SDL_RenderLine(renderer, p.x - (half_size + 2.0F), p.y + (half_size + 2.0F), p.x + (half_size + 2.0F), p.y + (half_size + 2.0F));
+    SDL_RenderLine(renderer, p.x + (half_size + 2.0F), p.y + (half_size + 2.0F), p.x, p.y - (half_size + 2.0F));
+  } else {
+    SDL_FRect r{
+        .x = p.x - half_size,
+        .y = p.y - half_size,
+        .w = 2.0F * half_size,
+        .h = 2.0F * half_size,
+    };
+    SDL_RenderFillRect(renderer, &r);
+  }
 
   if (draw_label) {
     SDL_RenderDebugText(renderer, p.x + 5.0F, p.y - 5.0F, body.body_id.c_str());
   }
+}
+
+std::string elide_text(const std::string& text, std::size_t max_chars) {
+  if (max_chars == 0) {
+    return {};
+  }
+  if (text.size() <= max_chars) {
+    return text;
+  }
+  if (max_chars <= 3) {
+    return text.substr(0, max_chars);
+  }
+  return text.substr(0, max_chars - 3) + "...";
+}
+
+bool draw_sidebar_line(
+    SDL_Renderer* renderer,
+    float x,
+    float& y,
+    float y_limit,
+    float line_h,
+    std::size_t max_chars,
+    const std::string& text) {
+  if (y + line_h > y_limit) {
+    return false;
+  }
+  const std::string clipped = elide_text(text, max_chars);
+  SDL_RenderDebugText(renderer, x, y, clipped.c_str());
+  y += line_h;
+  return true;
 }
 
 void draw_sidebar(
@@ -297,77 +406,183 @@ void draw_sidebar(
     double playback_rate,
     double zoom_level,
     const std::vector<std::string>& body_ids) {
-  SDL_SetRenderDrawColor(renderer, 22, 28, 40, 255);
+  SDL_SetRenderDrawColor(renderer, 20, 24, 34, 255);
   SDL_RenderFillRect(renderer, &panel);
-  SDL_SetRenderDrawColor(renderer, 70, 80, 96, 255);
+  SDL_SetRenderDrawColor(renderer, 78, 90, 110, 255);
   SDL_RenderRect(renderer, &panel);
 
-  float x = panel.x + 10.0F;
-  float y = panel.y + 10.0F;
-  SDL_RenderDebugText(renderer, x, y, "Replay Quicklook");
-  y += 16.0F;
-  SDL_RenderDebugTextFormat(renderer, x, y, "Bodies tracked: %zu", body_ids.size());
-  y += 16.0F;
-  SDL_RenderDebugText(renderer, x, y, "Trajectories + traces are replay-driven");
-  y += 20.0F;
+  const SDL_Rect clip_rect{
+      static_cast<int>(panel.x) + 1,
+      static_cast<int>(panel.y) + 1,
+      std::max(1, static_cast<int>(panel.w) - 2),
+      std::max(1, static_cast<int>(panel.h) - 2),
+  };
+  SDL_SetRenderClipRect(renderer, &clip_rect);
+
+  constexpr float kMargin = 10.0F;
+  constexpr float kLineH = 16.0F;
+  constexpr float kRowH = 14.0F;
+  constexpr float kCharW = 8.0F;
+
+  const float x = panel.x + kMargin;
+  float y = panel.y + kMargin;
+  const float y_limit = panel.y + panel.h - kMargin;
+  const float right = panel.x + panel.w - kMargin;
+  const std::size_t max_chars = static_cast<std::size_t>(
+      std::max(6.0F, (panel.w - (2.0F * kMargin)) / kCharW));
+
+  auto set_primary = [&]() { SDL_SetRenderDrawColor(renderer, 228, 236, 250, 255); };
+  auto set_secondary = [&]() { SDL_SetRenderDrawColor(renderer, 150, 164, 186, 255); };
+  auto set_muted = [&]() { SDL_SetRenderDrawColor(renderer, 124, 136, 156, 255); };
+
+  auto draw_primary = [&](const std::string& line) {
+    set_primary();
+    return draw_sidebar_line(renderer, x, y, y_limit, kLineH, max_chars, line);
+  };
+  auto draw_secondary = [&](const std::string& line) {
+    set_secondary();
+    return draw_sidebar_line(renderer, x, y, y_limit, kLineH, max_chars, line);
+  };
+  auto draw_divider = [&]() {
+    if (y + 8.0F > y_limit) {
+      return false;
+    }
+    SDL_SetRenderDrawColor(renderer, 62, 72, 90, 255);
+    SDL_RenderLine(renderer, x, y + 3.0F, right, y + 3.0F);
+    y += 8.0F;
+    return true;
+  };
+
+  if (!draw_primary("Replay Quicklook")) {
+    SDL_SetRenderClipRect(renderer, nullptr);
+    return;
+  }
+
+  {
+    char buf[128];
+    std::snprintf(buf, sizeof(buf), "Bodies tracked: %zu", body_ids.size());
+    if (!draw_secondary(buf)) {
+      SDL_SetRenderClipRect(renderer, nullptr);
+      return;
+    }
+  }
+
+  if (!draw_secondary("Replay window telemetry")) {
+    SDL_SetRenderClipRect(renderer, nullptr);
+    return;
+  }
+
+  if (!draw_divider()) {
+    SDL_SetRenderClipRect(renderer, nullptr);
+    return;
+  }
+
+  if (!draw_primary("Simulation")) {
+    SDL_SetRenderClipRect(renderer, nullptr);
+    return;
+  }
 
   if (active_frame != nullptr) {
-    const double day = active_frame->sim_time_s / kSecondsPerDay;
-    SDL_RenderDebugTextFormat(renderer, x, y, "Sim day: %.1f", day);
-    y += 16.0F;
+    char buf[128];
+    std::snprintf(buf, sizeof(buf), "Sim day: %.1f", active_frame->sim_time_s / kSecondsPerDay);
+    if (!draw_secondary(buf)) {
+      SDL_SetRenderClipRect(renderer, nullptr);
+      return;
+    }
   }
-  SDL_RenderDebugTextFormat(renderer, x, y, "Frame: %zu / %zu", frame_index + 1, frame_count);
-  y += 16.0F;
-  SDL_RenderDebugTextFormat(renderer, x, y, "Playback: %.2fx  ([ and ])", playback_rate);
-  y += 16.0F;
-  SDL_RenderDebugTextFormat(renderer, x, y, "Zoom: %.2fx  (-/= or wheel)", zoom_level);
-  y += 16.0F;
-  SDL_RenderDebugText(renderer, x, y, "Pan: arrow keys");
-  y += 22.0F;
 
-  SDL_RenderDebugText(renderer, x, y, "Mission/Event timeline");
-  y += 16.0F;
-  SDL_RenderDebugText(renderer, x, y, "Color = severity, row = event record");
-  y += 18.0F;
+  {
+    char buf[128];
+    std::snprintf(buf, sizeof(buf), "Frame: %zu / %zu", frame_index + 1, frame_count);
+    if (!draw_secondary(buf)) {
+      SDL_SetRenderClipRect(renderer, nullptr);
+      return;
+    }
+    std::snprintf(buf, sizeof(buf), "Playback: %.2fx  ([ / ])", playback_rate);
+    if (!draw_secondary(buf)) {
+      SDL_SetRenderClipRect(renderer, nullptr);
+      return;
+    }
+    std::snprintf(buf, sizeof(buf), "Zoom: %.2fx  (-/= or wheel)", zoom_level);
+    if (!draw_secondary(buf)) {
+      SDL_SetRenderClipRect(renderer, nullptr);
+      return;
+    }
+  }
 
-  const float row_h = 14.0F;
-  const std::size_t show = std::min<std::size_t>(workflow.event_markers.size(), 16);
-  for (std::size_t i = 0; i < show; ++i) {
-    const auto& m = workflow.event_markers[i];
+  if (!draw_secondary("Pan: arrow keys")) {
+    SDL_SetRenderClipRect(renderer, nullptr);
+    return;
+  }
+
+  if (!draw_divider()) {
+    SDL_SetRenderClipRect(renderer, nullptr);
+    return;
+  }
+
+  if (!draw_primary("Mission Events")) {
+    SDL_SetRenderClipRect(renderer, nullptr);
+    return;
+  }
+  if (!draw_secondary("Severity color + timeline row")) {
+    SDL_SetRenderClipRect(renderer, nullptr);
+    return;
+  }
+
+  std::size_t event_i = 0;
+  const std::size_t event_text_max = max_chars > 2 ? max_chars - 2 : max_chars;
+  while (event_i < workflow.event_markers.size() && (y + kRowH) <= y_limit) {
+    const auto& m = workflow.event_markers[event_i];
     const auto color = parse_hex_color(m.color_hex);
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
     SDL_FRect swatch{.x = x, .y = y + 2.0F, .w = 10.0F, .h = 10.0F};
     SDL_RenderFillRect(renderer, &swatch);
 
-    SDL_RenderDebugTextFormat(
-        renderer,
-        x + 14.0F,
-        y,
-        "t=%.1fd  %s",
-        m.sim_time_s / kSecondsPerDay,
-        m.kind.c_str());
-    y += row_h;
+    char row[256];
+    std::snprintf(row, sizeof(row), "t=%.1fd  %s", m.sim_time_s / kSecondsPerDay, m.kind.c_str());
+    const std::string clipped = elide_text(row, event_text_max);
+    set_secondary();
+    SDL_RenderDebugText(renderer, x + 14.0F, y, clipped.c_str());
+    y += kRowH;
+    ++event_i;
   }
 
-  y += 8.0F;
-  SDL_RenderDebugText(renderer, x, y, "Body color legend");
-  y += 16.0F;
-  const std::size_t legend_show = std::min<std::size_t>(body_ids.size(), 10);
-  for (std::size_t i = 0; i < legend_show; ++i) {
+  if (event_i < workflow.event_markers.size() && (y + kLineH) <= y_limit) {
+    set_muted();
+    SDL_RenderDebugText(renderer, x, y, "...");
+    y += kLineH;
+  }
+
+  if (!draw_divider()) {
+    SDL_SetRenderClipRect(renderer, nullptr);
+    return;
+  }
+
+  if (!draw_primary("Body Legend")) {
+    SDL_SetRenderClipRect(renderer, nullptr);
+    return;
+  }
+
+  for (std::size_t i = 0; i < body_ids.size() && (y + kRowH) <= y_limit; ++i) {
     const auto color = color_for_id(body_ids[i]);
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
     SDL_FRect swatch{.x = x, .y = y + 2.0F, .w = 10.0F, .h = 10.0F};
     SDL_RenderFillRect(renderer, &swatch);
-    SDL_RenderDebugText(renderer, x + 14.0F, y, body_ids[i].c_str());
-    y += row_h;
+    const std::string clipped = elide_text(body_ids[i], event_text_max);
+    set_secondary();
+    SDL_RenderDebugText(renderer, x + 14.0F, y, clipped.c_str());
+    y += kRowH;
   }
+
+  SDL_SetRenderClipRect(renderer, nullptr);
 }
 
 }  // namespace
 
 bool run_replay_window(
     const ReplayQuicklookWorkflowOutput& workflow,
-    const std::vector<brambhand::client::common::SimulationFrame>& frames) {
+    const std::vector<brambhand::client::common::SimulationFrame>& frames,
+    const brambhand::client::common::ReplayRenderConfig& render_config) {
   if (!SDL_Init(SDL_INIT_VIDEO)) {
     return false;
   }
@@ -396,12 +611,36 @@ bool run_replay_window(
   const PlotBounds base_bounds = *bounds_opt;
   const std::vector<std::string> body_ids = collect_body_ids(frames);
 
+  const std::unordered_set<std::string> orbit_body_id_set(
+      render_config.dim_trajectory_body_ids.begin(),
+      render_config.dim_trajectory_body_ids.end());
+  const std::unordered_set<std::string> sun_body_id_set(
+      render_config.sun_body_ids.begin(),
+      render_config.sun_body_ids.end());
+  const std::unordered_set<std::string> planet_body_id_set(
+      render_config.planet_body_ids.begin(),
+      render_config.planet_body_ids.end());
+  const std::unordered_set<std::string> probe_body_id_set(
+      render_config.probe_body_ids.begin(),
+      render_config.probe_body_ids.end());
+  std::vector<std::string> orbit_body_ids;
+  orbit_body_ids.reserve(orbit_body_id_set.size());
+  for (const auto& id : body_ids) {
+    if (orbit_body_id_set.contains(id)) {
+      orbit_body_ids.push_back(id);
+    }
+  }
+
+  const auto focus_point = find_focus_point(frames, render_config);
+  const double base_center_x = 0.5 * (base_bounds.min_x + base_bounds.max_x);
+  const double base_center_y = 0.5 * (base_bounds.min_y + base_bounds.max_y);
+
   std::size_t frame_index = 0;
   std::uint64_t last_advance_ticks = SDL_GetTicks();
   double playback_rate = 1.0;
   double zoom_level = 1.0;
-  double pan_x = 0.0;
-  double pan_y = 0.0;
+  double pan_x = focus_point.has_value() ? (focus_point->first - base_center_x) : 0.0;
+  double pan_y = focus_point.has_value() ? (focus_point->second - base_center_y) : 0.0;
 
   bool running = true;
   while (running) {
@@ -470,18 +709,32 @@ bool run_replay_window(
     SDL_SetRenderDrawColor(renderer, 12, 14, 20, 255);
     SDL_RenderClear(renderer);
 
-    const float sidebar_w = 360.0F;
+    const float outer_margin = 20.0F;
+    const float panel_gap = 10.0F;
+    const float min_view_w = 180.0F;
+    const float preferred_sidebar_w = 330.0F;
+
+    float sidebar_w = std::clamp(
+        preferred_sidebar_w,
+        180.0F,
+        std::max(180.0F, static_cast<float>(width) - (2.0F * outer_margin) - panel_gap - min_view_w));
+    float viewport_w = static_cast<float>(width) - (2.0F * outer_margin) - panel_gap - sidebar_w;
+    if (viewport_w < min_view_w) {
+      viewport_w = min_view_w;
+      sidebar_w = std::max(180.0F, static_cast<float>(width) - (2.0F * outer_margin) - panel_gap - viewport_w);
+    }
+
     const SDL_FRect viewport{
-        .x = 20.0F,
-        .y = 20.0F,
-        .w = std::max(200.0F, static_cast<float>(width) - sidebar_w - 40.0F),
-        .h = static_cast<float>(height) - 40.0F,
+        .x = outer_margin,
+        .y = outer_margin,
+        .w = std::max(120.0F, viewport_w),
+        .h = std::max(120.0F, static_cast<float>(height) - (2.0F * outer_margin)),
     };
     const SDL_FRect sidebar{
-        .x = viewport.x + viewport.w + 10.0F,
-        .y = 20.0F,
-        .w = sidebar_w - 30.0F,
-        .h = static_cast<float>(height) - 40.0F,
+        .x = viewport.x + viewport.w + panel_gap,
+        .y = outer_margin,
+        .w = std::max(140.0F, sidebar_w),
+        .h = std::max(120.0F, static_cast<float>(height) - (2.0F * outer_margin)),
     };
 
     SDL_SetRenderDrawColor(renderer, 60, 66, 80, 255);
@@ -495,6 +748,18 @@ bool run_replay_window(
 
     const brambhand::client::common::SimulationFrame* active_frame = nullptr;
     if (!frames.empty()) {
+      for (const auto& id : orbit_body_ids) {
+        draw_trace_for_body(
+            renderer,
+            frames,
+            frames.size() - 1,
+            id,
+            view_bounds,
+            viewport,
+            color_for_id(id),
+            85);
+      }
+
       for (const auto& id : body_ids) {
         draw_trace_for_body(
             renderer,
@@ -503,12 +768,22 @@ bool run_replay_window(
             id,
             view_bounds,
             viewport,
-            color_for_id(id));
+            color_for_id(id),
+            180);
       }
 
       active_frame = &frames[frame_index];
       for (const auto& body : active_frame->bodies) {
-        draw_body_marker(renderer, body, view_bounds, viewport, 3.0F, true);
+        MarkerKind marker_kind = MarkerKind::Generic;
+        if (sun_body_id_set.contains(body.body_id)) {
+          marker_kind = MarkerKind::Sun;
+        } else if (probe_body_id_set.contains(body.body_id)) {
+          marker_kind = MarkerKind::Probe;
+        } else if (planet_body_id_set.contains(body.body_id)) {
+          marker_kind = MarkerKind::Planet;
+        }
+
+        draw_body_marker(renderer, body, view_bounds, viewport, 3.0F, false, marker_kind);
       }
     }
 

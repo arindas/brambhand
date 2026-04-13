@@ -204,18 +204,53 @@
 - [ ] Implement mission-phase event contracts for payload transfer operations (assembly, burn staging, separation)
 - [ ] Persist lifecycle transition/event provenance in replay artifacts (capture/latch/hard-dock/detach/clearance)
 - [ ] Implement booster-to-payload transfer guidance/control workflow hooks for UEO/interplanetary missions
-- [ ] Implement planetary sphere-of-influence handoff propagation metadata and replay reconstruction checks
+- [ ] Implement planetary sphere-of-influence handoff propagation metadata and replay reconstruction checks (runtime propagation/reconstruction path; helper contracts landed in R10.5)
 - [ ] Add dock/undock lifecycle causal-ordering tests (including hold-point/abort/escape paths)
 - [ ] Add end-to-end transfer scenario (`launch -> UEO docking/assembly -> boost out of origin SOI -> destination SOI insertion`)
 
+### R10.5 — Mission maneuver foundation (pre-optimization)
+
+#### Contracts and state model
+- [x] Define versioned maneuver command schema with explicit execution mode: `impulsive`, `finite_burn_constant_thrust`, `finite_burn_guided`
+- [x] Define deterministic timing semantics (`requested_tick`, `applied_tick`, tick-boundary ordering, retry/idempotence keys)
+- [ ] Define maneuver frame/unit contract (`inertial`, `LVLH`, body axes) with runtime validation and canonical normalization path
+- [ ] Extend vehicle dynamic state/contracts with propulsion bookkeeping (`mass_wet`, `mass_dry`, `mass_propellant`, `isp_s`, `thrust_n_max`)
+- [ ] Define burn provenance payload persisted in replay/checkpoint artifacts (`command_id`, `phase_id`, `target_id`, `dv_cmd`, `dv_applied`)
+
+#### Runtime execution
+- [x] Implement runtime burn executor for impulsive maneuvers at deterministic tick boundaries
+- [x] Implement runtime finite-burn integrator coupling (thrust acceleration + mass depletion in-step)
+- [ ] Implement burn abort/failsafe semantics (insufficient propellant, invalid frame, constraint violation) with explicit event outcomes
+- [ ] Integrate burn execution ordering into model-graph tick schedule so replay/live equivalence is preserved
+
+#### Guidance and targeting baseline (non-optimizer)
+- [x] Implement two-body Lambert initial-guess utility returning transfer arc + required departure/arrival velocity vectors
+- [x] Implement single-shoot differential correction baseline for encounter miss-distance reduction (bounded iterations)
+- [x] Implement baseline capture targeting helper for periapsis radius and insertion-orbit constraints (concrete non-optimizer provider behind general targeting interface)
+- [x] Provide SOI/handoff helper metadata contracts for mission-phase transition events (`encounter`, `capture_start`, `insertion_complete`)
+
+#### Verification and acceptance
+- [x] Add deterministic contract tests for burn execution and mass depletion invariants across replay reconstruction
+- [x] Add guidance-seed regression tests (Lambert seed reproducibility and miss-distance convergence envelopes)
+- [x] Add end-to-end acceptance scenario replacing script-level kinematic probe stitching with commanded burns only
+- [x] Add strict replay validation asserting no uncommanded state discontinuities in probe trajectories
+
+### R10.6 — Mission encounter/capture closure loop (example-grade, non-optimizer)
+- [ ] Implement staged guidance controller (`departure correction -> rendezvous trim -> capture -> circularization`) using maneuver contracts only
+- [ ] Add bounded burn-budget policy per stage and explicit stage-failure transitions (`budget_exhausted`, `geometry_miss`, `capture_energy_positive`)
+- [ ] Implement Mars-relative orbital metric evaluator and success gate (`energy < 0`, periapsis/apoapsis envelope)
+- [ ] Wire event emission to success gate (`insertion_complete` only on pass; otherwise `capture_failed`)
+- [ ] Add mission-example acceptance script that prints quantitative encounter/capture metrics and exits non-zero on failed capture when strict mode is enabled
+- [ ] Add regression tests for stage-order determinism and failure-event determinism
+
 ### R11 — Trajectory optimization and interplanetary mission-analysis adapters
 - [ ] Define backend-agnostic trajectory optimization contracts (problem/constraints/objectives/results)
-- [ ] Implement trajectory initial-guess generator utilities (Lambert/Hohmann/shape-based seeds)
+- [ ] Implement/extend trajectory initial-guess generator utilities for optimizer workflows (multi-rev Lambert + Hohmann + shape-based seeds), reusing R10.5 provider contracts without duplicating baseline logic
 - [ ] Implement pluggable ephemeris/frame provider contracts with unit/frame validation
 - [ ] Implement Hohmann/Lambert workflow adapters behind abstract interfaces
 - [ ] Implement gravity-assist encounter/deflection workflow adapters behind abstract interfaces
 - [ ] Implement campaign/window sweep orchestration with reproducible provenance ordering
-- [ ] Add adapter integration for selected OSS backends (Python-first + C++-backed bindings)
+- [ ] Add adapter integration for selected OSS backends (Python-first + C++-backed bindings) implementing `TargetingOptimizationBackend`/R11 optimization contracts
 - [ ] Enforce backend-neutral adapter boundaries with integration guards against backend-specific type leakage
 - [ ] Add backend-equivalence benchmark scenarios and tolerance envelopes (external vs in-house)
 - [ ] Add seed-sensitivity and convergence-basin benchmark scenarios (Lambert-seeded and non-seeded initializations)

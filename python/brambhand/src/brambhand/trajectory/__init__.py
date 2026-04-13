@@ -1,0 +1,78 @@
+"""Trajectory maneuver contracts and deterministic execution helpers."""
+
+from brambhand.trajectory.handoff_contracts import (
+    SOI_HANDOFF_SCHEMA_VERSION,
+    HandoffPhaseKind,
+    SOIHandoffMetadata,
+    SOIHandoffMetadataProvider,
+    TwoBodySOIHandoffMetadataProvider,
+    build_soi_handoff_metadata,
+)
+from brambhand.trajectory.maneuver_contracts import (
+    MANEUVER_SCHEMA_VERSION,
+    ManeuverCommand,
+    ManeuverFrame,
+    ManeuverMode,
+)
+from brambhand.trajectory.maneuver_executor import BurnExecutionRecord, ManeuverExecutor
+from brambhand.trajectory.replay_validation import (
+    TrajectoryDiscontinuity,
+    detect_uncommanded_discontinuities,
+    validate_replay_probe_continuity,
+)
+from brambhand.trajectory.targeting_baseline import (
+    TARGETING_PROVIDER_CONTRACT_VERSION,
+    CaptureConstraintEvaluation,
+    CaptureInsertionConstraints,
+    CaptureTargetingRequest,
+    CaptureTargetingSolution,
+    LambertInitialGuess,
+    LambertTargetingRequest,
+    OptimizerBackedTargetingProvider,
+    SingleShootCorrectionRequest,
+    SingleShootCorrectionResult,
+    TargetingOptimizationBackend,
+    TrajectoryTargetingProvider,
+    TwoBodyBaselineTargetingProvider,
+    build_capture_targeting_solution,
+    evaluate_capture_insertion_constraints,
+    lambert_initial_guess_two_body,
+    propagate_two_body_state,
+    single_shoot_velocity_correction,
+)
+
+__all__ = [
+    "SOI_HANDOFF_SCHEMA_VERSION",
+    "HandoffPhaseKind",
+    "SOIHandoffMetadata",
+    "SOIHandoffMetadataProvider",
+    "TwoBodySOIHandoffMetadataProvider",
+    "build_soi_handoff_metadata",
+    "MANEUVER_SCHEMA_VERSION",
+    "BurnExecutionRecord",
+    "ManeuverCommand",
+    "ManeuverExecutor",
+    "ManeuverFrame",
+    "ManeuverMode",
+    "TrajectoryDiscontinuity",
+    "detect_uncommanded_discontinuities",
+    "validate_replay_probe_continuity",
+    "TARGETING_PROVIDER_CONTRACT_VERSION",
+    "CaptureConstraintEvaluation",
+    "CaptureInsertionConstraints",
+    "CaptureTargetingRequest",
+    "CaptureTargetingSolution",
+    "LambertInitialGuess",
+    "LambertTargetingRequest",
+    "OptimizerBackedTargetingProvider",
+    "SingleShootCorrectionRequest",
+    "SingleShootCorrectionResult",
+    "TargetingOptimizationBackend",
+    "TrajectoryTargetingProvider",
+    "TwoBodyBaselineTargetingProvider",
+    "build_capture_targeting_solution",
+    "evaluate_capture_insertion_constraints",
+    "lambert_initial_guess_two_body",
+    "propagate_two_body_state",
+    "single_shoot_velocity_correction",
+]

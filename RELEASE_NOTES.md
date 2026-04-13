@@ -47,6 +47,18 @@
   - renderer now auto-discovers body IDs from replay frames, assigns deterministic per-body colors, and renders traces/markers/legend for arbitrary body counts
   - sidebar wording updated to generic replay semantics (no mission-specific assumptions)
   - desktop replay window now starts resizable + maximized for immediate full-view operation
+- R10.5 maneuver-foundation progress tracking:
+  - added `trajectory` maneuver contracts + executor coverage alignment in TODO tracking (`schema`, `deterministic timing`, `impulsive/finite-burn execution`)
+  - added replay continuity validator `validate_replay_probe_continuity(...)` and test coverage for maneuver-record-aware discontinuity detection
+  - updated `examples/earth_jupiter_hohmann_replay_demo.py` to persist per-frame `maneuver_records` and expose `--strict-continuity` gate for uncommanded probe-jump detection
+  - added baseline targeting helpers in `trajectory/targeting_baseline.py`: two-body Lambert initial guess (`lambert_initial_guess_two_body`) and bounded single-shoot miss-distance correction (`single_shoot_velocity_correction`) plus two-body propagation helper
+  - introduced general targeting-provider contracts (`TrajectoryTargetingProvider` + request payload dataclasses) and a concrete baseline implementation (`TwoBodyBaselineTargetingProvider`) so R11 optimizer-backed providers can be added without breaking current interfaces
+  - added explicit optimizer-backend adapter seam (`TargetingOptimizationBackend`, `OptimizerBackedTargetingProvider`) so future R11 solver integrations can plug into current targeting call sites without interface churn
+  - added baseline capture targeting helpers (`CaptureInsertionConstraints`, `build_capture_targeting_solution`, `evaluate_capture_insertion_constraints`) for periapsis/apoapsis insertion constraints in non-optimizer flows
+  - added SOI/handoff metadata contracts in `trajectory/handoff_contracts.py` with a general provider interface (`SOIHandoffMetadataProvider`) plus a specific baseline implementation (`TwoBodySOIHandoffMetadataProvider`)
+  - mission-phase events now carry structured handoff payloads for `encounter`, `capture_start`, and `insertion_complete` in `examples/earth_jupiter_hohmann_replay_demo.py`
+  - added guidance-seed regression tests in `python/brambhand/tests/test_targeting_baseline.py` for deterministic Lambert reproducibility, miss-distance convergence envelopes, and capture-targeting constraint behavior
+  - added SOI/handoff contract tests in `python/brambhand/tests/test_soi_handoff_contracts.py`
 
 ## v0.1.1 (2026-04-12)
 

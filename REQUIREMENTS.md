@@ -170,6 +170,14 @@ This revision formalizes the **next requirement set** focused on:
 - FR-105: The system shall support Monte Carlo and statistical dispersion campaign workflows for mission-risk characterization.
 - FR-106: Trajectory optimization shall support operational constraint sets including keep-out zones, eclipse/illumination, comm windows, pointing limits, and power/thermal envelopes.
 - FR-107: The mission analysis stack shall support finite-burn execution realism (thrust transients, misalignment, duty cycles, actuator limits) in targeting/optimization loops.
+- FR-149: The runtime shall provide first-class maneuver execution primitives (`impulsive` and `finite_burn`) with deterministic tick-boundary application semantics.
+- FR-150: Vehicle propagation contracts shall include maneuver-coupled mass bookkeeping (`wet/dry/propellant mass`, `Isp`, `thrust limits`) and persist burn-level provenance for replay audit.
+- FR-151: The system shall provide a non-optimizer guidance baseline (Lambert seed + bounded single-shoot correction) sufficient to generate physically continuous encounter/capture scenarios, surfaced via provider contracts that permit optimizer-backed substitution in R11 without caller-interface breakage.
+- FR-152: Replay validation shall detect and report uncommanded trajectory discontinuities when maneuver commands are absent or inconsistent with propagated state.
+- FR-153: Mission-phase transition metadata shall include explicit maneuver-linked handoff events (`encounter`, `capture burn start`, `insertion complete`) with deterministic ordering.
+- FR-154: The maneuver baseline shall support multi-stage targeting (`departure correction`, `midcourse trim`, `capture`, `circularization`) with bounded per-stage burn budgets and deterministic fallback outcomes.
+- FR-155: Encounter/capture success states shall be computed from propagated Mars-relative orbital metrics (specific energy and periapsis/apoapsis envelopes), not inferred from scripted event timing.
+- FR-156: Scenario-level mission examples used for operator replay shall emit explicit `capture_failed` outcomes when orbit-insertion criteria are unmet.
 - FR-108: The simulator shall support stationkeeping and formation-keeping analysis workflows with long-duration delta-v budgeting.
 - FR-109: The system shall support standards-grade frame/time handling requirements for mission analysis (multi-frame transforms and mission-time conventions) through validated provider contracts.
 - FR-110: The trajectory toolbox shall support multi-revolution Lambert and differential-correction targeting workflows.

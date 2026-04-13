@@ -116,11 +116,18 @@ Validation covers:
 - Breakup-assumption sensitivity scenarios with casualty-risk uncertainty bands
 - `Asteroid-impact -> leak/depressurization -> debris-evolution` end-to-end scenarios
 
-## R10 / R11 / R12 (transfer logistics + trajectory optimization + advanced mission analysis)
+## R10 / R10.5 / R10.6 / R11 / R12 (transfer logistics + maneuver foundation + trajectory optimization + advanced mission analysis)
 - Dock/undock lifecycle and booster transfer mission-phase scenarios (including safety-zone/hold-point and collision-avoidance cases)
+- R10.5 maneuver-foundation scenarios using concrete non-optimizer providers behind general interfaces:
+  - deterministic maneuver execution + replay provenance checks
+  - Lambert-seed and bounded single-shoot guidance-baseline checks
+  - capture-targeting periapsis/apoapsis constraint checks
+  - SOI/handoff metadata contract checks for `encounter`, `capture_start`, `insertion_complete`
+- R10.6 closure-loop scenarios (`departure correction -> trim -> capture -> circularization`) with deterministic stage-order checks and propagated success/failure gating (`insertion_complete` vs `capture_failed`)
 - Hohmann/Lambert transfer workflow validation scenarios
 - Gravity-assist encounter/deflection validation scenarios
-- Adapter-backend swap reproducibility scenarios (same mission intent across different OSS/in-house backends)
+- Replay-traceability scenarios asserting no scripted kinematic discontinuity bypasses and correct `capture_failed` emission on unmet criteria
+- R11 adapter-backend swap reproducibility scenarios (same mission intent across different OSS/in-house backends via stable targeting/optimizer contracts)
 - Seed-sensitivity and convergence-basin scenarios (Lambert-seeded vs alternate initializations)
 - Campaign/window-sweep trade-study validation with provenance checks
 - Orbit-determination/covariance/dispersion validation scenarios (including covariance-consistency checks)
@@ -179,6 +186,7 @@ Validation suites in this document cover the following requirement groups:
 - FR-044..FR-048, FR-049..FR-058, FR-138: pacing, scheduler ordering, model-graph DAG orchestration, and inter-module contracts
 - FR-084..FR-085: debris population, fragment generation, and compounding accretion prediction use cases
 - FR-086..FR-090: dock/undock lifecycle, booster-assisted payload transfer, planetary handoff mission phases, Hohmann-transfer, and gravity-assist workflows
+- FR-149..FR-156: maneuver contracts, staged targeting/capture closure loop, propagated success/failure gating, and replay-visible mission outcomes
 - FR-091..FR-102: trajectory optimization + interplanetary mission-analysis adapter workflows and campaign orchestration
 - FR-103..FR-114: OD/uncertainty/dispersion/ops-constraint/mission-product/interactive-analysis parity workflows
 - FR-115..FR-118: architecture decoupling integrity and shared frame/time service consistency workflows
@@ -198,6 +206,7 @@ Non-functional validation intent in this document aligns with NR-001..NR-064, wi
 - Structural latency/memory benchmark-prep evidence is available for 2D-vs-3D profile comparisons (P50/P95 solve timing and `nnz`-based sparse storage estimates).
 - Full benchmark-grade validation suites remain milestone-gated and are tracked in `TODO.md`.
 - R8.0..R8.3 suites plus early graphical replay milestone R8.05 are now defined for incremental operator feedback prior to full R8.4/R8.5 dashboard+rendering delivery.
+- R10.5 validation-prep evidence now exists for maneuver execution determinism, replay discontinuity validation, baseline targeting contracts, and SOI/handoff metadata contracts (see corresponding Python test modules under `python/brambhand/tests/`).
 
 ## 8) Governance
 

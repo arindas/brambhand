@@ -21,6 +21,7 @@ struct Quaternion {
 
 struct BodyState {
   std::string body_id;
+  std::string visualization_role;
   Vector3 position_m;
   Vector3 velocity_mps;
   Quaternion attitude;

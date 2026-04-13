@@ -19,7 +19,7 @@ std::filesystem::path write_temp_file(const std::string& name, const std::string
 TEST(ReplayIngest, LoadsSimulationFramesFromJsonl) {
   const auto path = write_temp_file(
       "brambhand_replay_ingest_ok.jsonl",
-      "{\"schema_version\":1,\"run_id\":\"run-a\",\"tick_id\":10,\"sim_time_s\":1.5,\"sequence\":100,\"bodies\":[{\"body_id\":\"current_vehicle\",\"position_m\":{\"x\":1.0,\"y\":2.0,\"z\":3.0}}],\"events\":[{\"sequence\":1000,\"sim_time_s\":1.5,\"kind\":\"step_completed\",\"severity\":\"info\"}]}\n"
+      "{\"schema_version\":1,\"run_id\":\"run-a\",\"tick_id\":10,\"sim_time_s\":1.5,\"sequence\":100,\"bodies\":[{\"body_id\":\"current_vehicle\",\"visualization_role\":\"vehicle\",\"position_m\":{\"x\":1.0,\"y\":2.0,\"z\":3.0}}],\"events\":[{\"sequence\":1000,\"sim_time_s\":1.5,\"kind\":\"step_completed\",\"severity\":\"info\"}]}\n"
       "{\"schema_version\":1,\"run_id\":\"run-a\",\"tick_id\":11,\"sim_time_s\":2.0,\"sequence\":101,\"bodies\":[{\"body_id\":\"planned_vehicle\",\"position_m\":{\"x\":4.0,\"y\":5.0,\"z\":6.0}}],\"events\":[{\"sequence\":1001,\"sim_time_s\":2.0,\"kind\":\"alarm_raised\",\"severity\":\"critical\"}]}\n");
 
   const auto report = brambhand::client::common::load_replay_jsonl(path.string());
@@ -35,6 +35,7 @@ TEST(ReplayIngest, LoadsSimulationFramesFromJsonl) {
   EXPECT_EQ(report.frames[1].sequence, 101u);
   ASSERT_EQ(report.frames[0].bodies.size(), 1u);
   EXPECT_EQ(report.frames[0].bodies[0].body_id, "current_vehicle");
+  EXPECT_EQ(report.frames[0].bodies[0].visualization_role, "vehicle");
   EXPECT_DOUBLE_EQ(report.frames[0].bodies[0].position_m.x, 1.0);
   EXPECT_DOUBLE_EQ(report.frames[0].bodies[0].position_m.y, 2.0);
   EXPECT_DOUBLE_EQ(report.frames[0].bodies[0].position_m.z, 3.0);

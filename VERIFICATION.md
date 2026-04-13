@@ -69,6 +69,7 @@ Detailed scenario/benchmark acceptance criteria are maintained in `VALIDATION.md
 | FR-084..FR-085 | debris population/fragmentation tests, compounding accretion predictor tests, debris-impact coupling tests | debris-growth risk scenarios and asteroid-impact fragment-cloud evolution scenarios |
 | FR-086..FR-090 | rendezvous/dock/undock lifecycle tests, approach safety-zone/hold-point/collision-avoidance contract tests, booster payload-transfer mission-phase tests, sphere-of-influence handoff propagation tests, Hohmann-transfer workflow tests, gravity-assist encounter/deflection tests | end-to-end payload transfer scenarios (`launch->UEO assembly->boost->handoff to destination planetary influence`) plus Hohmann and gravity-assist mission validations |
 | FR-091..FR-102 | optimizer-contract tests, ephemeris/frame-provider adapter tests, Hohmann/Lambert adapter tests, gravity-assist adapter tests, campaign-orchestration determinism/provenance tests, seed-sensitivity/convergence-basin tests, cross-backend tolerance benchmark tests | trajectory-optimization and interplanetary trade-study validation packs with backend-swap reproducibility evidence |
+| FR-149..FR-156 | maneuver-command contract tests (impulsive + finite burn), burn-executor determinism/mass-depletion tests, guidance-provider interface conformance tests (baseline provider + optimizer-adapter seam), Lambert-seed determinism tests, bounded single-shoot convergence-envelope tests, capture-targeting constraint tests, SOI/handoff metadata contract tests, uncommanded-discontinuity replay validators, staged-capture-closure deterministic tests, propagated orbit-metric success/failure gate tests | maneuver-foundation validation suites proving R10.5 baseline behavior and interface stability for R11 optimizer substitution, plus replay-visible encounter/capture/insertion provenance and explicit `capture_failed` outcome validation |
 | FR-103..FR-114 | orbit-determination estimator tests, covariance propagation and covariance-consistency tests, Monte Carlo/dispersion workflow tests, operational-constraint loop tests, finite-burn targeting realism tests, stationkeeping workflow tests, mission-product generation contract tests, reference cross-validation harness tests, interactive-session reproducibility tests | advanced mission-analysis validation suites comparing OD/dispersion/constraint workflows to trusted references and mission-ops product acceptance criteria |
 | FR-115..FR-118 | module-boundary decomposition tests, FEM namespace migration/completeness tests, adapter type-leakage guard tests, shared frame/time-provider contract tests | architecture-integrity scenarios demonstrating backend swaps, canonical public API path stability after migration, and cross-module frame/time consistency |
 | FR-119..FR-124 | atmosphere-profile validity tests, aerodynamic force/moment contract tests, launch event-sequencing/replay-order tests, atmospheric-exit/apogee predictor tolerance tests, ascent guidance-control loop tests, buckling/fatigue-to-fracture coupling tests | integrated launch/ascent scenarios with max-q/staging/atmospheric-exit/apogee checks and aero-structural risk progression validation |
@@ -116,6 +117,9 @@ Detailed scenario/benchmark acceptance criteria are maintained in `VALIDATION.md
 - **R8.3 gate:** replay timeline/camera-control contracts preserve timeline equivalence across pacing modes
 - **R8.4 gate:** native desktop (SDL3/GLFW + Dear ImGui) dashboard/operator workflows pass acceptance scenarios in both replay and live-stream modes
 - **R8.5 gate:** Vulkan 3D rendering pipeline meets profile-specific frame-time/quality targets with deterministic replay camera sync and bounded backpressure impact on bridge ingestion
+- **R10.5 gate:** maneuver foundation provides deterministic impulsive/finite-burn execution, burn-provenance replay auditability, physically continuous probe encounter/capture scenarios without script-level kinematic stitching, and stable targeting/handoff provider interfaces for future optimizer-backed substitution
+- **R10.6 gate:** staged encounter/capture closure loop emits deterministic stage ordering with propagated success/failure gating (`insertion_complete` vs `capture_failed`) and bounded-budget failure reasons
+- **R11 gate:** optimizer-backed trajectory/mission-analysis adapters satisfy backend-neutral contracts and reproduce mission-intent outputs within declared cross-backend tolerance envelopes
 - **R4.1 gate:** optional CFD-coupled fluid/combustion adapters pass cadence-guard/fallback tests and profile-gated performance envelopes
 - **R13 gate:** atmospheric launch/ascent stack demonstrates drag-coupled trajectory realism, deterministic launch-event sequencing, atmospheric-exit/apogee prediction tolerance conformance, and buckling/fatigue risk-propagation evidence
 - **R14 gate:** advanced structural fidelity stack demonstrates nonlinear/material/transient/buckling/fatigue-growth/thermal-coupling workflow correctness against trusted references with deterministic remesh/fallback observability
@@ -148,10 +152,21 @@ Detailed scenario/benchmark acceptance criteria are maintained in `VALIDATION.md
   - matrix-free acceptance-threshold evaluation verified for operational/analysis profiles (with strict-threshold failure-path checks)
   - FEM namespace migration-completeness check (tests/imports/docs use canonical `brambhand.structures.fem.*` paths)
   - element stress metric and model-validation checks
+- R10.5 maneuver-foundation evidence:
+  - `python/brambhand/tests/test_maneuver_executor.py`
+    - deterministic impulsive command application and finite-burn segment idempotence
+    - propellant depletion termination signaling
+  - `python/brambhand/tests/test_replay_validation.py`
+    - uncommanded-discontinuity detection and maneuver-record-aware suppression at commanded ticks
+  - `python/brambhand/tests/test_targeting_baseline.py`
+    - Lambert seed determinism, bounded single-shoot convergence envelope, capture-targeting constraints
+    - provider-interface conformance (`TwoBodyBaselineTargetingProvider`, `OptimizerBackedTargetingProvider`)
+  - `python/brambhand/tests/test_soi_handoff_contracts.py`
+    - SOI/handoff metadata schema validation, deterministic provider behavior, SOI in/out classification
 - Quality gates currently passing:
-  - `ruff check .`
-  - `mypy src tests`
-  - `pytest -q`
+  - `ruff check python/brambhand`
+  - `mypy python/brambhand/src python/brambhand/tests`
+  - `pytest -q python/brambhand/tests`
 
 ## 7) Definition of done (feature level)
 - Requirement IDs linked

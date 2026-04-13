@@ -95,11 +95,15 @@ src/brambhand/
     docking_lifecycle.py          # approach/capture/dock/undock state machine + safety-zone/hold-point/abort contracts
     assembly_topology.py          # disjoint-body attachment graph + topology transition simulation (dock/undock/fracture splits)
     transfer_logistics.py         # booster payload transfer mission phases
-    soi_handoff.py                # planetary sphere-of-influence handoff metadata/contracts
   trajectory/
-    optimizer_contracts.py        # backend-agnostic optimization interfaces
+    maneuver_contracts.py         # R10.5 maneuver command schema + timing semantics
+    maneuver_executor.py          # deterministic impulsive/finite burn execution
+    replay_validation.py          # discontinuity validators against maneuver provenance
+    handoff_contracts.py          # SOI/handoff metadata contracts + provider interface/baseline impl
+    targeting_baseline.py         # R10.5 general targeting provider interface + concrete two-body baseline impl
+    optimizer_contracts.py        # R11 backend-agnostic optimization interfaces
     trajectory_problem.py         # mission-phase trajectory problem definitions
-    initial_guess.py              # Lambert/Hohmann/shape-based initial guess generators
+    initial_guess.py              # R11+ richer Lambert/Hohmann/shape-based initial guess generators
     ephemeris_provider.py         # pluggable ephemeris/frame provider contracts
     transfer_analysis.py          # Lambert/Hohmann/gravity-assist workflow adapters
     campaign_runner.py            # batch window sweep/trade-study orchestration
@@ -217,6 +221,104 @@ Tick-loop detail (textual, authoritative):
 - communication LOS/delay update
 - diagnostics/events/telemetry emission
 - state persistence/checkpoint
+
+## R10.5 mission maneuver foundation design (pre-optimization)
+
+Purpose: provide physically continuous mission encounter/capture behavior without requiring full trajectory-optimizer infrastructure.
+
+### New/extended modules
+- `trajectory/maneuver_contracts.py`
+  - maneuver command schemas (`impulsive`, `finite_burn_constant_thrust`, `finite_burn_guided`)
+  - deterministic timing/provenance fields (`command_id`, `requested_tick`, `applied_tick`, `phase_id`)
+- `trajectory/maneuver_executor.py`
+  - tick-boundary burn application
+  - finite-burn thrust + mass depletion integration hooks
+  - abort/failsafe outcomes
+- `trajectory/targeting_baseline.py`
+  - general targeting-provider contract (`TrajectoryTargetingProvider`) with typed request/result payloads
+  - concrete R10.5 baseline implementation (`TwoBodyBaselineTargetingProvider`)
+  - optimizer-backend adapter seam (`TargetingOptimizationBackend`, `OptimizerBackedTargetingProvider`) reserved for R11 integrations
+  - Lambert initial-guess utility
+  - bounded single-shoot correction for miss-distance reduction
+  - capture-target helper for periapsis/insertion-radius constraints
+- `trajectory/handoff_contracts.py`
+  - general SOI/handoff metadata provider contract plus baseline two-body provider
+  - mission-phase handoff payloads (`encounter`, `capture_start`, `insertion_complete`)
+- `core/state_snapshot.py` / replay payload contracts (extended)
+  - persisted burn provenance (`dv_commanded`, `dv_applied`, `propellant_used`, termination reason)
+- `core/scheduler.py` (extended ordering)
+  - explicit maneuver execution stage inserted before final persistence and after command ingestion
+
+### Maneuver-capable tick ordering extension
+1. ingest commands
+2. validate/normalize maneuver frames + units
+3. apply impulsive burns scheduled for this tick
+4. propagate dynamics and coupled domains
+5. apply finite-burn thrust/mass coupling for active burns
+6. emit maneuver events/telemetry
+7. persist state + maneuver provenance
+
+### Determinism and replay requirements (design constraints)
+- Maneuver command processing must be idempotent under retries using stable `command_id`.
+- `applied_tick` is authoritative for replay reconstruction; wall-clock arrival order is non-authoritative.
+- Replay validator flags state discontinuities not explained by persisted maneuver provenance.
+- Finite-burn termination reasons are explicit (`nominal_cutoff`, `propellant_depleted`, `constraint_abort`, `command_abort`).
+
+### Out-of-scope for R10.5
+- Global multi-objective trajectory optimization campaigns.
+- General low-thrust optimal control.
+- Backend adapter parity across external optimizers.
+
+R10.5 intentionally delivers concrete non-optimizer algorithms through general provider interfaces so R11 can replace or augment providers without API churn.
+(Full optimizer workflows remain in R11/R12 roadmap items.)
+
+### R10.5 -> R10.6 -> R11 interface flow
+- R10.5: defines stable contracts/provider interfaces (`TrajectoryTargetingProvider`, SOI/handoff provider contracts) and ships baseline two-body implementations.
+- R10.6: composes those same interfaces into staged closure-loop control and deterministic success/failure gating.
+- R11: introduces optimizer-backed backend adapters implementing the same provider/adapter contracts; mission controllers consume unchanged request/result schemas.
+
+## R10.6 mission encounter/capture closure-loop design (example-grade, non-optimizer)
+
+Purpose: close the gap between maneuver-capable propagation and mission-success semantics, without promoting script-level kinematic overrides.
+
+### Stage machine (deterministic)
+1. `departure_correction`
+2. `midcourse_trim`
+3. `capture_burn`
+4. `circularization`
+5. terminal: `insertion_complete` or `capture_failed`
+
+Transition policy is tick-deterministic and driven by propagated state metrics only.
+
+### Stage budgets and guards
+- Each stage declares:
+  - max total delta-v budget
+  - max per-tick burn magnitude
+  - timeout ticks
+- Exceeding budget or timeout triggers deterministic failure reason and terminal `capture_failed`.
+
+### Success metrics contract
+- Evaluate Mars-relative orbital metrics each tick:
+  - specific orbital energy
+  - periapsis radius
+  - apoapsis radius
+  - eccentricity
+- `insertion_complete` is emitted only when all pass:
+  - `energy < 0`
+  - periapsis in configured envelope around target orbit radius
+  - apoapsis below configured bound for insertion class
+
+### Failure semantics
+- terminal failure reasons (persisted in event payload/provenance):
+  - `budget_exhausted`
+  - `geometry_miss`
+  - `capture_energy_positive`
+  - `circularization_timeout`
+- terminal events are mutually exclusive with `insertion_complete`.
+
+### Replay/validation hooks
+- Replay artifacts include stage transitions, cumulative delta-v, cumulative propellant, and terminal reason.
+- Validation scripts can run in strict mode and fail the scenario when terminal reason is non-empty.
 
 Textual stage definitions (authoritative):
 1. **Scenario + Assets**: load versioned scenario configuration and referenced assets.
