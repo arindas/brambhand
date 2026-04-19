@@ -23,6 +23,7 @@
   - when running with windowed quicklook + concurrent ingest, replay chunks now stream directly into the active renderer loop (incremental workflow/body-catalog refresh while ingest continues) instead of callback-only headless prep
   - added replay ingest benchmark harness binary (`brambhand_replay_ingest_benchmark`) with profile presets (`interactive|balanced|throughput|all`) and CSV telemetry output for chunk-size/queue-depth tradeoff sweeps
   - documented profile-driven ingest tuning workflow and candidate-selection guidance in `docs/REPLAY_INGEST_TUNING.md`
+  - added reusable CLI schema helpers in `client/common/cli_parse.*` for required option sets, mutually-exclusive groups, and typed value transforms (`cli_assign_transformed_value`), then applied them to desktop and benchmark option parsing paths
   - hardened desktop CMake SDL3 discovery for CI/minimal environments: `brambhand_desktop` now builds only when SDL3 is detected (CMake package or pkg-config), while non-SDL native targets (including benchmark/tests) continue to configure/build
   - expanded deterministic ingest tests for callback-abort handling and concurrent producer/consumer ordering parity versus sequential workflow extraction under bounded-queue pressure
   - extracted desktop concurrent-ingest orchestration from bootstrap into dedicated module (`src/bin/desktop/replay_ingest_pipeline.*`) with direct pipeline tests (`test_replay_ingest_pipeline.cpp`) to reduce `main.cpp` coupling

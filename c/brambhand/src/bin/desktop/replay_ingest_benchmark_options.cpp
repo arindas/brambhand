@@ -107,12 +107,19 @@ ReplayIngestBenchmarkOptionsReport parse_replay_ingest_benchmark_options(
     return report;
   }
 
-  const auto replay_it = parsed.values.find("--replay");
-  if (replay_it == parsed.values.end() || replay_it->second.empty()) {
-    report.error = "missing required --replay <path>";
+  const auto schema_validation = brambhand::client::common::validate_cli_schema(
+      parsed,
+      brambhand::client::common::CliSchemaValidationRules{
+          .required_sets = {
+              brambhand::client::common::CliRequiredOptionSet{.option_names = {"--replay"}},
+          },
+      });
+  if (!schema_validation.ok()) {
+    report.error = schema_validation.error;
     return report;
   }
-  report.options.replay_path = replay_it->second;
+
+  report.options.replay_path = parsed.values.at("--replay");
 
   std::string profile = "balanced";
   const auto profile_it = parsed.values.find("--profile");
@@ -145,21 +152,26 @@ ReplayIngestBenchmarkOptionsReport parse_replay_ingest_benchmark_options(
     }
   }
 
-  const auto iterations_it = parsed.values.find("--iterations");
-  if (iterations_it != parsed.values.end()) {
-    if (!parse_size_t(iterations_it->second, report.options.iterations) ||
-        report.options.iterations == 0) {
-      report.error = "invalid --iterations value (expected positive integer)";
-      return report;
-    }
+  if (!brambhand::client::common::cli_assign_transformed_value(
+          parsed,
+          "--iterations",
+          report.options.iterations,
+          report.error,
+          "numeric")) {
+    return report;
+  }
+  if (report.options.iterations == 0) {
+    report.error = "invalid --iterations value (expected positive integer)";
+    return report;
   }
 
-  const auto delay_it = parsed.values.find("--consumer-delay-ms");
-  if (delay_it != parsed.values.end()) {
-    if (!parse_size_t(delay_it->second, report.options.consumer_delay_ms)) {
-      report.error = "invalid --consumer-delay-ms value (expected non-negative integer)";
-      return report;
-    }
+  if (!brambhand::client::common::cli_assign_transformed_value(
+          parsed,
+          "--consumer-delay-ms",
+          report.options.consumer_delay_ms,
+          report.error,
+          "numeric")) {
+    return report;
   }
 
   report.options.include_sequential_baseline =

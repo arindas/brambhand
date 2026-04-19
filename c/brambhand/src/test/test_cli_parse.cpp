@@ -67,3 +67,82 @@ TEST(CliParse, RejectsMissingValue) {
   EXPECT_FALSE(report.ok());
   EXPECT_NE(report.error.find("missing value"), std::string::npos);
 }
+
+TEST(CliParse, ValidatesRequiredSetsAndMutualExclusion) {
+  const char* argv[] = {
+      "tool",
+      "--a",
+      "1",
+      "--x",
+      "--y",
+  };
+
+  const auto report = brambhand::client::common::parse_cli_tokens(
+      static_cast<int>(std::size(argv)),
+      const_cast<char**>(argv),
+      std::vector<brambhand::client::common::CliOptionSpec>{
+          {"--a", brambhand::client::common::CliOptionKind::Value},
+          {"--b", brambhand::client::common::CliOptionKind::Value},
+          {"--x", brambhand::client::common::CliOptionKind::Flag},
+          {"--y", brambhand::client::common::CliOptionKind::Flag},
+      });
+  ASSERT_TRUE(report.ok()) << report.error;
+
+  const auto missing_required = brambhand::client::common::validate_cli_schema(
+      report,
+      brambhand::client::common::CliSchemaValidationRules{
+          .required_sets = {
+              brambhand::client::common::CliRequiredOptionSet{.option_names = {"--a", "--b"}},
+          },
+      });
+  EXPECT_FALSE(missing_required.ok());
+  EXPECT_NE(missing_required.error.find("missing required argument"), std::string::npos);
+
+  const auto mutually_exclusive = brambhand::client::common::validate_cli_schema(
+      report,
+      brambhand::client::common::CliSchemaValidationRules{
+          .mutually_exclusive_groups = {
+              brambhand::client::common::CliMutuallyExclusiveGroup{.option_names = {"--x", "--y"}},
+          },
+      });
+  EXPECT_FALSE(mutually_exclusive.ok());
+  EXPECT_NE(mutually_exclusive.error.find("mutually exclusive"), std::string::npos);
+}
+
+TEST(CliParse, AssignsTypedTransformsFromValues) {
+  const char* argv[] = {
+      "tool",
+      "--count",
+      "42",
+      "--bad",
+      "NaN?",
+  };
+
+  const auto report = brambhand::client::common::parse_cli_tokens(
+      static_cast<int>(std::size(argv)),
+      const_cast<char**>(argv),
+      std::vector<brambhand::client::common::CliOptionSpec>{
+          {"--count", brambhand::client::common::CliOptionKind::Value},
+          {"--bad", brambhand::client::common::CliOptionKind::Value},
+      });
+  ASSERT_TRUE(report.ok()) << report.error;
+
+  std::size_t count = 0;
+  std::string err;
+  EXPECT_TRUE(brambhand::client::common::cli_assign_transformed_value(
+      report,
+      "--count",
+      count,
+      err,
+      "numeric"));
+  EXPECT_EQ(count, 42u);
+
+  std::size_t bad = 0;
+  EXPECT_FALSE(brambhand::client::common::cli_assign_transformed_value(
+      report,
+      "--bad",
+      bad,
+      err,
+      "numeric"));
+  EXPECT_NE(err.find("invalid numeric value"), std::string::npos);
+}

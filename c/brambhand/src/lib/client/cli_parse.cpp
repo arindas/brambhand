@@ -6,6 +6,68 @@
 
 namespace brambhand::client::common {
 
+bool cli_option_is_present(
+    const CliParseReport& report,
+    const std::string& option_name) {
+  return report.flags.contains(option_name) || report.values.contains(option_name);
+}
+
+CliSchemaValidationReport validate_cli_schema(
+    const CliParseReport& report,
+    const CliSchemaValidationRules& rules) {
+  CliSchemaValidationReport validation{};
+
+  for (const auto& required_set : rules.required_sets) {
+    for (const auto& option_name : required_set.option_names) {
+      if (!cli_option_is_present(report, option_name)) {
+        validation.error = "missing required argument: " + option_name;
+        return validation;
+      }
+    }
+  }
+
+  for (const auto& group : rules.mutually_exclusive_groups) {
+    std::size_t present_count = 0;
+    std::string first_present;
+    std::string second_present;
+
+    for (const auto& option_name : group.option_names) {
+      if (!cli_option_is_present(report, option_name)) {
+        continue;
+      }
+      if (present_count == 0) {
+        first_present = option_name;
+      } else if (present_count == 1) {
+        second_present = option_name;
+      }
+      present_count += 1;
+    }
+
+    if (present_count > 1) {
+      validation.error =
+          "arguments are mutually exclusive: " + first_present + " and " + second_present;
+      return validation;
+    }
+
+    if (group.require_one && present_count == 0) {
+      if (group.option_names.empty()) {
+        validation.error = "schema error: empty mutually exclusive group";
+      } else {
+        validation.error = "one of these arguments is required: ";
+        for (std::size_t i = 0; i < group.option_names.size(); ++i) {
+          if (i > 0) {
+            validation.error += ", ";
+          }
+          validation.error += group.option_names[i];
+        }
+      }
+      return validation;
+    }
+  }
+
+  return validation;
+}
+
 CliParseReport parse_cli_tokens(
     int argc,
     char** argv,

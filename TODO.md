@@ -100,7 +100,7 @@
 - [x] Stream replay ingest chunks directly into active renderer playback loop (not only headless workflow-prep callback path)
 - [x] Add profile-driven ingest tuning guidance + benchmark harness for chunk-size/queue-depth tradeoffs on large replay files
 - [ ] Extend R8.1 live stream schema/bridge path to emit the same body-id init+diff lifecycle contract used by replay (`body_id_catalog` parity)
-- [ ] Add reusable CLI schema helpers (required-option sets, mutually-exclusive groups, typed transforms) on top of generic parser for future native CLIs
+- [x] Add reusable CLI schema helpers (required-option sets, mutually-exclusive groups, typed transforms) on top of generic parser for future native CLIs
 
 ### R4 — Fluid-structure interaction coupling
 - [x] Implement two-way FSI coupler with convergence residuals
