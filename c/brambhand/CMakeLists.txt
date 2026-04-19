@@ -39,10 +39,25 @@ if(BUILD_TESTING)
   add_executable(brambhand_test_suite
     src/test/test_runtime_frame.cpp
     src/test/test_desktop_shell.cpp
+    src/test/test_cli_parse.cpp
     src/test/test_replay_ingest.cpp
     src/test/test_render_config.cpp
+    src/test/test_render_semantics.cpp
+    src/test/test_plot_geometry.cpp
     src/test/test_trajectory_infographic.cpp
     src/test/test_replay_quicklook_workflow.cpp
+    src/test/test_replay_ingest_pipeline.cpp
+    src/test/test_render_config_validation.cpp
+    src/test/test_desktop_cli_options.cpp
+    src/test/test_renderer_mode.cpp
+    src/test/test_renderer_capability_profile.cpp
+    src/bin/desktop/renderer_mode.cpp
+    src/bin/desktop/render_config_validation.cpp
+    src/bin/desktop/replay_ingest_pipeline.cpp
+    src/bin/desktop/renderer_capability_profile.cpp
+    src/bin/desktop/quicklook_trace_policy.cpp
+    src/bin/desktop/quicklook_sidebar_policy.cpp
+    src/bin/desktop/ui_layout.cpp
   )
 
   target_link_libraries(brambhand_test_suite

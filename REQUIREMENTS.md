@@ -122,6 +122,10 @@ This revision formalizes the **next requirement set** focused on:
 - FR-144: The topology/overlay/render synchronization path shall preserve deterministic event ordering and replay equivalence between live-streamed and replay-file workflows within documented tolerances.
 - FR-145: The desktop rendering stack shall keep renderer-core and UI-layer boundaries explicit so advanced rendering features (BVH/ray-marching) can evolve without UI contract breakage.
 - FR-148: The visualization contract layer shall provide a renderer-neutral trajectory render payload consumable by both the compact infographic widget and rich 3D renderer without duplicate physics/ordering logic.
+- FR-157: The simulation runtime shall maintain an authoritative body-ID lifecycle registry with explicit create/destroy operations and deterministic ordering semantics at tick boundaries.
+- FR-158: Replay and live-stream frame contracts shall carry versioned body-ID lifecycle metadata as `body_id_catalog` with first-frame `initial_body_ids` and per-frame `created_body_ids`/`destroyed_body_ids` diffs.
+- FR-159: Body-ID catalog consumers (desktop ingest, stream adapters, view-model builders) shall reconstruct lifecycle state from `body_id_catalog` metadata and shall not perform full-frame body-array scans to discover global body-ID catalogs.
+- FR-160: Replay and live-stream paths shall preserve body-ID lifecycle parity (same init/diff semantics, schema versions, and deterministic ordering guarantees) within documented tolerances.
 
 ## K. Baseline mission simulation continuity
 - FR-067: The simulator shall preserve deterministic Newtonian N-body orbital propagation capability for baseline mission scenarios.
@@ -177,7 +181,7 @@ This revision formalizes the **next requirement set** focused on:
 - FR-153: Mission-phase transition metadata shall include explicit maneuver-linked handoff events (`encounter`, `capture burn start`, `insertion complete`) with deterministic ordering.
 - FR-154: The maneuver baseline shall support multi-stage targeting (`departure correction`, `midcourse trim`, `capture`, `circularization`) with bounded per-stage burn budgets and deterministic fallback outcomes.
 - FR-155: Encounter/capture success states shall be computed from propagated Mars-relative orbital metrics (specific energy and periapsis/apoapsis envelopes), not inferred from scripted event timing.
-- FR-156: Scenario-level mission examples used for operator replay shall emit explicit `capture_failed` outcomes when orbit-insertion criteria are unmet.
+- FR-156: Scenario-level reference mission workflows used for operator replay shall emit explicit `capture_failed` outcomes when orbit-insertion criteria are unmet.
 - FR-108: The simulator shall support stationkeeping and formation-keeping analysis workflows with long-duration delta-v budgeting.
 - FR-109: The system shall support standards-grade frame/time handling requirements for mission analysis (multi-frame transforms and mission-time conventions) through validated provider contracts.
 - FR-110: The trajectory toolbox shall support multi-revolution Lambert and differential-correction targeting workflows.
@@ -301,6 +305,7 @@ This revision formalizes the **next requirement set** focused on:
 - NR-063: Vulkan renderer resource lifecycle, synchronization hazards, and fallback/degraded-mode transitions shall be observable and bounded under operational and analysis profiles.
 - NR-064: UI/renderer integration shall preserve responsiveness under high event rates and avoid blocking simulation-bridge ingestion through bounded buffering policies.
 - NR-065: Infographic and rich 3D trajectory views shall maintain semantic parity (curve alignment, marker timing, `current` vs `planned` interpretation) within documented tolerances under replay and live-stream modes.
+- NR-066: Body-ID lifecycle propagation and ingestion shall avoid O(N) full-frame discovery scans for global catalog reconstruction; per-tick catalog maintenance cost shall scale with lifecycle delta size (`created + destroyed`) plus bounded map/set operations.
 
 ---
 

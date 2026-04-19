@@ -123,10 +123,10 @@ Validation covers:
   - Lambert-seed and bounded single-shoot guidance-baseline checks
   - capture-targeting periapsis/apoapsis constraint checks
   - SOI/handoff metadata contract checks for `encounter`, `capture_start`, `insertion_complete`
-- R10.6 closure-loop scenarios (`departure correction -> trim -> capture -> circularization`) with deterministic stage-order checks and propagated success/failure gating (`insertion_complete` vs `capture_failed`)
+- R10.6 closure-loop scenarios (`departure correction -> trim -> capture -> circularization`) with deterministic stage-order checks and propagated success/failure gating (`insertion_complete` vs `capture_failed`), validated through reusable controller contracts with scenario-configured target bodies/constraints
 - Hohmann/Lambert transfer workflow validation scenarios
 - Gravity-assist encounter/deflection validation scenarios
-- Replay-traceability scenarios asserting no scripted kinematic discontinuity bypasses and correct `capture_failed` emission on unmet criteria
+- Replay-traceability scenarios asserting no harness-level kinematic discontinuity bypasses (all discontinuities must be maneuver/contract explained) and correct `capture_failed` emission on unmet criteria
 - R11 adapter-backend swap reproducibility scenarios (same mission intent across different OSS/in-house backends via stable targeting/optimizer contracts)
 - Seed-sensitivity and convergence-basin scenarios (Lambert-seeded vs alternate initializations)
 - Campaign/window-sweep trade-study validation with provenance checks
@@ -162,6 +162,7 @@ Validation inputs should be versioned and traceable:
 - STL fixture registry: `assets/stl/metadata/fixtures.json`
 - Scenario references: versioned under scenario assets
 - Benchmark metadata: versioned dataset descriptors with provenance
+- Reference mission harnesses: use canonical IDs `EX-<MILESTONE>-<NNN>` and matching script/run-id naming per `DESIGN.md` naming convention
 
 ## 5) Acceptance criteria format
 

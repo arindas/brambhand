@@ -78,6 +78,30 @@
 - [x] Implement compact trajectory infographic panel (current/planned curves + object icons) using shared trajectory render contracts
 - [x] Add desktop replay quicklook workflow acceptance tests (trajectory + event-marker readability and deterministic ordering)
 
+### R8.05.a — Desktop replay renderer architecture hardening (recently completed)
+- [x] Split renderer mode parsing/resolution/factory into explicit interface modules with typed availability/fallback policies
+- [x] Add renderer capability-profile layer to bind mode-specific UI/trace/sidebar policies without changing ingest/view contracts
+- [x] Extract renderer draw/runtime dependencies behind canvas and runtime abstractions (SDL adapters as current backend)
+- [x] Extract shared plot-geometry helpers into common client module for backend-independent coordinate mapping
+- [x] Add C++ tests for renderer mode resolution, capability-profile mapping, and shared plot-geometry helpers
+- [x] Add cache-line/alignment guards and branch-reduction updates for hot quicklook numeric/render state paths
+- [x] Extract desktop replay ingest and render-config validation orchestration into dedicated tested modules to reduce bootstrap coupling
+
+### R8.05.b — Replay ingest/visualization continuity upgrades (completed)
+- [x] Export canonical body-id catalog from simulation side into replay/stream metadata (no manual desktop bookkeeping)
+- [x] Consume simulation-exported body-id catalog in desktop ingest/bootstrap validation paths
+- [x] Implement incremental replay ingestion pipeline (frame stream/chunking) for very large replay files
+- [x] Run replay ingestion and visualization concurrently with bounded queue/backpressure telemetry
+- [x] Add deterministic tests for concurrent ingest/render ordering, body-id catalog continuity, and large-file behavior
+- [x] Enforce body-id catalog discovery from simulation-exported init+diff metadata (`body_id_catalog`) with no per-frame body-array scan fallback in desktop ingest
+- [x] Introduce reusable stdlib-based native CLI parsing core (`std::span`/`std::string_view`/`std::from_chars`) and keep desktop-specific schema mapping as a thin adapter
+
+### R8.05.c — Desktop replay pipeline follow-ups (next)
+- [ ] Stream replay ingest chunks directly into active renderer playback loop (not only headless workflow-prep callback path)
+- [ ] Add profile-driven ingest tuning guidance + benchmark harness for chunk-size/queue-depth tradeoffs on large replay files
+- [ ] Extend R8.1 live stream schema/bridge path to emit the same body-id init+diff lifecycle contract used by replay (`body_id_catalog` parity)
+- [ ] Add reusable CLI schema helpers (required-option sets, mutually-exclusive groups, typed transforms) on top of generic parser for future native CLIs
+
 ### R4 — Fluid-structure interaction coupling
 - [x] Implement two-way FSI coupler with convergence residuals
 - [x] Implement coupling controller (iteration budget, thresholds, fallback)
@@ -89,13 +113,28 @@
 - [x] Add integrated chain test: `fracture/topology update -> leak/slosh boundary update -> FSI residual convergence/fallback -> 6-DOF response`
 
 ### R8.1 — Dashboard data contracts and headless view-models
+
+#### Phase A (next): body-id lifecycle contract + core registry
+- [ ] Define shared body-id lifecycle schema contract for replay + live stream (`body_id_catalog`: first-frame `initial_body_ids`, per-frame `created_body_ids`/`destroyed_body_ids`)
+- [ ] Implement simulation-core body lifecycle registry service (authoritative active set + create/destroy API with deterministic tick-boundary diff emission)
+- [ ] Add registry contract tests (init/create/destroy invariants + deterministic ordering)
+
+#### Phase B: replay integration of registry output
+- [ ] Integrate body lifecycle registry emission into canonical replay writer path (no full-catalog per-frame snapshots)
+- [ ] Ensure replay ingestion/consumers reconstruct global body catalogs from `body_id_catalog` diffs only (no fallback scans)
+- [ ] Add replay lifecycle continuity tests for long-run create/destroy sequences
+
+#### Phase C: live-stream parity + UI contracts
+- [ ] Define versioned Python-to-desktop stream schema contracts (`state/event/topology/frame metadata`) shared by live stream and replay adapters
+- [ ] Extend stream schema to carry `body_id_catalog` with replay-parity semantics/versioning
+- [ ] Implement Python bridge publisher baseline for live streaming with explicit sequence/schema metadata
+- [ ] Add replay-vs-live stream equivalence tests for ordering, timeline continuity, and body-id lifecycle parity
+
+#### Phase D: view-model contracts and freeze
 - [ ] Define versioned mission-control view-model schema (telemetry cards, alarms, timeline, command status)
 - [ ] Define versioned onboard view-model schema (flight instruments, subsystem health, cautions/warnings)
-- [ ] Define versioned Python-to-desktop stream schema contracts (`state/event/topology/frame metadata`) shared by live stream and replay adapters
-- [ ] Implement Python bridge publisher baseline for live streaming with explicit sequence/schema metadata
 - [ ] Implement headless view-model builders from committed simulation state + replay metadata
 - [ ] Add schema compatibility tests and deterministic serialization tests
-- [ ] Add replay-vs-live stream equivalence tests for ordering and timeline continuity
 - [ ] Freeze baseline mission-control/onboard layout contracts for downstream UI realization
 
 ### R5 — Geometry pipeline (STL import)
@@ -235,13 +274,23 @@
 - [x] Add end-to-end acceptance scenario replacing script-level kinematic probe stitching with commanded burns only
 - [x] Add strict replay validation asserting no uncommanded state discontinuities in probe trajectories
 
-### R10.6 — Mission encounter/capture closure loop (example-grade, non-optimizer)
+### R10.6 — Mission encounter/capture closure loop baseline (non-optimizer, generalizable)
 - [ ] Implement staged guidance controller (`departure correction -> rendezvous trim -> capture -> circularization`) using maneuver contracts only
 - [ ] Add bounded burn-budget policy per stage and explicit stage-failure transitions (`budget_exhausted`, `geometry_miss`, `capture_energy_positive`)
-- [ ] Implement Mars-relative orbital metric evaluator and success gate (`energy < 0`, periapsis/apoapsis envelope)
+- [ ] Implement primary-body-relative orbital metric evaluator and success gate (`energy < 0`, periapsis/apoapsis envelope) with configurable target body/constraints
 - [ ] Wire event emission to success gate (`insertion_complete` only on pass; otherwise `capture_failed`)
-- [ ] Add mission-example acceptance script that prints quantitative encounter/capture metrics and exits non-zero on failed capture when strict mode is enabled
+- [ ] Add reference mission acceptance harness that prints quantitative encounter/capture metrics and exits non-zero on failed capture in strict mode (target body/scenario configurable)
 - [ ] Add regression tests for stage-order determinism and failure-event determinism
+
+### Example / reference mission harnesses (acceptance-only; no example-specific core branches)
+- [x] Define project-wide harness naming/ID scheme (`EX-<MILESTONE>-<NNN>` + `examples/ex_<milestone_token>_<nnn>_<slug>.py` + aligned `run_id`/artifact prefix) and document in DESIGN
+- [x] Provide `EX-R10.5-001` Earth->Jupiter transfer replay harness (`examples/ex_r10p5_001_earth_jupiter_transfer.py`) using core maneuver/contracts modules (not script-level kinematic stitching)
+- [x] Emit strict continuity validation signal from harness runs (`--strict-continuity`) to fail on uncommanded discontinuities
+- [x] Emit body-id lifecycle metadata (`body_id_catalog` init+diff) from harness replay output via reusable lifecycle-tracker utility
+- [x] Keep harness render-config output compatible with desktop ingest/quicklook contracts
+- [ ] Migrate harness staged guidance/capture closure logic to shared R10.6 controller module once implemented (harness consumes controller, does not define it)
+- [x] Migrate existing harness filenames/run_ids to canonical naming scheme with backward-compatible aliases/notes where needed
+- [ ] Add generalized reference harness config profile(s) beyond current Earth->Jupiter baseline (target body/insertion envelopes/stage budgets) using shared R10.6 contracts
 
 ### R11 — Trajectory optimization and interplanetary mission-analysis adapters
 - [ ] Define backend-agnostic trajectory optimization contracts (problem/constraints/objectives/results)
@@ -303,4 +352,5 @@
 - [ ] Keep VALIDATION scenario/benchmark registry current with new acceptance evidence
 - [ ] Keep inline API docs complete for all new public modules
 - [ ] Maintain release notes for each semver milestone
+- [x] Establish architecture guardrail: roadmap items must land reusable contracts/modules first; examples/scripts may only serve as acceptance harnesses (no example-specific core branches)
 - [x] Track unresolved UI/renderer/transport decisions in DESIGN decision log with explicit owner and due milestone (baseline stack fixed to SDL3/GLFW + Dear ImGui + Vulkan + Python gRPC bridge)

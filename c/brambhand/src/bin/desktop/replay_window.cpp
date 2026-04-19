@@ -1,49 +1,48 @@
 #include "replay_window.hpp"
 
-#include <SDL3/SDL.h>
+#include "quicklook_frame_state.hpp"
+#include "quicklook_runtime.hpp"
+#include "renderer_capability_profile.hpp"
+#include "ui_layout.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <functional>
 #include <optional>
 #include <string>
-#include <unordered_set>
 #include <utility>
 #include <vector>
+
+#include "brambhand/client/common/plot_geometry.hpp"
+#include "brambhand/client/common/render_semantics.hpp"
 
 namespace brambhand::client::desktop {
 namespace {
 
-struct PlotBounds {
-  double min_x{};
-  double max_x{};
-  double min_y{};
-  double max_y{};
-};
-
-struct Rgba {
-  std::uint8_t r{};
-  std::uint8_t g{};
-  std::uint8_t b{};
-  std::uint8_t a{255};
-};
+using PlotBounds = brambhand::client::common::PlotBounds;
+using Rgba = CanvasColor;
 
 constexpr double kSecondsPerDay = 86400.0;
 
-int hex_digit(char ch) {
-  if (ch >= '0' && ch <= '9') {
-    return ch - '0';
+constexpr std::array<std::uint8_t, 256> build_hex_lut() {
+  std::array<std::uint8_t, 256> lut{};
+  for (std::size_t i = 0; i < lut.size(); ++i) {
+    lut[i] = 0;
   }
-  if (ch >= 'a' && ch <= 'f') {
-    return 10 + (ch - 'a');
+  for (std::uint8_t d = 0; d < 10; ++d) {
+    lut[static_cast<std::size_t>('0' + d)] = d;
   }
-  if (ch >= 'A' && ch <= 'F') {
-    return 10 + (ch - 'A');
+  for (std::uint8_t d = 0; d < 6; ++d) {
+    lut[static_cast<std::size_t>('a' + d)] = static_cast<std::uint8_t>(10 + d);
+    lut[static_cast<std::size_t>('A' + d)] = static_cast<std::uint8_t>(10 + d);
   }
-  return 0;
+  return lut;
 }
+
+constexpr auto kHexLut = build_hex_lut();
 
 Rgba parse_hex_color(const std::string& hex) {
   if (hex.size() != 7 || hex[0] != '#') {
@@ -51,7 +50,9 @@ Rgba parse_hex_color(const std::string& hex) {
   }
 
   const auto parse_pair = [&](std::size_t idx) {
-    return static_cast<std::uint8_t>((hex_digit(hex[idx]) << 4) | hex_digit(hex[idx + 1]));
+    const auto hi = kHexLut[static_cast<unsigned char>(hex[idx])];
+    const auto lo = kHexLut[static_cast<unsigned char>(hex[idx + 1])];
+    return static_cast<std::uint8_t>((hi << 4) | lo);
   };
 
   return Rgba{
@@ -71,24 +72,32 @@ Rgba hsv_to_rgb(double h, double s, double v) {
   double g = 0.0;
   double b = 0.0;
 
-  if (0.0 <= hh && hh < 1.0) {
-    r = c;
-    g = x;
-  } else if (1.0 <= hh && hh < 2.0) {
-    r = x;
-    g = c;
-  } else if (2.0 <= hh && hh < 3.0) {
-    g = c;
-    b = x;
-  } else if (3.0 <= hh && hh < 4.0) {
-    g = x;
-    b = c;
-  } else if (4.0 <= hh && hh < 5.0) {
-    r = x;
-    b = c;
-  } else {
-    r = c;
-    b = x;
+  const int sector = static_cast<int>(std::floor(hh)) % 6;
+  switch (sector < 0 ? sector + 6 : sector) {
+    case 0:
+      r = c;
+      g = x;
+      break;
+    case 1:
+      r = x;
+      g = c;
+      break;
+    case 2:
+      g = c;
+      b = x;
+      break;
+    case 3:
+      g = x;
+      b = c;
+      break;
+    case 4:
+      r = x;
+      b = c;
+      break;
+    default:
+      r = c;
+      b = x;
+      break;
   }
 
   const double m = v - c;
@@ -117,34 +126,6 @@ const brambhand::client::common::BodyState* find_body_by_id(
   return nullptr;
 }
 
-std::vector<std::string> collect_body_ids(
-    const std::vector<brambhand::client::common::SimulationFrame>& frames) {
-  std::vector<std::string> ids;
-  for (const auto& frame : frames) {
-    for (const auto& body : frame.bodies) {
-      if (std::find(ids.begin(), ids.end(), body.body_id) == ids.end()) {
-        ids.push_back(body.body_id);
-      }
-    }
-  }
-  std::sort(ids.begin(), ids.end());
-  return ids;
-}
-
-void include_point(PlotBounds& bounds, double x, double y, bool& initialized) {
-  if (!initialized) {
-    bounds.min_x = bounds.max_x = x;
-    bounds.min_y = bounds.max_y = y;
-    initialized = true;
-    return;
-  }
-
-  bounds.min_x = std::min(bounds.min_x, x);
-  bounds.max_x = std::max(bounds.max_x, x);
-  bounds.min_y = std::min(bounds.min_y, y);
-  bounds.max_y = std::max(bounds.max_y, y);
-}
-
 std::optional<PlotBounds> compute_bounds(
     const ReplayQuicklookWorkflowOutput& workflow,
     const std::vector<brambhand::client::common::SimulationFrame>& frames) {
@@ -153,86 +134,49 @@ std::optional<PlotBounds> compute_bounds(
 
   for (const auto& layer : workflow.trajectory_panel.curve_layers) {
     for (const auto& point : layer.points) {
-      include_point(bounds, point.x_m, point.y_m, initialized);
+      brambhand::client::common::include_plot_point(bounds, point.x_m, point.y_m, initialized);
     }
   }
 
   for (const auto& frame : frames) {
     for (const auto& body : frame.bodies) {
-      include_point(bounds, body.position_m.x, body.position_m.y, initialized);
+      brambhand::client::common::include_plot_point(bounds, body.position_m.x, body.position_m.y, initialized);
     }
   }
 
-  if (!initialized) {
-    return std::nullopt;
-  }
-
-  if (std::abs(bounds.max_x - bounds.min_x) < 1e-9) {
-    bounds.max_x += 1.0;
-    bounds.min_x -= 1.0;
-  }
-  if (std::abs(bounds.max_y - bounds.min_y) < 1e-9) {
-    bounds.max_y += 1.0;
-    bounds.min_y -= 1.0;
-  }
-
-  const double pad_x = 0.08 * (bounds.max_x - bounds.min_x);
-  const double pad_y = 0.08 * (bounds.max_y - bounds.min_y);
-  bounds.min_x -= pad_x;
-  bounds.max_x += pad_x;
-  bounds.min_y -= pad_y;
-  bounds.max_y += pad_y;
-  return bounds;
+  return brambhand::client::common::finalize_plot_bounds(bounds, initialized);
 }
 
-PlotBounds make_view_bounds(
-    const PlotBounds& base,
-    double zoom,
-    double pan_x,
-    double pan_y) {
-  const double base_span_x = base.max_x - base.min_x;
-  const double base_span_y = base.max_y - base.min_y;
-  const double cx = 0.5 * (base.min_x + base.max_x) + pan_x;
-  const double cy = 0.5 * (base.min_y + base.max_y) + pan_y;
-  const double half_x = 0.5 * base_span_x / zoom;
-  const double half_y = 0.5 * base_span_y / zoom;
-  return PlotBounds{
-      .min_x = cx - half_x,
-      .max_x = cx + half_x,
-      .min_y = cy - half_y,
-      .max_y = cy + half_y,
-  };
-}
-
-SDL_FPoint map_point(
+CanvasPoint map_point(
     double x,
     double y,
     const PlotBounds& bounds,
-    const SDL_FRect& viewport) {
-  const double span_x = bounds.max_x - bounds.min_x;
-  const double span_y = bounds.max_y - bounds.min_y;
-  const double scale = std::min(viewport.w / span_x, viewport.h / span_y);
-  const double center_x = 0.5 * (bounds.min_x + bounds.max_x);
-  const double center_y = 0.5 * (bounds.min_y + bounds.max_y);
-
-  return SDL_FPoint{
-      .x = static_cast<float>(viewport.x + (0.5 * viewport.w) + ((x - center_x) * scale)),
-      .y = static_cast<float>(viewport.y + (0.5 * viewport.h) - ((y - center_y) * scale)),
-  };
+    const CanvasRect& viewport) {
+  const auto mapped = brambhand::client::common::map_plot_point(
+      x,
+      y,
+      bounds,
+      brambhand::client::common::ViewRect{
+          .x = viewport.x,
+          .y = viewport.y,
+          .w = viewport.w,
+          .h = viewport.h,
+      });
+  return CanvasPoint{.x = mapped.x, .y = mapped.y};
 }
 
 void draw_curve_layer(
-    SDL_Renderer* renderer,
+    QuicklookCanvas& canvas,
     const TrajectoryCurveLayer& layer,
     const PlotBounds& bounds,
-    const SDL_FRect& viewport) {
+    const CanvasRect& viewport) {
   const auto color = parse_hex_color(layer.color_hex);
-  SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+  canvas.set_draw_color(color);
 
   for (std::size_t i = 1; i < layer.points.size(); ++i) {
     const auto a = map_point(layer.points[i - 1].x_m, layer.points[i - 1].y_m, bounds, viewport);
     const auto b = map_point(layer.points[i].x_m, layer.points[i].y_m, bounds, viewport);
-    SDL_RenderLine(renderer, a.x, a.y, b.x, b.y);
+    canvas.draw_line(a.x, a.y, b.x, b.y);
   }
 }
 
@@ -252,23 +196,21 @@ std::optional<std::pair<double, double>> find_focus_point(
 }
 
 void draw_trace_for_body(
-    SDL_Renderer* renderer,
+    QuicklookCanvas& canvas,
     const std::vector<brambhand::client::common::SimulationFrame>& frames,
     std::size_t upto_index,
     const std::string& body_id,
     const PlotBounds& bounds,
-    const SDL_FRect& viewport,
+    const CanvasRect& viewport,
     const Rgba& color,
-    std::uint8_t alpha) {
+    std::uint8_t alpha,
+    const QuicklookTracePolicy& trace_policy) {
   if (frames.empty()) {
     return;
   }
 
-  SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, alpha);
+  canvas.set_draw_color(CanvasColor{.r = color.r, .g = color.g, .b = color.b, .a = alpha});
   const std::size_t end = std::min(upto_index, frames.size() - 1);
-
-  constexpr double kJumpDiscontinuityFactor = 6.0;
-  constexpr double kMinReferenceDistanceM = 1.0;
 
   const brambhand::client::common::BodyState* prev_body = nullptr;
   std::optional<double> prev_step_distance_m;
@@ -285,18 +227,13 @@ void draw_trace_for_body(
       const double dy = body->position_m.y - prev_body->position_m.y;
       const double distance_m = std::sqrt(dx * dx + dy * dy);
 
-      bool draw_segment = true;
-      if (prev_step_distance_m.has_value()) {
-        const double reference_m = std::max(*prev_step_distance_m, kMinReferenceDistanceM);
-        if (distance_m > (kJumpDiscontinuityFactor * reference_m)) {
-          draw_segment = false;
-        }
-      }
+      const bool draw_segment =
+          trace_policy.should_draw_segment(distance_m, prev_step_distance_m);
 
       if (draw_segment) {
         const auto a = map_point(prev_body->position_m.x, prev_body->position_m.y, bounds, viewport);
         const auto b = map_point(body->position_m.x, body->position_m.y, bounds, viewport);
-        SDL_RenderLine(renderer, a.x, a.y, b.x, b.y);
+        canvas.draw_line(a.x, a.y, b.x, b.y);
       }
 
       prev_step_distance_m = distance_m;
@@ -306,20 +243,12 @@ void draw_trace_for_body(
   }
 }
 
-enum class MarkerKind {
-  Generic,
-  Probe,
-  Planet,
-  Sun,
-};
-
-void draw_circle_outline(SDL_Renderer* renderer, float cx, float cy, float radius, int segments) {
+void draw_circle_outline(QuicklookCanvas& canvas, float cx, float cy, float radius, int segments) {
   constexpr double kTau = 6.283185307179586;
   for (int i = 0; i < segments; ++i) {
     const float a0 = static_cast<float>((kTau * static_cast<double>(i)) / static_cast<double>(segments));
     const float a1 = static_cast<float>((kTau * static_cast<double>(i + 1)) / static_cast<double>(segments));
-    SDL_RenderLine(
-        renderer,
+    canvas.draw_line(
         cx + (radius * std::cos(a0)),
         cy + (radius * std::sin(a0)),
         cx + (radius * std::cos(a1)),
@@ -328,41 +257,45 @@ void draw_circle_outline(SDL_Renderer* renderer, float cx, float cy, float radiu
 }
 
 void draw_body_marker(
-    SDL_Renderer* renderer,
+    QuicklookCanvas& canvas,
     const brambhand::client::common::BodyState& body,
     const PlotBounds& bounds,
-    const SDL_FRect& viewport,
+    const CanvasRect& viewport,
     float half_size,
     bool draw_label,
-    MarkerKind marker_kind) {
+    brambhand::client::common::BodyRenderRole marker_kind) {
   const auto color = color_for_id(body.body_id);
-  SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+  canvas.set_draw_color(color);
 
   const auto p = map_point(body.position_m.x, body.position_m.y, bounds, viewport);
 
-  if (marker_kind == MarkerKind::Sun) {
-    draw_circle_outline(renderer, p.x, p.y, half_size + 2.0F, 14);
-    SDL_RenderLine(renderer, p.x - (half_size + 4.0F), p.y, p.x + (half_size + 4.0F), p.y);
-    SDL_RenderLine(renderer, p.x, p.y - (half_size + 4.0F), p.x, p.y + (half_size + 4.0F));
-  } else if (marker_kind == MarkerKind::Planet) {
-    draw_circle_outline(renderer, p.x, p.y, half_size + 1.5F, 12);
-    SDL_RenderPoint(renderer, p.x, p.y);
-  } else if (marker_kind == MarkerKind::Probe) {
-    SDL_RenderLine(renderer, p.x, p.y - (half_size + 2.0F), p.x - (half_size + 2.0F), p.y + (half_size + 2.0F));
-    SDL_RenderLine(renderer, p.x - (half_size + 2.0F), p.y + (half_size + 2.0F), p.x + (half_size + 2.0F), p.y + (half_size + 2.0F));
-    SDL_RenderLine(renderer, p.x + (half_size + 2.0F), p.y + (half_size + 2.0F), p.x, p.y - (half_size + 2.0F));
+  if (marker_kind == brambhand::client::common::BodyRenderRole::Sun) {
+    draw_circle_outline(canvas, p.x, p.y, half_size + 2.0F, 14);
+    canvas.draw_line(p.x - (half_size + 4.0F), p.y, p.x + (half_size + 4.0F), p.y);
+    canvas.draw_line(p.x, p.y - (half_size + 4.0F), p.x, p.y + (half_size + 4.0F));
+  } else if (marker_kind == brambhand::client::common::BodyRenderRole::Planet) {
+    draw_circle_outline(canvas, p.x, p.y, half_size + 1.5F, 12);
+    canvas.draw_point(p.x, p.y);
+  } else if (marker_kind == brambhand::client::common::BodyRenderRole::Probe) {
+    canvas.draw_line(p.x, p.y - (half_size + 2.0F), p.x - (half_size + 2.0F), p.y + (half_size + 2.0F));
+    canvas.draw_line(
+        p.x - (half_size + 2.0F),
+        p.y + (half_size + 2.0F),
+        p.x + (half_size + 2.0F),
+        p.y + (half_size + 2.0F));
+    canvas.draw_line(p.x + (half_size + 2.0F), p.y + (half_size + 2.0F), p.x, p.y - (half_size + 2.0F));
   } else {
-    SDL_FRect r{
+    CanvasRect r{
         .x = p.x - half_size,
         .y = p.y - half_size,
         .w = 2.0F * half_size,
         .h = 2.0F * half_size,
     };
-    SDL_RenderFillRect(renderer, &r);
+    canvas.fill_rect(r);
   }
 
   if (draw_label) {
-    SDL_RenderDebugText(renderer, p.x + 5.0F, p.y - 5.0F, body.body_id.c_str());
+    canvas.draw_text(p.x + 5.0F, p.y - 5.0F, body.body_id);
   }
 }
 
@@ -380,7 +313,7 @@ std::string elide_text(const std::string& text, std::size_t max_chars) {
 }
 
 bool draw_sidebar_line(
-    SDL_Renderer* renderer,
+    QuicklookCanvas& canvas,
     float x,
     float& y,
     float y_limit,
@@ -391,33 +324,33 @@ bool draw_sidebar_line(
     return false;
   }
   const std::string clipped = elide_text(text, max_chars);
-  SDL_RenderDebugText(renderer, x, y, clipped.c_str());
+  canvas.draw_text(x, y, clipped);
   y += line_h;
   return true;
 }
 
 void draw_sidebar(
-    SDL_Renderer* renderer,
-    const SDL_FRect& panel,
+    QuicklookCanvas& canvas,
+    const CanvasRect& panel,
     const ReplayQuicklookWorkflowOutput& workflow,
     const brambhand::client::common::SimulationFrame* active_frame,
     std::size_t frame_index,
     std::size_t frame_count,
     double playback_rate,
     double zoom_level,
-    const std::vector<std::string>& body_ids) {
-  SDL_SetRenderDrawColor(renderer, 20, 24, 34, 255);
-  SDL_RenderFillRect(renderer, &panel);
-  SDL_SetRenderDrawColor(renderer, 78, 90, 110, 255);
-  SDL_RenderRect(renderer, &panel);
+    const std::vector<std::string>& body_ids,
+    const QuicklookSidebarPolicy& sidebar_policy) {
+  canvas.set_draw_color(CanvasColor{.r = 20, .g = 24, .b = 34, .a = 255});
+  canvas.fill_rect(panel);
+  canvas.set_draw_color(CanvasColor{.r = 78, .g = 90, .b = 110, .a = 255});
+  canvas.draw_rect(panel);
 
-  const SDL_Rect clip_rect{
-      static_cast<int>(panel.x) + 1,
-      static_cast<int>(panel.y) + 1,
-      std::max(1, static_cast<int>(panel.w) - 2),
-      std::max(1, static_cast<int>(panel.h) - 2),
-  };
-  SDL_SetRenderClipRect(renderer, &clip_rect);
+  canvas.set_clip_rect(CanvasRect{
+      .x = panel.x + 1.0F,
+      .y = panel.y + 1.0F,
+      .w = std::max(1.0F, panel.w - 2.0F),
+      .h = std::max(1.0F, panel.h - 2.0F),
+  });
 
   constexpr float kMargin = 10.0F;
   constexpr float kLineH = 16.0F;
@@ -431,30 +364,30 @@ void draw_sidebar(
   const std::size_t max_chars = static_cast<std::size_t>(
       std::max(6.0F, (panel.w - (2.0F * kMargin)) / kCharW));
 
-  auto set_primary = [&]() { SDL_SetRenderDrawColor(renderer, 228, 236, 250, 255); };
-  auto set_secondary = [&]() { SDL_SetRenderDrawColor(renderer, 150, 164, 186, 255); };
-  auto set_muted = [&]() { SDL_SetRenderDrawColor(renderer, 124, 136, 156, 255); };
+  auto set_primary = [&]() { canvas.set_draw_color(CanvasColor{.r = 228, .g = 236, .b = 250, .a = 255}); };
+  auto set_secondary = [&]() { canvas.set_draw_color(CanvasColor{.r = 150, .g = 164, .b = 186, .a = 255}); };
+  auto set_muted = [&]() { canvas.set_draw_color(CanvasColor{.r = 124, .g = 136, .b = 156, .a = 255}); };
 
   auto draw_primary = [&](const std::string& line) {
     set_primary();
-    return draw_sidebar_line(renderer, x, y, y_limit, kLineH, max_chars, line);
+    return draw_sidebar_line(canvas, x, y, y_limit, kLineH, max_chars, line);
   };
   auto draw_secondary = [&](const std::string& line) {
     set_secondary();
-    return draw_sidebar_line(renderer, x, y, y_limit, kLineH, max_chars, line);
+    return draw_sidebar_line(canvas, x, y, y_limit, kLineH, max_chars, line);
   };
   auto draw_divider = [&]() {
     if (y + 8.0F > y_limit) {
       return false;
     }
-    SDL_SetRenderDrawColor(renderer, 62, 72, 90, 255);
-    SDL_RenderLine(renderer, x, y + 3.0F, right, y + 3.0F);
+    canvas.set_draw_color(CanvasColor{.r = 62, .g = 72, .b = 90, .a = 255});
+    canvas.draw_line(x, y + 3.0F, right, y + 3.0F);
     y += 8.0F;
     return true;
   };
 
-  if (!draw_primary("Replay Quicklook")) {
-    SDL_SetRenderClipRect(renderer, nullptr);
+  if (!draw_primary(sidebar_policy.title())) {
+    canvas.set_clip_rect(std::nullopt);
     return;
   }
 
@@ -462,23 +395,23 @@ void draw_sidebar(
     char buf[128];
     std::snprintf(buf, sizeof(buf), "Bodies tracked: %zu", body_ids.size());
     if (!draw_secondary(buf)) {
-      SDL_SetRenderClipRect(renderer, nullptr);
+      canvas.set_clip_rect(std::nullopt);
       return;
     }
   }
 
   if (!draw_secondary("Replay window telemetry")) {
-    SDL_SetRenderClipRect(renderer, nullptr);
+    canvas.set_clip_rect(std::nullopt);
     return;
   }
 
   if (!draw_divider()) {
-    SDL_SetRenderClipRect(renderer, nullptr);
+    canvas.set_clip_rect(std::nullopt);
     return;
   }
 
-  if (!draw_primary("Simulation")) {
-    SDL_SetRenderClipRect(renderer, nullptr);
+  if (!draw_primary(sidebar_policy.simulation_section_title())) {
+    canvas.set_clip_rect(std::nullopt);
     return;
   }
 
@@ -486,7 +419,7 @@ void draw_sidebar(
     char buf[128];
     std::snprintf(buf, sizeof(buf), "Sim day: %.1f", active_frame->sim_time_s / kSecondsPerDay);
     if (!draw_secondary(buf)) {
-      SDL_SetRenderClipRect(renderer, nullptr);
+      canvas.set_clip_rect(std::nullopt);
       return;
     }
   }
@@ -495,138 +428,123 @@ void draw_sidebar(
     char buf[128];
     std::snprintf(buf, sizeof(buf), "Frame: %zu / %zu", frame_index + 1, frame_count);
     if (!draw_secondary(buf)) {
-      SDL_SetRenderClipRect(renderer, nullptr);
+      canvas.set_clip_rect(std::nullopt);
       return;
     }
     std::snprintf(buf, sizeof(buf), "Playback: %.2fx  ([ / ])", playback_rate);
     if (!draw_secondary(buf)) {
-      SDL_SetRenderClipRect(renderer, nullptr);
+      canvas.set_clip_rect(std::nullopt);
       return;
     }
     std::snprintf(buf, sizeof(buf), "Zoom: %.2fx  (-/= or wheel)", zoom_level);
     if (!draw_secondary(buf)) {
-      SDL_SetRenderClipRect(renderer, nullptr);
+      canvas.set_clip_rect(std::nullopt);
       return;
     }
   }
 
   if (!draw_secondary("Pan: arrow keys")) {
-    SDL_SetRenderClipRect(renderer, nullptr);
+    canvas.set_clip_rect(std::nullopt);
     return;
   }
 
-  if (!draw_divider()) {
-    SDL_SetRenderClipRect(renderer, nullptr);
-    return;
-  }
-
-  if (!draw_primary("Mission Events")) {
-    SDL_SetRenderClipRect(renderer, nullptr);
-    return;
-  }
-  if (!draw_secondary("Severity color + timeline row")) {
-    SDL_SetRenderClipRect(renderer, nullptr);
-    return;
-  }
-
-  std::size_t event_i = 0;
   const std::size_t event_text_max = max_chars > 2 ? max_chars - 2 : max_chars;
-  while (event_i < workflow.event_markers.size() && (y + kRowH) <= y_limit) {
-    const auto& m = workflow.event_markers[event_i];
-    const auto color = parse_hex_color(m.color_hex);
-    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-    SDL_FRect swatch{.x = x, .y = y + 2.0F, .w = 10.0F, .h = 10.0F};
-    SDL_RenderFillRect(renderer, &swatch);
 
-    char row[256];
-    std::snprintf(row, sizeof(row), "t=%.1fd  %s", m.sim_time_s / kSecondsPerDay, m.kind.c_str());
-    const std::string clipped = elide_text(row, event_text_max);
-    set_secondary();
-    SDL_RenderDebugText(renderer, x + 14.0F, y, clipped.c_str());
-    y += kRowH;
-    ++event_i;
+  if (sidebar_policy.show_events_section()) {
+    if (!draw_divider()) {
+      canvas.set_clip_rect(std::nullopt);
+      return;
+    }
+
+    if (!draw_primary(sidebar_policy.events_section_title())) {
+      canvas.set_clip_rect(std::nullopt);
+      return;
+    }
+    if (!draw_secondary("Severity color + timeline row")) {
+      canvas.set_clip_rect(std::nullopt);
+      return;
+    }
+
+    std::size_t event_i = 0;
+    while (event_i < workflow.event_markers.size() && (y + kRowH) <= y_limit) {
+      const auto& m = workflow.event_markers[event_i];
+      const auto color = parse_hex_color(m.color_hex);
+      canvas.set_draw_color(color);
+      CanvasRect swatch{.x = x, .y = y + 2.0F, .w = 10.0F, .h = 10.0F};
+      canvas.fill_rect(swatch);
+
+      char row[256];
+      std::snprintf(row, sizeof(row), "t=%.1fd  %s", m.sim_time_s / kSecondsPerDay, m.kind.c_str());
+      const std::string clipped = elide_text(row, event_text_max);
+      set_secondary();
+      canvas.draw_text(x + 14.0F, y, clipped);
+      y += kRowH;
+      ++event_i;
+    }
+
+    if (event_i < workflow.event_markers.size() && (y + kLineH) <= y_limit) {
+      set_muted();
+      canvas.draw_text(x, y, "...");
+      y += kLineH;
+    }
   }
 
-  if (event_i < workflow.event_markers.size() && (y + kLineH) <= y_limit) {
-    set_muted();
-    SDL_RenderDebugText(renderer, x, y, "...");
-    y += kLineH;
+  if (sidebar_policy.show_legend_section()) {
+    if (!draw_divider()) {
+      canvas.set_clip_rect(std::nullopt);
+      return;
+    }
+
+    if (!draw_primary(sidebar_policy.legend_section_title())) {
+      canvas.set_clip_rect(std::nullopt);
+      return;
+    }
+
+    for (std::size_t i = 0; i < body_ids.size() && (y + kRowH) <= y_limit; ++i) {
+      const auto color = color_for_id(body_ids[i]);
+      canvas.set_draw_color(color);
+      CanvasRect swatch{.x = x, .y = y + 2.0F, .w = 10.0F, .h = 10.0F};
+      canvas.fill_rect(swatch);
+      const std::string clipped = elide_text(body_ids[i], event_text_max);
+      set_secondary();
+      canvas.draw_text(x + 14.0F, y, clipped);
+      y += kRowH;
+    }
   }
 
-  if (!draw_divider()) {
-    SDL_SetRenderClipRect(renderer, nullptr);
-    return;
-  }
-
-  if (!draw_primary("Body Legend")) {
-    SDL_SetRenderClipRect(renderer, nullptr);
-    return;
-  }
-
-  for (std::size_t i = 0; i < body_ids.size() && (y + kRowH) <= y_limit; ++i) {
-    const auto color = color_for_id(body_ids[i]);
-    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-    SDL_FRect swatch{.x = x, .y = y + 2.0F, .w = 10.0F, .h = 10.0F};
-    SDL_RenderFillRect(renderer, &swatch);
-    const std::string clipped = elide_text(body_ids[i], event_text_max);
-    set_secondary();
-    SDL_RenderDebugText(renderer, x + 14.0F, y, clipped.c_str());
-    y += kRowH;
-  }
-
-  SDL_SetRenderClipRect(renderer, nullptr);
+  canvas.set_clip_rect(std::nullopt);
 }
 
 }  // namespace
 
-bool run_replay_window(
+DesktopRendererMode Quicklook2DReplayRenderer::mode() const {
+  return DesktopRendererMode::Quicklook2D;
+}
+
+bool Quicklook2DReplayRenderer::run(
     const ReplayQuicklookWorkflowOutput& workflow,
     const std::vector<brambhand::client::common::SimulationFrame>& frames,
+    const std::vector<std::string>& body_ids,
     const brambhand::client::common::ReplayRenderConfig& render_config) {
-  if (!SDL_Init(SDL_INIT_VIDEO)) {
-    return false;
-  }
-
-  const SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
-  SDL_Window* window = SDL_CreateWindow("brambhand replay quicklook", 1280, 720, flags);
-  if (window == nullptr) {
-    SDL_Quit();
-    return false;
-  }
-
-  SDL_Renderer* renderer = SDL_CreateRenderer(window, nullptr);
-  if (renderer == nullptr) {
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+  const auto runtime = create_sdl_quicklook_runtime();
+  if (runtime == nullptr ||
+      !runtime->initialize("brambhand replay quicklook", 1280, 720)) {
     return false;
   }
 
   const auto bounds_opt = compute_bounds(workflow, frames);
   if (!bounds_opt.has_value()) {
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+    runtime->shutdown();
     return false;
   }
   const PlotBounds base_bounds = *bounds_opt;
-  const std::vector<std::string> body_ids = collect_body_ids(frames);
 
-  const std::unordered_set<std::string> orbit_body_id_set(
-      render_config.dim_trajectory_body_ids.begin(),
-      render_config.dim_trajectory_body_ids.end());
-  const std::unordered_set<std::string> sun_body_id_set(
-      render_config.sun_body_ids.begin(),
-      render_config.sun_body_ids.end());
-  const std::unordered_set<std::string> planet_body_id_set(
-      render_config.planet_body_ids.begin(),
-      render_config.planet_body_ids.end());
-  const std::unordered_set<std::string> probe_body_id_set(
-      render_config.probe_body_ids.begin(),
-      render_config.probe_body_ids.end());
+  const auto render_semantics =
+      brambhand::client::common::create_replay_render_semantics(render_config);
   std::vector<std::string> orbit_body_ids;
-  orbit_body_ids.reserve(orbit_body_id_set.size());
+  orbit_body_ids.reserve(body_ids.size());
   for (const auto& id : body_ids) {
-    if (orbit_body_id_set.contains(id)) {
+    if (render_semantics->is_dim_trajectory_body(id)) {
       orbit_body_ids.push_back(id);
     }
   }
@@ -635,176 +553,156 @@ bool run_replay_window(
   const double base_center_x = 0.5 * (base_bounds.min_x + base_bounds.max_x);
   const double base_center_y = 0.5 * (base_bounds.min_y + base_bounds.max_y);
 
-  std::size_t frame_index = 0;
-  std::uint64_t last_advance_ticks = SDL_GetTicks();
-  double playback_rate = 1.0;
-  double zoom_level = 1.0;
-  double pan_x = focus_point.has_value() ? (focus_point->first - base_center_x) : 0.0;
-  double pan_y = focus_point.has_value() ? (focus_point->second - base_center_y) : 0.0;
+  QuicklookFrameState frame_state{};
+  frame_state.last_advance_ticks = runtime->ticks_ms();
+  frame_state.pan_x = focus_point.has_value() ? (focus_point->first - base_center_x) : 0.0;
+  frame_state.pan_y = focus_point.has_value() ? (focus_point->second - base_center_y) : 0.0;
+
+  const auto capability_profile =
+      create_renderer_capability_profile(DesktopRendererMode::Quicklook2D);
+  if (capability_profile == nullptr) {
+    runtime->shutdown();
+    return false;
+  }
+
+  const auto ui_layout_policy = capability_profile->create_ui_layout_policy();
+  const auto trace_policy = capability_profile->create_trace_policy();
+  const auto sidebar_policy = capability_profile->create_sidebar_policy();
 
   bool running = true;
   while (running) {
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-      if (event.type == SDL_EVENT_QUIT) {
-        running = false;
-      }
-      if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE) {
-        running = false;
-      }
-      if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_LEFTBRACKET) {
-        playback_rate = std::max(0.25, playback_rate * 0.5);
-      }
-      if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_RIGHTBRACKET) {
-        playback_rate = std::min(16.0, playback_rate * 2.0);
-      }
-      if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_EQUALS) {
-        zoom_level = std::min(64.0, zoom_level * 1.2);
-      }
-      if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_MINUS) {
-        zoom_level = std::max(0.2, zoom_level / 1.2);
-      }
-      if (event.type == SDL_EVENT_MOUSE_WHEEL) {
-        if (event.wheel.y > 0.0F) {
-          zoom_level = std::min(64.0, zoom_level * 1.1);
-        } else if (event.wheel.y < 0.0F) {
-          zoom_level = std::max(0.2, zoom_level / 1.1);
-        }
-      }
+    const auto input = runtime->poll_input();
+    if (input.quit_requested) {
+      running = false;
+    }
+    if (input.decrease_playback) {
+      frame_state.playback_rate = std::max(0.25, frame_state.playback_rate * 0.5);
+    }
+    if (input.increase_playback) {
+      frame_state.playback_rate = std::min(16.0, frame_state.playback_rate * 2.0);
+    }
+    if (input.zoom_in) {
+      frame_state.zoom_level = std::min(64.0, frame_state.zoom_level * 1.1);
+    }
+    if (input.zoom_out) {
+      frame_state.zoom_level = std::max(0.2, frame_state.zoom_level / 1.1);
     }
 
-    const double span_x = (base_bounds.max_x - base_bounds.min_x) / zoom_level;
-    const double span_y = (base_bounds.max_y - base_bounds.min_y) / zoom_level;
-
-    const bool left = SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_LEFT];
-    const bool right = SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_RIGHT];
-    const bool up = SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_UP];
-    const bool down = SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_DOWN];
+    const double span_x = (base_bounds.max_x - base_bounds.min_x) / frame_state.zoom_level;
+    const double span_y = (base_bounds.max_y - base_bounds.min_y) / frame_state.zoom_level;
     const double pan_step_x = 0.04 * span_x;
     const double pan_step_y = 0.04 * span_y;
-    if (left) {
-      pan_x -= pan_step_x;
+    if (input.pan_left) {
+      frame_state.pan_x -= pan_step_x;
     }
-    if (right) {
-      pan_x += pan_step_x;
+    if (input.pan_right) {
+      frame_state.pan_x += pan_step_x;
     }
-    if (up) {
-      pan_y += pan_step_y;
+    if (input.pan_up) {
+      frame_state.pan_y += pan_step_y;
     }
-    if (down) {
-      pan_y -= pan_step_y;
-    }
-
-    const std::uint64_t now_ticks = SDL_GetTicks();
-    const std::uint64_t frame_period_ms = static_cast<std::uint64_t>(std::max(1.0, 33.0 / playback_rate));
-    if (!frames.empty() && now_ticks - last_advance_ticks >= frame_period_ms) {
-      frame_index = (frame_index + 1) % frames.size();
-      last_advance_ticks = now_ticks;
+    if (input.pan_down) {
+      frame_state.pan_y -= pan_step_y;
     }
 
-    int width = 0;
-    int height = 0;
-    SDL_GetWindowSize(window, &width, &height);
-
-    SDL_SetRenderDrawColor(renderer, 12, 14, 20, 255);
-    SDL_RenderClear(renderer);
-
-    const float outer_margin = 20.0F;
-    const float panel_gap = 10.0F;
-    const float min_view_w = 180.0F;
-    const float preferred_sidebar_w = 330.0F;
-
-    float sidebar_w = std::clamp(
-        preferred_sidebar_w,
-        180.0F,
-        std::max(180.0F, static_cast<float>(width) - (2.0F * outer_margin) - panel_gap - min_view_w));
-    float viewport_w = static_cast<float>(width) - (2.0F * outer_margin) - panel_gap - sidebar_w;
-    if (viewport_w < min_view_w) {
-      viewport_w = min_view_w;
-      sidebar_w = std::max(180.0F, static_cast<float>(width) - (2.0F * outer_margin) - panel_gap - viewport_w);
+    const std::uint64_t now_ticks = runtime->ticks_ms();
+    const std::uint64_t frame_period_ms =
+        static_cast<std::uint64_t>(std::max(1.0, 33.0 / frame_state.playback_rate));
+    if (!frames.empty() && now_ticks - frame_state.last_advance_ticks >= frame_period_ms) {
+      frame_state.frame_index = (frame_state.frame_index + 1) % frames.size();
+      frame_state.last_advance_ticks = now_ticks;
     }
 
-    const SDL_FRect viewport{
-        .x = outer_margin,
-        .y = outer_margin,
-        .w = std::max(120.0F, viewport_w),
-        .h = std::max(120.0F, static_cast<float>(height) - (2.0F * outer_margin)),
+    const auto [width, height] = runtime->window_size();
+    auto& canvas = runtime->canvas();
+
+    canvas.set_draw_color(CanvasColor{.r = 12, .g = 14, .b = 20, .a = 255});
+    canvas.fill_rect(CanvasRect{
+        .x = 0.0F,
+        .y = 0.0F,
+        .w = static_cast<float>(width),
+        .h = static_cast<float>(height),
+    });
+
+    const auto panels = ui_layout_policy->compute(width, height);
+    const CanvasRect viewport{
+        .x = panels.viewport.x,
+        .y = panels.viewport.y,
+        .w = panels.viewport.w,
+        .h = panels.viewport.h,
     };
-    const SDL_FRect sidebar{
-        .x = viewport.x + viewport.w + panel_gap,
-        .y = outer_margin,
-        .w = std::max(140.0F, sidebar_w),
-        .h = std::max(120.0F, static_cast<float>(height) - (2.0F * outer_margin)),
+    const CanvasRect sidebar{
+        .x = panels.sidebar.x,
+        .y = panels.sidebar.y,
+        .w = panels.sidebar.w,
+        .h = panels.sidebar.h,
     };
 
-    SDL_SetRenderDrawColor(renderer, 60, 66, 80, 255);
-    SDL_RenderRect(renderer, &viewport);
+    canvas.set_draw_color(CanvasColor{.r = 60, .g = 66, .b = 80, .a = 255});
+    canvas.draw_rect(viewport);
 
-    const PlotBounds view_bounds = make_view_bounds(base_bounds, zoom_level, pan_x, pan_y);
+    const PlotBounds view_bounds = brambhand::client::common::make_view_bounds(
+        base_bounds,
+        frame_state.zoom_level,
+        frame_state.pan_x,
+        frame_state.pan_y);
 
     for (const auto& layer : workflow.trajectory_panel.curve_layers) {
-      draw_curve_layer(renderer, layer, view_bounds, viewport);
+      draw_curve_layer(canvas, layer, view_bounds, viewport);
     }
 
     const brambhand::client::common::SimulationFrame* active_frame = nullptr;
     if (!frames.empty()) {
       for (const auto& id : orbit_body_ids) {
         draw_trace_for_body(
-            renderer,
+            canvas,
             frames,
             frames.size() - 1,
             id,
             view_bounds,
             viewport,
             color_for_id(id),
-            85);
+            trace_policy->dim_trace_alpha(),
+            *trace_policy);
       }
 
       for (const auto& id : body_ids) {
         draw_trace_for_body(
-            renderer,
+            canvas,
             frames,
-            frame_index,
+            frame_state.frame_index,
             id,
             view_bounds,
             viewport,
             color_for_id(id),
-            180);
+            trace_policy->active_trace_alpha(),
+            *trace_policy);
       }
 
-      active_frame = &frames[frame_index];
+      active_frame = &frames[frame_state.frame_index];
       for (const auto& body : active_frame->bodies) {
-        MarkerKind marker_kind = MarkerKind::Generic;
-        if (sun_body_id_set.contains(body.body_id)) {
-          marker_kind = MarkerKind::Sun;
-        } else if (probe_body_id_set.contains(body.body_id)) {
-          marker_kind = MarkerKind::Probe;
-        } else if (planet_body_id_set.contains(body.body_id)) {
-          marker_kind = MarkerKind::Planet;
-        }
-
-        draw_body_marker(renderer, body, view_bounds, viewport, 3.0F, false, marker_kind);
+        const auto marker_kind = render_semantics->role_for(body.body_id);
+        draw_body_marker(canvas, body, view_bounds, viewport, 3.0F, false, marker_kind);
       }
     }
 
     draw_sidebar(
-        renderer,
+        canvas,
         sidebar,
         workflow,
         active_frame,
-        frame_index,
+        frame_state.frame_index,
         frames.empty() ? 0 : frames.size(),
-        playback_rate,
-        zoom_level,
-        body_ids);
+        frame_state.playback_rate,
+        frame_state.zoom_level,
+        body_ids,
+        *sidebar_policy);
 
-    SDL_RenderPresent(renderer);
-    SDL_Delay(16);
+    runtime->present();
+    runtime->delay_ms(16);
   }
 
-  SDL_DestroyRenderer(renderer);
-  SDL_DestroyWindow(window);
-  SDL_Quit();
+  runtime->shutdown();
   return true;
 }
 

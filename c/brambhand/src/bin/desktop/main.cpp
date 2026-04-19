@@ -1,5 +1,5 @@
+#include <cstddef>
 #include <iostream>
-#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -10,88 +10,81 @@
 #include "brambhand/client/desktop/replay_quicklook_workflow.hpp"
 #include "brambhand/client/desktop/shell.hpp"
 #include "brambhand/client/desktop/trajectory_infographic.hpp"
-#include "replay_window.hpp"
+#include "brambhand/client/common/desktop_cli_options.hpp"
+#include "render_config_validation.hpp"
+#include "renderer_backend.hpp"
+#include "replay_ingest_pipeline.hpp"
 
 int main(int argc, char** argv) {
-  std::optional<std::string> replay_path;
-  std::optional<std::string> render_config_path;
-  bool no_window = false;
-  bool strict_render_config = false;
-
-  for (int i = 1; i < argc; ++i) {
-    const std::string arg = argv[i];
-    if (arg == "--live") {
-      std::cerr << "live visualization is not supported in R8.05; use --replay <path>\n";
-      return 2;
-    }
-    if (arg == "--replay" && i + 1 < argc) {
-      replay_path = argv[++i];
-      continue;
-    }
-    if (arg == "--render-config" && i + 1 < argc) {
-      render_config_path = argv[++i];
-      continue;
-    }
-    if (arg == "--no-window") {
-      no_window = true;
-      continue;
-    }
-    if (arg == "--strict-render-config") {
-      strict_render_config = true;
-      continue;
-    }
-  }
-
-  if (!replay_path.has_value() || !render_config_path.has_value()) {
-    std::cerr
-        << "usage: brambhand_desktop --replay <replay.jsonl> --render-config <render-config.json> [--no-window] [--strict-render-config]\n";
+  const auto cli_report = brambhand::client::common::parse_desktop_cli_options(argc, argv);
+  if (!cli_report.ok()) {
+    std::cerr << cli_report.error << "\n";
+    std::cerr << brambhand::client::common::desktop_cli_usage() << "\n";
     return 2;
   }
 
-  const auto replay_report = brambhand::client::common::load_replay_jsonl(*replay_path);
+  const auto& opts = cli_report.options;
+
+  const auto renderer_mode_parsed = brambhand::client::desktop::parse_renderer_mode(opts.renderer_mode_arg);
+  if (!renderer_mode_parsed.has_value()) {
+    std::cerr << "unsupported --renderer value: " << opts.renderer_mode_arg
+              << " (expected quicklook_2d|vulkan_3d)\n";
+    return 2;
+  }
+
+  const auto renderer_resolution = brambhand::client::desktop::resolve_renderer_mode(
+      *renderer_mode_parsed,
+      opts.allow_renderer_fallback);
+  if (!renderer_resolution.ok()) {
+    std::cerr << renderer_resolution.message << "\n";
+    return 2;
+  }
+  if (renderer_resolution.used_fallback) {
+    std::cerr << "renderer fallback: "
+              << brambhand::client::desktop::renderer_mode_name(renderer_resolution.requested)
+              << " unavailable, using "
+              << brambhand::client::desktop::renderer_mode_name(renderer_resolution.effective)
+              << "\n";
+  }
+
   const auto render_config_report =
-      brambhand::client::common::load_replay_render_config_json(*render_config_path);
+      brambhand::client::common::load_replay_render_config_json(*opts.render_config_path);
   if (!render_config_report.ok()) {
     std::cerr << "render config ingest failed: " << render_config_report.error << "\n";
     return 1;
   }
+
+  if (opts.concurrent_ingest && (opts.ingest_chunk_frames == 0 || opts.ingest_queue_max_chunks == 0)) {
+    std::cerr << "concurrent ingest requires positive --ingest-chunk-frames and --ingest-queue-max-chunks\n";
+    return 2;
+  }
+
+  const auto ingest_result = brambhand::client::desktop::ingest_replay_for_desktop(
+      *opts.replay_path,
+      brambhand::client::desktop::DesktopReplayIngestOptions{
+          .concurrent = opts.concurrent_ingest,
+          .chunk_size_frames = opts.ingest_chunk_frames,
+          .queue_max_chunks = opts.ingest_queue_max_chunks,
+      },
+      opts.concurrent_ingest
+          ? brambhand::client::desktop::DesktopReplayFramesUpdatedCallback{
+                [](const std::vector<brambhand::client::common::SimulationFrame>& frames) {
+                  (void)brambhand::client::desktop::build_replay_quicklook_workflow(frames);
+                }}
+          : brambhand::client::desktop::DesktopReplayFramesUpdatedCallback{});
+  const auto& replay_report = ingest_result.report;
+
   if (!replay_report.ok()) {
     std::cerr << "replay ingest failed: " << replay_report.error << "\n";
     return 1;
   }
 
-  std::set<std::string> replay_body_ids;
-  for (const auto& replay_frame : replay_report.frames) {
-    for (const auto& body : replay_frame.bodies) {
-      replay_body_ids.insert(body.body_id);
-    }
-  }
+  const auto render_config_validation =
+      brambhand::client::desktop::validate_replay_render_config_body_ids(
+          render_config_report.config,
+          replay_report.body_ids);
 
-  const auto collect_missing_ids = [&](const std::vector<std::string>& configured_ids) {
-    std::vector<std::string> missing;
-    for (const auto& id : configured_ids) {
-      if (!replay_body_ids.contains(id)) {
-        missing.push_back(id);
-      }
-    }
-    return missing;
-  };
-
-  const auto missing_dim_ids = collect_missing_ids(render_config_report.config.dim_trajectory_body_ids);
-  const auto missing_sun_ids = collect_missing_ids(render_config_report.config.sun_body_ids);
-  const auto missing_planet_ids = collect_missing_ids(render_config_report.config.planet_body_ids);
-  const auto missing_probe_ids = collect_missing_ids(render_config_report.config.probe_body_ids);
-
-  bool missing_focus_id = false;
-  if (render_config_report.config.focus_body_id.has_value()) {
-    missing_focus_id = !replay_body_ids.contains(*render_config_report.config.focus_body_id);
-  }
-
-  const bool has_missing =
-      !missing_dim_ids.empty() || !missing_sun_ids.empty() || !missing_planet_ids.empty() ||
-      !missing_probe_ids.empty() || missing_focus_id;
-
-  if (has_missing) {
+  if (render_config_validation.has_missing()) {
     std::cerr << "render config validation: replay is missing configured body ids\n";
     const auto print_missing = [&](const char* key, const std::vector<std::string>& ids) {
       if (ids.empty()) {
@@ -104,16 +97,16 @@ int main(int argc, char** argv) {
       std::cerr << "\n";
     };
 
-    print_missing("dim_trajectory_body_ids", missing_dim_ids);
-    print_missing("sun_body_ids", missing_sun_ids);
-    print_missing("planet_body_ids", missing_planet_ids);
-    print_missing("probe_body_ids", missing_probe_ids);
+    print_missing("dim_trajectory_body_ids", render_config_validation.missing_dim_ids);
+    print_missing("sun_body_ids", render_config_validation.missing_sun_ids);
+    print_missing("planet_body_ids", render_config_validation.missing_planet_ids);
+    print_missing("probe_body_ids", render_config_validation.missing_probe_ids);
 
-    if (missing_focus_id) {
+    if (render_config_validation.missing_focus_id) {
       std::cerr << "  focus_body_id missing: " << *render_config_report.config.focus_body_id << "\n";
     }
 
-    if (strict_render_config) {
+    if (opts.strict_render_config) {
       std::cerr << "strict render config validation enabled; aborting.\n";
       return 1;
     }
@@ -143,6 +136,19 @@ int main(int argc, char** argv) {
             << ", imgui_docking=" << (shell.telemetry().imgui_docking_enabled ? "on" : "off")
             << ", status=" << brambhand::client::desktop::status_name(shell.telemetry().status)
             << ", frames=" << shell.telemetry().frames_pumped << "\n";
+  std::cout << "renderer_mode="
+            << brambhand::client::desktop::renderer_mode_name(renderer_resolution.requested)
+            << ", effective_renderer="
+            << brambhand::client::desktop::renderer_mode_name(renderer_resolution.effective)
+            << "\n";
+  if (opts.concurrent_ingest) {
+    std::cout << "ingest_mode=concurrent"
+              << ", chunk_frames=" << opts.ingest_chunk_frames
+              << ", queue_max_chunks=" << opts.ingest_queue_max_chunks
+              << ", chunks_processed=" << ingest_result.telemetry.chunks_processed
+              << ", queue_high_watermark=" << ingest_result.telemetry.queue_high_watermark
+              << "\n";
+  }
   std::cout << "trajectory_panel schema=" << workflow.trajectory_panel.schema_version
             << ", curve_layers=" << workflow.trajectory_panel.curve_layers.size()
             << ", object_icons=" << workflow.trajectory_panel.object_icons.size() << "\n";
@@ -154,12 +160,18 @@ int main(int argc, char** argv) {
   }
   std::cout << "\n";
 
-  if (!no_window) {
-    if (!brambhand::client::desktop::run_replay_window(
+  if (!opts.no_window) {
+    const auto renderer = brambhand::client::desktop::create_desktop_replay_renderer(
+        renderer_resolution.effective);
+    if (renderer == nullptr ||
+        !renderer->run(
             workflow,
             replay_report.frames,
+            replay_report.body_ids,
             render_config_report.config)) {
-      std::cerr << "failed to open replay window\n";
+      std::cerr << "failed to open replay window for renderer="
+                << brambhand::client::desktop::renderer_mode_name(renderer_resolution.effective)
+                << "\n";
       return 1;
     }
   }

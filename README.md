@@ -79,8 +79,17 @@ Build bootstrap native client:
 cmake -S c/brambhand -B c/brambhand/build
 cmake --build c/brambhand/build
 ctest --test-dir c/brambhand/build --output-on-failure
-./c/brambhand/build/brambhand_desktop
+./c/brambhand/build/brambhand_desktop --replay replay.jsonl --render-config replay.render.json --renderer quicklook_2d
 ```
+
+Desktop renderer evolution flags:
+- `--renderer quicklook_2d|vulkan_3d` (`vulkan_3d` is reserved for future R8.5 backend)
+- `--allow-renderer-fallback` (fallback to quicklook_2d when requesting unavailable backend)
+- `--concurrent-ingest` (enable chunked ingest + concurrent quicklook-workflow preparation)
+- `--ingest-chunk-frames <N>` (max frames per ingest chunk; concurrent mode)
+- `--ingest-queue-max-chunks <N>` (bounded producer/consumer queue depth; concurrent mode)
+- `--strict-render-config` (fail on missing configured body IDs)
+- `--no-window` (headless ingest/contract validation)
 
 ## CLI
 

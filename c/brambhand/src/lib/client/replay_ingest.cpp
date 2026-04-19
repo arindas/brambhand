@@ -1,10 +1,13 @@
 #include "brambhand/client/common/replay_ingest.hpp"
 
+#include <algorithm>
 #include <cctype>
 #include <cstdint>
 #include <fstream>
+#include <limits>
 #include <optional>
 #include <sstream>
+#include <unordered_set>
 
 namespace brambhand::client::common {
 namespace {
@@ -187,6 +190,81 @@ std::vector<std::string> split_json_objects_from_array(const std::string& array_
   return objects;
 }
 
+std::vector<std::string> parse_string_array(const std::string& array_json) {
+  std::vector<std::string> values;
+
+  bool in_string = false;
+  bool escaped = false;
+  std::string current;
+  for (std::size_t i = 0; i < array_json.size(); ++i) {
+    const char ch = array_json[i];
+    if (!in_string) {
+      if (ch == '"') {
+        in_string = true;
+        current.clear();
+      }
+      continue;
+    }
+
+    if (escaped) {
+      current.push_back(ch);
+      escaped = false;
+      continue;
+    }
+
+    if (ch == '\\') {
+      escaped = true;
+      continue;
+    }
+
+    if (ch == '"') {
+      values.push_back(current);
+      in_string = false;
+      current.clear();
+      continue;
+    }
+
+    current.push_back(ch);
+  }
+
+  return values;
+}
+
+struct BodyIdCatalogFrame {
+  bool present{false};
+  std::vector<std::string> initial_body_ids;
+  std::vector<std::string> created_body_ids;
+  std::vector<std::string> destroyed_body_ids;
+};
+
+std::optional<BodyIdCatalogFrame> parse_body_id_catalog(const std::string& line) {
+  BodyIdCatalogFrame catalog{};
+
+  const auto catalog_json = extract_object(line, "body_id_catalog");
+  if (!catalog_json.has_value()) {
+    return catalog;
+  }
+
+  catalog.present = true;
+
+  if (const auto schema = extract_u32(*catalog_json, "schema_version");
+      schema.has_value() && *schema != 1U) {
+    return std::nullopt;
+  }
+
+  if (const auto initial_ids = extract_array(*catalog_json, "initial_body_ids"); initial_ids.has_value()) {
+    catalog.initial_body_ids = parse_string_array(*initial_ids);
+  }
+  if (const auto created_ids = extract_array(*catalog_json, "created_body_ids"); created_ids.has_value()) {
+    catalog.created_body_ids = parse_string_array(*created_ids);
+  }
+  if (const auto destroyed_ids = extract_array(*catalog_json, "destroyed_body_ids"); destroyed_ids.has_value()) {
+    catalog.destroyed_body_ids = parse_string_array(*destroyed_ids);
+  }
+
+  return catalog;
+}
+
 std::optional<BodyState> parse_body_state(const std::string& body_json) {
   const auto body_id = extract_string(body_json, "body_id");
   const auto position_json = extract_object(body_json, "position_m");
@@ -229,7 +307,12 @@ std::optional<EventFrame> parse_event_frame(const std::string& event_json) {
   return event;
 }
 
-std::optional<SimulationFrame> parse_simulation_frame_line(const std::string& line) {
+struct ParsedReplayLine {
+  SimulationFrame frame;
+  BodyIdCatalogFrame body_catalog;
+};
+
+std::optional<ParsedReplayLine> parse_simulation_frame_line(const std::string& line) {
   SimulationFrame frame{};
 
   if (const auto schema = extract_u32(line, "schema_version"); schema.has_value()) {
@@ -268,12 +351,27 @@ std::optional<SimulationFrame> parse_simulation_frame_line(const std::string& li
     }
   }
 
-  return frame;
+  const auto body_catalog = parse_body_id_catalog(line);
+  if (!body_catalog.has_value()) {
+    return std::nullopt;
+  }
+
+  return ParsedReplayLine{
+      .frame = frame,
+      .body_catalog = *body_catalog,
+  };
 }
 
 }  // namespace
 
-ReplayIngestReport load_replay_jsonl(const std::string& path) {
+ReplayIngestReport load_replay_jsonl_incremental(
+    const std::string& path,
+    std::size_t chunk_size_frames,
+    const ReplayIngestChunkCallback& on_chunk) {
+  if (chunk_size_frames == 0) {
+    return ReplayIngestReport{.error = "chunk_size_frames must be > 0"};
+  }
+
   std::ifstream in(path);
   if (!in.is_open()) {
     return ReplayIngestReport{.frames = {}, .error = "failed to open replay file"};
@@ -284,6 +382,34 @@ ReplayIngestReport load_replay_jsonl(const std::string& path) {
   std::size_t line_number = 0;
   std::optional<std::uint64_t> last_sequence;
   std::optional<std::string> run_id;
+  bool body_catalog_initialized = false;
+  std::unordered_set<std::string> active_body_ids;
+  std::unordered_set<std::string> body_ids_ever_seen;
+  std::uint64_t chunk_index = 0;
+  std::vector<SimulationFrame> chunk_frames;
+  chunk_frames.reserve(std::min<std::size_t>(chunk_size_frames, 4096));
+
+  auto emit_chunk = [&](bool is_final_chunk) mutable -> bool {
+    if (chunk_frames.empty() && !is_final_chunk) {
+      return true;
+    }
+
+    ReplayIngestChunk chunk{};
+    chunk.chunk_index = ++chunk_index;
+    chunk.lines_processed = static_cast<std::uint64_t>(line_number);
+    chunk.is_final_chunk = is_final_chunk;
+    chunk.frames = std::move(chunk_frames);
+    chunk.cumulative_body_ids.assign(body_ids_ever_seen.begin(), body_ids_ever_seen.end());
+    std::sort(chunk.cumulative_body_ids.begin(), chunk.cumulative_body_ids.end());
+
+    chunk_frames.clear();
+    chunk_frames.reserve(std::min<std::size_t>(chunk_size_frames, 4096));
+
+    if (on_chunk) {
+      return on_chunk(std::move(chunk));
+    }
+    return true;
+  };
 
   while (std::getline(in, line)) {
     line_number += 1;
@@ -291,8 +417,8 @@ ReplayIngestReport load_replay_jsonl(const std::string& path) {
       continue;
     }
 
-    const auto frame = parse_simulation_frame_line(line);
-    if (!frame.has_value()) {
+    const auto parsed = parse_simulation_frame_line(line);
+    if (!parsed.has_value()) {
       std::ostringstream err;
       err << "invalid replay JSONL frame at line " << line_number;
       report.error = err.str();
@@ -300,28 +426,110 @@ ReplayIngestReport load_replay_jsonl(const std::string& path) {
       return report;
     }
 
-    if (run_id.has_value() && frame->run_id != *run_id) {
+    const auto& frame = parsed->frame;
+
+    if (run_id.has_value() && frame.run_id != *run_id) {
       std::ostringstream err;
       err << "run_id mismatch at line " << line_number;
       report.error = err.str();
       report.frames.clear();
       return report;
     }
-    run_id = frame->run_id;
+    run_id = frame.run_id;
 
-    if (last_sequence.has_value() && frame->sequence <= *last_sequence) {
+    if (last_sequence.has_value() && frame.sequence <= *last_sequence) {
       std::ostringstream err;
       err << "non-monotonic replay sequence at line " << line_number;
       report.error = err.str();
       report.frames.clear();
       return report;
     }
-    last_sequence = frame->sequence;
+    last_sequence = frame.sequence;
 
-    report.frames.push_back(*frame);
+    const auto& catalog = parsed->body_catalog;
+    if (!catalog.present) {
+      std::ostringstream err;
+      err << "missing body_id_catalog at line " << line_number;
+      report.error = err.str();
+      report.frames.clear();
+      return report;
+    }
+
+    if (!body_catalog_initialized) {
+      if (catalog.initial_body_ids.empty()) {
+        std::ostringstream err;
+        err << "body_id_catalog.initial_body_ids must be provided on first frame at line " << line_number;
+        report.error = err.str();
+        report.frames.clear();
+        return report;
+      }
+      for (const auto& id : catalog.initial_body_ids) {
+        active_body_ids.insert(id);
+        body_ids_ever_seen.insert(id);
+      }
+      body_catalog_initialized = true;
+    } else if (!catalog.initial_body_ids.empty()) {
+      std::ostringstream err;
+      err << "body_id_catalog.initial_body_ids can only appear on first frame (line " << line_number << ")";
+      report.error = err.str();
+      report.frames.clear();
+      return report;
+    }
+
+    for (const auto& id : catalog.created_body_ids) {
+      if (active_body_ids.contains(id)) {
+        std::ostringstream err;
+        err << "body_id_catalog create for already-active id '" << id << "' at line " << line_number;
+        report.error = err.str();
+        report.frames.clear();
+        return report;
+      }
+      active_body_ids.insert(id);
+      body_ids_ever_seen.insert(id);
+    }
+
+    for (const auto& id : catalog.destroyed_body_ids) {
+      if (!active_body_ids.contains(id)) {
+        std::ostringstream err;
+        err << "body_id_catalog destroy for unknown id '" << id << "' at line " << line_number;
+        report.error = err.str();
+        report.frames.clear();
+        return report;
+      }
+      active_body_ids.erase(id);
+    }
+
+    report.frames.push_back(frame);
+    chunk_frames.push_back(frame);
+
+    if (chunk_frames.size() >= chunk_size_frames) {
+      if (!emit_chunk(false)) {
+        std::ostringstream err;
+        err << "replay ingest aborted by chunk callback at line " << line_number;
+        report.error = err.str();
+        report.frames.clear();
+        return report;
+      }
+    }
   }
 
+  if (!emit_chunk(true)) {
+    report.error = "replay ingest aborted by chunk callback at final chunk";
+    report.frames.clear();
+    return report;
+  }
+
+  report.body_ids.assign(body_ids_ever_seen.begin(), body_ids_ever_seen.end());
+  std::sort(report.body_ids.begin(), report.body_ids.end());
+
   return report;
+}
+
+ReplayIngestReport load_replay_jsonl(const std::string& path) {
+  return load_replay_jsonl_incremental(
+      path,
+      std::numeric_limits<std::size_t>::max(),
+      ReplayIngestChunkCallback{});
 }
 
 }  // namespace brambhand::client::common

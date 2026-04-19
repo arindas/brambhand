@@ -21,6 +21,7 @@ src/brambhand/
     simulation_clock.py           # simulation time vs wall-clock tracking
     pacing_controller.py          # real-time / accelerated / max-throughput control
     scheduler.py                  # subsystem update schedule (executes model-graph order)
+    body_lifecycle_registry.py    # authoritative body-id init/diff registry (create/destroy)
     event_bus.py
     state_snapshot.py
   dynamics/
@@ -139,6 +140,7 @@ src/brambhand/
   bridge/
     protocol/
       stream_schema.py            # versioned state/event/timeline transport contracts
+      body_id_catalog.py          # shared init/diff body-id lifecycle schema contracts
     server_py/
       stream_publisher.py         # Python runtime stream bridge (live mode)
       replay_adapter.py           # replay-log to stream-contract adapter
@@ -277,9 +279,14 @@ R10.5 intentionally delivers concrete non-optimizer algorithms through general p
 - R10.6: composes those same interfaces into staged closure-loop control and deterministic success/failure gating.
 - R11: introduces optimizer-backed backend adapters implementing the same provider/adapter contracts; mission controllers consume unchanged request/result schemas.
 
-## R10.6 mission encounter/capture closure-loop design (example-grade, non-optimizer)
+## R10.6 mission encounter/capture closure-loop design (baseline, non-optimizer, generalizable)
 
 Purpose: close the gap between maneuver-capable propagation and mission-success semantics, without promoting script-level kinematic overrides.
+
+Generalization policy for this milestone:
+- controller/state-machine logic must be target-body/scenario configurable and reusable by multiple mission profiles
+- mission scripts/examples may instantiate configs and run acceptance workflows, but must not define core controller semantics
+- any new runtime contract introduced for a script/harness must be promoted to shared modules before milestone closure
 
 ### Stage machine (deterministic)
 1. `departure_correction`
@@ -298,7 +305,7 @@ Transition policy is tick-deterministic and driven by propagated state metrics o
 - Exceeding budget or timeout triggers deterministic failure reason and terminal `capture_failed`.
 
 ### Success metrics contract
-- Evaluate Mars-relative orbital metrics each tick:
+- Evaluate primary-body-relative orbital metrics each tick (target body and envelopes are configuration-driven):
   - specific orbital energy
   - periapsis radius
   - apoapsis radius
@@ -318,7 +325,8 @@ Transition policy is tick-deterministic and driven by propagated state metrics o
 
 ### Replay/validation hooks
 - Replay artifacts include stage transitions, cumulative delta-v, cumulative propellant, and terminal reason.
-- Validation scripts can run in strict mode and fail the scenario when terminal reason is non-empty.
+- Reference acceptance harnesses can run in strict mode and fail scenarios when terminal reason is non-empty.
+- Harness inputs (target body, insertion envelopes, stage budgets/timeouts) are config-driven so one controller stack validates multiple mission classes.
 
 Textual stage definitions (authoritative):
 1. **Scenario + Assets**: load versioned scenario configuration and referenced assets.
@@ -484,6 +492,7 @@ Write semantics:
 | FR-125..FR-131 | `structures/fem/nonlinear.py`, `structures/fem/materials.py`, `structures/fem/transient.py`, `structures/fem/buckling.py`, `structures/fem/adaptivity.py`, `structures/fem/thermal_coupling.py`, `structures/fracture_model.py`, `geometry/mesh_pipeline.py`, runtime profile/fallback selectors |
 | FR-132..FR-137 | `fluid/reduced/*`, `fluid/cfd/*`, `fluid/contracts.py`, `propulsion/*`, `mission/assembly_topology.py`, `coupling/*`, `dynamics/*`, `structures/*` (including connected-topology state), replay/persistence topology provenance |
 | FR-139..FR-145, FR-148 | `bridge/protocol/*`, `bridge/server_py/*`, `client/common/*`, `client/desktop/platform/*`, `client/desktop/ui/*`, `client/desktop/render/vulkan/*`, `visualization/*`, replay/stream equivalence contracts |
+| FR-157..FR-160 | `core/body_lifecycle_registry.py`, `bridge/protocol/body_id_catalog.py`, replay persistence adapters, `bridge/server_py/*`, `client/common/replay/*`, `client/common/stream/*`, desktop ingest/view-model adapters |
 | FR-146..FR-147 | `visualization/quicklook_contracts.py`, `visualization/quicklook_pipeline.py`, `visualization/trajectory_render_contracts.py`, compact infographic UI adapters, rich-render trajectory overlay adapters |
 | FR-044..FR-048 | `core/simulation_clock.py`, `core/pacing_controller.py`, `core/scheduler.py`, replay/persistence metadata |
 | FR-049..FR-058, FR-138 | `core/model_graph.py`, `core/scheduler.py`, `core/simulation_runtime.py`, contract schemas, unit/frame validators, distributed sync protocol, replay metadata |
@@ -654,8 +663,17 @@ Execution order (authoritative):
 - Architecture surface:
   - `client/desktop/platform/*`
   - `client/desktop/ui/*` (replay quicklook panels)
-  - replay ingest adapters under `client/common/replay/*`.
+  - replay ingest adapters under `client/common/replay/*`
+  - render configuration contracts under `client/common/render_config.*`
+  - renderer-agnostic semantics interfaces under `client/common/render_semantics.*` consumed by concrete renderer backends
+  - shared plot-geometry helpers under `client/common/plot_geometry.*` for bounds/view transforms reused across renderer backends
+  - window/runtime backend abstraction (`quicklook_runtime.*`) and canvas abstraction (`quicklook_canvas.*`) so framework-specific APIs (SDL now, GTK later) stay behind adapters
+  - numeric render primitives and hot frame-state structs use explicit alignment/size guards to stay cache-friendly under high-frame-rate loops.
 - Determinism policy: replay ingestion and panel ordering preserve R8.0 sequence semantics; no divergence from contract ordering.
+- Explicit backend split policy:
+  - ingest + quicklook + render-config contracts are backend-agnostic and frozen across renderer backends
+  - renderer backend is selectable by flag (`--renderer quicklook_2d|vulkan_3d`), with current implementation limited to `quicklook_2d`
+  - future Vulkan/3D/STL/ray-march realization (R8.5) must consume the same contracts rather than introducing alternate ingest/view semantics.
 
 ### R8.1 — Dashboard data contracts and view-models (headless)
 - Inputs: simulation snapshots/events/alarms, replay metadata.
@@ -702,6 +720,84 @@ Execution order (authoritative):
 - **Determinism contract:** sequence IDs + schema versions are required on bridge payloads; replay and stream ordering semantics must remain equivalent within documented tolerances.
 - **Backpressure contract:** bounded ring buffers and explicit drop/degrade policies prevent UI/render stalls from blocking simulation bridge ingestion.
 
+### Reference mission harness naming convention (project-wide)
+
+Reference harnesses are acceptance assets, not core-runtime architecture. To keep traceability stable across phases, use the following naming scheme.
+
+- **Canonical harness ID (docs/validation/TODO):** `EX-<MILESTONE>-<NNN>`
+  - examples: `EX-R8.05-001`, `EX-R10.6-002`
+- **Script filename:** `examples/ex_<milestone_token>_<nnn>_<mission_slug>.py`
+  - milestone token uses `p` for dots (e.g., `r8p05`, `r10p6`)
+  - example: `examples/ex_r10p6_001_earth_jupiter_transfer.py`
+- **Default replay `run_id`:** `ex-<milestone_token>-<nnn>-<mission-slug>`
+  - example: `ex-r10p6-001-earth-jupiter-transfer`
+- **Artifact prefix:** same as run_id for replay/render-config/checkpoint outputs.
+
+Required metadata fields inside each harness module:
+- `EXAMPLE_ID` (canonical docs ID)
+- `EXAMPLE_MILESTONE`
+- `EXAMPLE_SLUG`
+- `EXAMPLE_DESCRIPTION`
+
+Policy:
+- harness IDs are immutable once referenced in docs/validation evidence
+- new behavior variants should create new IDs instead of silently repurposing old harnesses
+- harnesses must consume shared runtime contracts/modules; no harness-specific core branches
+
+### Body-ID lifecycle registry architecture (library-wide)
+
+This architecture defines a reusable, simulation-authoritative body lifecycle contract used by replay and live stream paths.
+
+- **Authoritative producer:** `core/body_lifecycle_registry.py`
+  - owns active-body set and deterministic lifecycle ordering at tick boundaries
+  - lifecycle API (planned):
+    - `initialize(initial_ids)`
+    - `mark_created(body_id, tick_id, reason, provenance)`
+    - `mark_destroyed(body_id, tick_id, reason, provenance)`
+    - `emit_tick_diff(tick_id) -> BodyIdCatalogDiff`
+- **Persistence/transport contract:** `body_id_catalog`
+  - frame 0: `initial_body_ids`
+  - each frame: `created_body_ids`, `destroyed_body_ids`
+  - versioned schema + deterministic ordering of IDs in payloads
+- **Consumer reconstruction policy:**
+  - clients maintain `active_ids` and `ever_seen_ids` via init+diff application
+  - global ID catalog discovery from `bodies[*]` arrays is prohibited (contract + tests)
+- **Integration points (planned):**
+  - scenario initialization (seed initial body IDs)
+  - topology split/attach events (R3.1)
+  - docking/undocking lifecycle transitions (R10)
+  - debris generation/fragment destruction (R9)
+  - any mission-driven spawn/despawn operations
+- **Complexity target:**
+  - per-tick lifecycle maintenance scales with delta size (`created + destroyed`) and hash-set/map ops, not full active-body scans.
+- **Replay/live parity rule:**
+  - replay artifacts and live stream frames must emit identical lifecycle semantics/schemas so downstream adapters remain shared.
+
+#### Phased implementation plan (deferred execution, design-frozen now)
+
+1. **Phase A — contracts + registry core (simulation-side only)**
+   - define canonical `BodyIdCatalog` contract module (`schema_version`, `initial_body_ids`, `created_body_ids`, `destroyed_body_ids`)
+   - implement `core/body_lifecycle_registry.py` with deterministic tick-boundary diff emission
+   - enforce invariants (no duplicate create, no unknown destroy, first-frame initial only)
+
+2. **Phase B — replay persistence integration**
+   - integrate registry emission into replay frame writer path
+   - persist only init+diff metadata (no full-catalog snapshots each tick)
+   - update replay adapters/ingest to consume registry diffs exclusively for global ID catalogs
+
+3. **Phase C — domain integration hooks**
+   - wire lifecycle events from topology split/attach, dock/undock, debris spawn/despawn, mission-specific creation/destruction flows
+   - ensure tick-order deterministic lifecycle event aggregation before frame commit
+
+4. **Phase D — live stream parity**
+   - extend `interfaces/runtime_bridge.proto` and bridge publisher to carry `body_id_catalog` with same semantics as replay
+   - guarantee replay/live equivalence for lifecycle metadata ordering and schema versions
+
+5. **Phase E — verification hardening and performance**
+   - add replay/live parity regression suite for lifecycle catalogs
+   - add complexity guards to prevent O(N) full-body discovery scans in consumer paths
+   - add workload benchmarks for lifecycle-delta-heavy scenarios (fragmentation, separation bursts)
+
 ## Baseline UI layout (initial common-sense wireframe spec)
 
 These are initial layout contracts to unblock backend/view-model design before final UX iteration.
@@ -740,6 +836,7 @@ Execution policy:
 - **Core delivery lane (anti-derailment):** `R2.2 -> R2.3 -> R3 -> R3.1 -> R8.0 -> R8.05 -> R4 -> R8.1 -> R5 -> R8.2 -> R6 -> R7 -> R7.1 -> R8.3 -> R7.2 -> R8.4 -> R8.5`.
 - Do not pull post-core milestones forward unless explicitly prioritized.
 - Core lane focuses on simulation correctness/coupling/replay determinism and only minimal operator-feedback surfaces needed for validation.
+- Architecture guardrail: prioritize reusable contracts/modules; example scripts/harnesses validate core behavior but must not introduce example-specific runtime branches.
 
 - **R1: 6-DOF core + mechanisms + docking contact baseline**
 - **R2: Propulsion fluid network + combustion + thrust estimation + leakage**

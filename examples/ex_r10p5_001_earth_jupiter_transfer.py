@@ -8,9 +8,17 @@ import json
 import math
 import sys
 from copy import deepcopy
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+
+EXAMPLE_ID = "EX-R10.5-001"
+EXAMPLE_MILESTONE = "R10.5"
+EXAMPLE_SLUG = "earth-jupiter-transfer"
+EXAMPLE_DESCRIPTION = (
+    "Reference non-optimizer mission harness for Earth->Jupiter transfer with replay-compatible "
+    "maneuver/state/event provenance."
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "python" / "brambhand" / "src"))
@@ -60,6 +68,74 @@ PLANET_ORBITAL_ELEMENTS = {
     "uranus": {"a_m": 19.1913 * AU_M, "e": 0.0472, "mean_anomaly0_rad": 1.7, "arg_periapsis_rad": 2.90},
     "neptune": {"a_m": 30.07 * AU_M, "e": 0.0086, "mean_anomaly0_rad": 0.9, "arg_periapsis_rad": 4.80},
 }
+
+
+@dataclass
+class BodyIdCatalogTracker:
+    """Tracks simulation body-id lifecycle using init + per-tick diffs."""
+
+    active_ids: set[str]
+    _pending_created: set[str]
+    _pending_destroyed: set[str]
+    _initial_emitted: bool
+
+    @classmethod
+    def from_initial(cls, body_ids: list[str]) -> "BodyIdCatalogTracker":
+        return cls(
+            active_ids=set(body_ids),
+            _pending_created=set(),
+            _pending_destroyed=set(),
+            _initial_emitted=False,
+        )
+
+    def mark_created(self, body_id: str) -> None:
+        if body_id in self.active_ids:
+            raise ValueError(f"body id already active: {body_id}")
+        self.active_ids.add(body_id)
+        self._pending_created.add(body_id)
+        self._pending_destroyed.discard(body_id)
+
+    def mark_destroyed(self, body_id: str) -> None:
+        if body_id not in self.active_ids:
+            raise ValueError(f"body id not active: {body_id}")
+        self.active_ids.remove(body_id)
+        self._pending_destroyed.add(body_id)
+        self._pending_created.discard(body_id)
+
+    def emit_frame_payload(self) -> dict[str, Any]:
+        payload = {
+            "schema_version": 1,
+            "initial_body_ids": sorted(self.active_ids) if not self._initial_emitted else [],
+            "created_body_ids": sorted(self._pending_created),
+            "destroyed_body_ids": sorted(self._pending_destroyed),
+        }
+        self._initial_emitted = True
+        self._pending_created.clear()
+        self._pending_destroyed.clear()
+        return payload
+
+
+@dataclass(frozen=True)
+class ProbeAdvanceContext:
+    dt_s: float
+    samples: int
+    undock_index: int
+    encounter_target_index: int
+    maneuver_executor: ManeuverExecutor
+    probe_propulsion: PropulsionSystem
+    stage_dv_budget_mps: dict[str, float]
+
+
+@dataclass
+class ProbeAdvanceState:
+    bodies: list[PhysicalBody]
+    probe_mass_model: MassModel | None
+    mission_stage: str
+    capture_start_index: int | None
+    circularization_complete_index: int | None
+    capture_success_tick: int | None
+    capture_failure_reason: str | None
+    stage_dv_used_mps: dict[str, float]
 
 
 def _build_event(
@@ -298,6 +374,254 @@ def _target_departure_velocity_single_shoot(
     return vel
 
 
+def _body_role(name: str) -> str:
+    match name:
+        case "sun":
+            return "orbit"
+        case "mars_probe":
+            return "probe"
+        case planet_name if planet_name in PLANET_ORBITAL_ELEMENTS:
+            return "orbit"
+        case _:
+            return "vehicle"
+
+
+def _build_body_json_payload(bodies: list[PhysicalBody]) -> list[dict[str, Any]]:
+    return [
+        {
+            "body_id": body.name,
+            "visualization_role": _body_role(body.name),
+            "position_m": {
+                "x": body.state.position.x,
+                "y": body.state.position.y,
+                "z": body.state.position.z,
+            },
+        }
+        for body in bodies
+    ]
+
+
+def _append_fixed_timeline_events(
+    events: list[dict[str, Any]],
+    i: int,
+    samples: int,
+    sim_time_s: float,
+) -> None:
+    match i:
+        case 0:
+            events.append(_build_event(i, sim_time_s, "simulation_started", "info"))
+            events.append(_build_event(i, sim_time_s, "departure_burn_start", "info"))
+        case _ if i == max(1, samples // 20):
+            events.append(_build_event(i, sim_time_s, "departure_burn_complete", "info"))
+        case _ if i == samples // 3:
+            events.append(_build_event(i, sim_time_s, "midcourse_correction", "warning"))
+        case _ if i == (2 * samples) // 3:
+            events.append(_build_event(i, sim_time_s, "jupiter_soi_entry", "warning"))
+        case _ if i == max(samples - max(1, samples // 20), 1):
+            events.append(_build_event(i, sim_time_s, "arrival_insertion_burn_start", "warning"))
+        case _ if i == samples:
+            events.append(_build_event(i, sim_time_s, "arrival_insertion_burn_complete", "critical"))
+        case _:
+            pass
+
+
+def _append_budgeted_finite_burn_command(
+    *,
+    commands: list[ManeuverCommand],
+    mission_stage: str,
+    tick: int,
+    dv_vector: Vector3,
+    probe_mass_kg: float,
+    dt_s: float,
+    stage_dv_budget_mps: dict[str, float],
+    stage_dv_used_mps: dict[str, float],
+    propulsion: PropulsionSystem,
+) -> str | None:
+    dv_mag = dv_vector.norm()
+    if dv_mag <= 1e-9:
+        return None
+
+    budget_remaining = stage_dv_budget_mps[mission_stage] - stage_dv_used_mps[mission_stage]
+    if budget_remaining <= 1e-6:
+        return "budget_exhausted"
+
+    if dv_mag > budget_remaining:
+        dv_vector = dv_vector * (budget_remaining / dv_mag)
+        dv_mag = dv_vector.norm()
+
+    throttle = min(1.0, (dv_mag * probe_mass_kg) / max(propulsion.max_thrust_n * dt_s, 1e-9))
+    commands.append(
+        ManeuverCommand(
+            schema_version=MANEUVER_SCHEMA_VERSION,
+            command_id=f"{mission_stage}-{tick}",
+            body_id="mars_probe",
+            requested_tick=tick,
+            mode=ManeuverMode.FINITE_BURN_CONSTANT_THRUST,
+            direction=dv_vector,
+            throttle=throttle,
+            duration_ticks=1,
+        )
+    )
+    return None
+
+
+def _capture_tangential_hat(rel_r: Vector3, rel_v: Vector3) -> Vector3:
+    radial_hat = rel_r.normalized()
+    tangential_hat = Vector3(-radial_hat.y, radial_hat.x, 0.0)
+    if (rel_r.x * rel_v.y - rel_r.y * rel_v.x) < 0.0:
+        tangential_hat = tangential_hat * -1.0
+    return tangential_hat
+
+
+def _advance_probe_if_active(
+    *,
+    i: int,
+    context: ProbeAdvanceContext,
+    state: ProbeAdvanceState,
+) -> list[dict[str, Any]]:
+    frame_maneuver_records: list[dict[str, Any]] = []
+    if not (
+        i >= context.undock_index
+        and any(body.name == "mars_probe" for body in state.bodies)
+        and state.probe_mass_model is not None
+    ):
+        return frame_maneuver_records
+
+    probe = _find_body(state.bodies, "mars_probe")
+    mars = _find_body(state.bodies, "mars")
+    rel_r = probe.state.position - mars.state.position
+    rel_v = probe.state.velocity - mars.state.velocity
+    rmag = max(1.0, rel_r.norm())
+
+    if state.mission_stage == "departure_correction" and i >= context.undock_index + max(2, context.samples // 24):
+        state.mission_stage = "midcourse_trim"
+
+    if state.mission_stage in {"departure_correction", "midcourse_trim"} and rmag < 6.0e9:
+        state.mission_stage = "capture_burn"
+        state.capture_start_index = i
+        state.circularization_complete_index = min(context.samples, i + max(20, context.samples // 10))
+
+    commands: list[ManeuverCommand] = []
+    if state.capture_success_tick is None and state.capture_failure_reason is None:
+        match state.mission_stage:
+            case "departure_correction" | "midcourse_trim":
+                match state.mission_stage:
+                    case "departure_correction":
+                        rendezvous_tick = context.encounter_target_index
+                        stage_scale = 1.0
+                    case "midcourse_trim":
+                        rendezvous_tick = min(context.samples, context.encounter_target_index + max(8, context.samples // 20))
+                        stage_scale = 0.65
+                    case _:
+                        raise RuntimeError(f"unexpected stage: {state.mission_stage}")
+
+                remaining_time_s = max((rendezvous_tick - i) * context.dt_s, context.dt_s)
+                desired_rel_vel = (mars.state.position - probe.state.position) / remaining_time_s
+                target_velocity = mars.state.velocity + desired_rel_vel
+                dv_cmd = (target_velocity - probe.state.velocity) * stage_scale
+
+                state.capture_failure_reason = _append_budgeted_finite_burn_command(
+                    commands=commands,
+                    mission_stage=state.mission_stage,
+                    tick=i,
+                    dv_vector=dv_cmd,
+                    probe_mass_kg=probe.mass,
+                    dt_s=context.dt_s,
+                    stage_dv_budget_mps=context.stage_dv_budget_mps,
+                    stage_dv_used_mps=state.stage_dv_used_mps,
+                    propulsion=context.probe_propulsion,
+                )
+
+            case "capture_burn" | "circularization":
+                tangential_hat = _capture_tangential_hat(rel_r, rel_v)
+
+                match state.mission_stage:
+                    case "capture_burn":
+                        target_radius = max(rmag, 3.0 * MARS_PROBE_FINAL_ORBIT_RADIUS_M)
+                        stage_scale = 1.0
+                    case "circularization":
+                        target_radius = MARS_PROBE_FINAL_ORBIT_RADIUS_M
+                        stage_scale = 0.55
+                    case _:
+                        raise RuntimeError(f"unexpected stage: {state.mission_stage}")
+
+                target_speed = math.sqrt(MU_MARS_M3_S2 / max(target_radius, 1.0))
+                target_velocity = mars.state.velocity + tangential_hat * target_speed
+                dv_cap = (target_velocity - probe.state.velocity) * stage_scale
+
+                state.capture_failure_reason = _append_budgeted_finite_burn_command(
+                    commands=commands,
+                    mission_stage=state.mission_stage,
+                    tick=i,
+                    dv_vector=dv_cap,
+                    probe_mass_kg=probe.mass,
+                    dt_s=context.dt_s,
+                    stage_dv_budget_mps=context.stage_dv_budget_mps,
+                    stage_dv_used_mps=state.stage_dv_used_mps,
+                    propulsion=context.probe_propulsion,
+                )
+            case _:
+                pass
+
+    probe_after, mass_after, records = context.maneuver_executor.apply_tick(
+        tick=i,
+        dt_s=context.dt_s,
+        body=probe,
+        mass_model=state.probe_mass_model,
+        propulsion=context.probe_propulsion,
+        commands=commands,
+    )
+    state.probe_mass_model = mass_after
+    state.bodies = _replace_body(state.bodies, probe_after)
+
+    frame_maneuver_records = [
+        {
+            "command_id": record.command_id,
+            "body_id": record.body_id,
+            "phase_id": record.phase_id,
+            "target_id": record.target_id,
+            "requested_tick": record.requested_tick,
+            "applied_tick": record.applied_tick,
+            "mode": str(record.mode),
+            "delta_v_commanded_mps": record.delta_v_commanded_mps,
+            "delta_v_applied_mps": record.delta_v_applied_mps,
+            "propellant_used_kg": record.propellant_used_kg,
+            "termination_reason": record.termination_reason,
+        }
+        for record in records
+    ]
+
+    state.stage_dv_used_mps[state.mission_stage] = state.stage_dv_used_mps.get(state.mission_stage, 0.0) + sum(
+        record.delta_v_applied_mps for record in records
+    )
+
+    probe_metrics = _mars_relative_orbit_metrics(probe_after, mars)
+    if state.mission_stage == "capture_burn" and probe_metrics["bound"] > 0.5:
+        state.mission_stage = "circularization"
+
+    rp_ok = 0.5 * MARS_PROBE_FINAL_ORBIT_RADIUS_M <= probe_metrics["rp"] <= 4.0 * MARS_PROBE_FINAL_ORBIT_RADIUS_M
+    ra_ok = probe_metrics["ra"] <= (8.0 * MARS_PROBE_FINAL_ORBIT_RADIUS_M)
+    if state.capture_success_tick is None and probe_metrics["bound"] > 0.5 and rp_ok and ra_ok:
+        state.capture_success_tick = i
+        state.mission_stage = "insertion_complete"
+
+    if (
+        state.mission_stage in {"departure_correction", "midcourse_trim"}
+        and i >= context.encounter_target_index + max(10, context.samples // 12)
+        and rmag > 1.2e10
+    ):
+        state.capture_failure_reason = "geometry_miss"
+    if (
+        state.mission_stage == "circularization"
+        and state.circularization_complete_index is not None
+        and i >= state.circularization_complete_index
+        and state.capture_success_tick is None
+    ):
+        state.capture_failure_reason = "capture_energy_positive"
+
+    return frame_maneuver_records
+
+
 def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
     if samples < 32:
         raise ValueError("samples must be >= 32")
@@ -341,27 +665,39 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
         for idx in range(undock_index, encounter_target_index + 1)
     ]
 
-    capture_start_index: int | None = None
-    circularization_complete_index: int | None = None
-    capture_success_tick: int | None = None
     capture_failed_emitted = False
-    capture_failure_reason: str | None = None
-    mission_stage = "departure_correction"
     stage_dv_budget_mps = {
         "departure_correction": 5000.0,
         "midcourse_trim": 2500.0,
         "capture_burn": 2200.0,
         "circularization": 1400.0,
     }
-    stage_dv_used_mps = {key: 0.0 for key in stage_dv_budget_mps}
 
     gravity = NBodyGravityModel(softening_length=1_000_000.0)
     integrator = VelocityVerletIntegrator(gravity_model=gravity)
-    bodies = _init_bodies(best_mars_phase)
+    initial_bodies = _init_bodies(best_mars_phase)
+    body_catalog_tracker = BodyIdCatalogTracker.from_initial([body.name for body in initial_bodies])
 
-    maneuver_executor = ManeuverExecutor()
-    probe_mass_model: MassModel | None = None
     probe_propulsion = PropulsionSystem(max_thrust_n=1200.0, specific_impulse_s=315.0)
+    probe_context = ProbeAdvanceContext(
+        dt_s=dt_s,
+        samples=samples,
+        undock_index=undock_index,
+        encounter_target_index=encounter_target_index,
+        maneuver_executor=ManeuverExecutor(),
+        probe_propulsion=probe_propulsion,
+        stage_dv_budget_mps=stage_dv_budget_mps,
+    )
+    probe_state = ProbeAdvanceState(
+        bodies=initial_bodies,
+        probe_mass_model=None,
+        mission_stage="departure_correction",
+        capture_start_index=None,
+        circularization_complete_index=None,
+        capture_success_tick=None,
+        capture_failure_reason=None,
+        stage_dv_used_mps={key: 0.0 for key in stage_dv_budget_mps},
+    )
     mars_handoff_provider = TwoBodySOIHandoffMetadataProvider(
         mu_primary_m3_s2=MU_MARS_M3_S2,
         sphere_of_influence_radius_m=5.77e8,
@@ -372,180 +708,44 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
         sim_time_s = i * dt_s
         frame_maneuver_records: list[dict[str, Any]] = []
 
-        if i == undock_index:
-            current = _find_body(bodies, "current_vehicle")
-            mars = _find_body(bodies, "mars")
-            rel = current.state.position - mars.state.position
-            if rel.norm() < 1.0:
-                rel_hat = Vector3(1.0, 0.0, 0.0)
-            else:
-                rel_hat = rel.normalized()
+        match i:
+            case _ if i == undock_index:
+                current = _find_body(probe_state.bodies, "current_vehicle")
+                mars = _find_body(probe_state.bodies, "mars")
+                rel = current.state.position - mars.state.position
+                rel_hat = Vector3(1.0, 0.0, 0.0) if rel.norm() < 1.0 else rel.normalized()
 
-            probe_mass_model = MassModel(dry_mass_kg=500.0, propellant_mass_kg=450.0)
-            sep_pos = current.state.position + rel_hat * 60_000.0
-            sep_vel = current.state.velocity + rel_hat * 4.0
+                probe_state.probe_mass_model = MassModel(dry_mass_kg=500.0, propellant_mass_kg=450.0)
+                sep_pos = current.state.position + rel_hat * 60_000.0
+                sep_vel = current.state.velocity + rel_hat * 4.0
 
-            # Lambert-seeded and single-shoot-corrected departure velocity target.
-            mars_target_pos = mars_track_for_targeting[-1]
-            target_vel = _target_departure_velocity_single_shoot(
-                probe_pos0=sep_pos,
-                mars_target_pos=mars_target_pos,
-                dt_s=dt_s,
-                mars_track=mars_track_for_targeting,
-            )
-            sep_vel = sep_vel + (target_vel - sep_vel)
+                # Lambert-seeded and single-shoot-corrected departure velocity target.
+                mars_target_pos = mars_track_for_targeting[-1]
+                target_vel = _target_departure_velocity_single_shoot(
+                    probe_pos0=sep_pos,
+                    mars_target_pos=mars_target_pos,
+                    dt_s=dt_s,
+                    mars_track=mars_track_for_targeting,
+                )
+                sep_vel = sep_vel + (target_vel - sep_vel)
 
-            bodies.append(_make_body("mars_probe", probe_mass_model.total_mass_kg, sep_pos, sep_vel))
+                bodies_next = list(probe_state.bodies)
+                bodies_next.append(_make_body("mars_probe", probe_state.probe_mass_model.total_mass_kg, sep_pos, sep_vel))
+                probe_state.bodies = bodies_next
+                body_catalog_tracker.mark_created("mars_probe")
+            case _:
+                pass
 
-        if i >= undock_index and any(body.name == "mars_probe" for body in bodies) and probe_mass_model is not None:
-            probe = _find_body(bodies, "mars_probe")
-            mars = _find_body(bodies, "mars")
-            rel_r = probe.state.position - mars.state.position
-            rel_v = probe.state.velocity - mars.state.velocity
-            rmag = max(1.0, rel_r.norm())
-
-            if mission_stage == "departure_correction" and i >= undock_index + max(2, samples // 24):
-                mission_stage = "midcourse_trim"
-
-            if mission_stage in {"departure_correction", "midcourse_trim"} and rmag < 6.0e9:
-                mission_stage = "capture_burn"
-                capture_start_index = i
-                circularization_complete_index = min(samples, i + max(20, samples // 10))
-
-            commands: list[ManeuverCommand] = []
-            if capture_success_tick is None and capture_failure_reason is None:
-                if mission_stage in {"departure_correction", "midcourse_trim"}:
-                    rendezvous_tick = encounter_target_index if mission_stage == "departure_correction" else min(samples, encounter_target_index + max(8, samples // 20))
-                    remaining_time_s = max((rendezvous_tick - i) * dt_s, dt_s)
-                    desired_rel_vel = (mars.state.position - probe.state.position) / remaining_time_s
-                    target_velocity = mars.state.velocity + desired_rel_vel
-                    dv_cmd = target_velocity - probe.state.velocity
-
-                    if mission_stage == "midcourse_trim":
-                        dv_cmd = dv_cmd * 0.65
-
-                    dv_cmd_mag = dv_cmd.norm()
-                    if dv_cmd_mag > 1e-9:
-                        budget_remaining = stage_dv_budget_mps[mission_stage] - stage_dv_used_mps[mission_stage]
-                        if budget_remaining <= 1e-6:
-                            capture_failure_reason = "budget_exhausted"
-                        else:
-                            if dv_cmd_mag > budget_remaining:
-                                dv_cmd = dv_cmd * (budget_remaining / dv_cmd_mag)
-                                dv_cmd_mag = dv_cmd.norm()
-                            throttle = min(1.0, (dv_cmd_mag * probe.mass) / max(probe_propulsion.max_thrust_n * dt_s, 1e-9))
-                            commands.append(
-                                ManeuverCommand(
-                                    schema_version=MANEUVER_SCHEMA_VERSION,
-                                    command_id=f"{mission_stage}-{i}",
-                                    body_id="mars_probe",
-                                    requested_tick=i,
-                                    mode=ManeuverMode.FINITE_BURN_CONSTANT_THRUST,
-                                    direction=dv_cmd,
-                                    throttle=throttle,
-                                    duration_ticks=1,
-                                )
-                            )
-
-                elif mission_stage in {"capture_burn", "circularization"}:
-                    radial_hat = rel_r.normalized()
-                    tangential_hat = Vector3(-radial_hat.y, radial_hat.x, 0.0)
-                    if (rel_r.x * rel_v.y - rel_r.y * rel_v.x) < 0.0:
-                        tangential_hat = tangential_hat * -1.0
-
-                    if mission_stage == "capture_burn":
-                        target_radius = max(rmag, 3.0 * MARS_PROBE_FINAL_ORBIT_RADIUS_M)
-                    else:
-                        target_radius = MARS_PROBE_FINAL_ORBIT_RADIUS_M
-                    target_speed = math.sqrt(MU_MARS_M3_S2 / max(target_radius, 1.0))
-                    target_velocity = mars.state.velocity + tangential_hat * target_speed
-                    dv_cap = target_velocity - probe.state.velocity
-                    if mission_stage == "circularization":
-                        dv_cap = dv_cap * 0.55
-
-                    dv_cap_mag = dv_cap.norm()
-                    if dv_cap_mag > 1e-9:
-                        budget_remaining = stage_dv_budget_mps[mission_stage] - stage_dv_used_mps[mission_stage]
-                        if budget_remaining <= 1e-6:
-                            capture_failure_reason = "budget_exhausted"
-                        else:
-                            if dv_cap_mag > budget_remaining:
-                                dv_cap = dv_cap * (budget_remaining / dv_cap_mag)
-                                dv_cap_mag = dv_cap.norm()
-                            throttle = min(1.0, (dv_cap_mag * probe.mass) / max(probe_propulsion.max_thrust_n * dt_s, 1e-9))
-                            commands.append(
-                                ManeuverCommand(
-                                    schema_version=MANEUVER_SCHEMA_VERSION,
-                                    command_id=f"{mission_stage}-{i}",
-                                    body_id="mars_probe",
-                                    requested_tick=i,
-                                    mode=ManeuverMode.FINITE_BURN_CONSTANT_THRUST,
-                                    direction=dv_cap,
-                                    throttle=throttle,
-                                    duration_ticks=1,
-                                )
-                            )
-
-            probe_after, mass_after, records = maneuver_executor.apply_tick(
-                tick=i,
-                dt_s=dt_s,
-                body=probe,
-                mass_model=probe_mass_model,
-                propulsion=probe_propulsion,
-                commands=commands,
-            )
-            probe_mass_model = mass_after
-            bodies = _replace_body(bodies, probe_after)
-
-            frame_maneuver_records = [
-                {
-                    "command_id": record.command_id,
-                    "body_id": record.body_id,
-                    "phase_id": record.phase_id,
-                    "target_id": record.target_id,
-                    "requested_tick": record.requested_tick,
-                    "applied_tick": record.applied_tick,
-                    "mode": str(record.mode),
-                    "delta_v_commanded_mps": record.delta_v_commanded_mps,
-                    "delta_v_applied_mps": record.delta_v_applied_mps,
-                    "propellant_used_kg": record.propellant_used_kg,
-                    "termination_reason": record.termination_reason,
-                }
-                for record in records
-            ]
-
-            stage_dv_used_mps[mission_stage] = stage_dv_used_mps.get(mission_stage, 0.0) + sum(
-                record.delta_v_applied_mps for record in records
-            )
-
-            probe_metrics = _mars_relative_orbit_metrics(probe_after, mars)
-            if mission_stage == "capture_burn" and probe_metrics["bound"] > 0.5:
-                mission_stage = "circularization"
-
-            rp_ok = 0.5 * MARS_PROBE_FINAL_ORBIT_RADIUS_M <= probe_metrics["rp"] <= 4.0 * MARS_PROBE_FINAL_ORBIT_RADIUS_M
-            ra_ok = probe_metrics["ra"] <= (8.0 * MARS_PROBE_FINAL_ORBIT_RADIUS_M)
-            if capture_success_tick is None and probe_metrics["bound"] > 0.5 and rp_ok and ra_ok:
-                capture_success_tick = i
-                mission_stage = "insertion_complete"
-
-            if (
-                mission_stage in {"departure_correction", "midcourse_trim"}
-                and i >= encounter_target_index + max(10, samples // 12)
-                and rmag > 1.2e10
-            ):
-                capture_failure_reason = "geometry_miss"
-            if (
-                mission_stage == "circularization"
-                and circularization_complete_index is not None
-                and i >= circularization_complete_index
-                and capture_success_tick is None
-            ):
-                capture_failure_reason = "capture_energy_positive"
+        frame_maneuver_records = _advance_probe_if_active(
+            i=i,
+            context=probe_context,
+            state=probe_state,
+        )
 
         probe_handoff_payload_by_phase: dict[HandoffPhaseKind, dict[str, Any]] = {}
-        if any(body.name == "mars_probe" for body in bodies):
-            probe_body = _find_body(bodies, "mars_probe")
-            mars_body = _find_body(bodies, "mars")
+        if any(body.name == "mars_probe" for body in probe_state.bodies):
+            probe_body = _find_body(probe_state.bodies, "mars_probe")
+            mars_body = _find_body(probe_state.bodies, "mars")
             for phase_kind in (
                 HandoffPhaseKind.ENCOUNTER,
                 HandoffPhaseKind.CAPTURE_START,
@@ -568,29 +768,31 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
                 probe_handoff_payload_by_phase[phase_kind] = payload
 
         events: list[dict[str, Any]] = []
-        if i == 0:
-            events.append(_build_event(i, sim_time_s, "simulation_started", "info"))
-            events.append(_build_event(i, sim_time_s, "departure_burn_start", "info"))
-        if i == max(1, samples // 20):
-            events.append(_build_event(i, sim_time_s, "departure_burn_complete", "info"))
-        if i == undock_index:
-            events.append(_build_event(i, sim_time_s, "mars_probe_undock", "warning"))
-        if i == encounter_target_index and HandoffPhaseKind.ENCOUNTER in probe_handoff_payload_by_phase:
-            events.append(
-                _build_event(
-                    i,
-                    sim_time_s,
-                    "mars_probe_encounter",
-                    "warning",
-                    payload={"handoff": probe_handoff_payload_by_phase[HandoffPhaseKind.ENCOUNTER]},
+        _append_fixed_timeline_events(events, i, samples, sim_time_s)
+
+        match i:
+            case _ if i == undock_index:
+                events.append(_build_event(i, sim_time_s, "mars_probe_undock", "warning"))
+            case _ if i == encounter_target_index and HandoffPhaseKind.ENCOUNTER in probe_handoff_payload_by_phase:
+                events.append(
+                    _build_event(
+                        i,
+                        sim_time_s,
+                        "mars_probe_encounter",
+                        "warning",
+                        payload={"handoff": probe_handoff_payload_by_phase[HandoffPhaseKind.ENCOUNTER]},
+                    )
                 )
-            )
-        if capture_start_index is not None and i == capture_start_index:
+            case _:
+                pass
+
+        if probe_state.capture_start_index is not None and i == probe_state.capture_start_index:
             payload: dict[str, Any] = {}
             if HandoffPhaseKind.CAPTURE_START in probe_handoff_payload_by_phase:
                 payload["handoff"] = probe_handoff_payload_by_phase[HandoffPhaseKind.CAPTURE_START]
             events.append(_build_event(i, sim_time_s, "mars_probe_capture_burn_start", "warning", payload=payload))
-        if capture_success_tick is not None and i == capture_success_tick:
+
+        if probe_state.capture_success_tick is not None and i == probe_state.capture_success_tick:
             events.append(
                 _build_event(
                     i,
@@ -598,13 +800,14 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
                     "mars_probe_orbit_insertion_complete",
                     "warning",
                     payload={
-                        "stage_dv_used_mps": stage_dv_used_mps,
+                        "stage_dv_used_mps": probe_state.stage_dv_used_mps,
                         "failure_reason": None,
                         "handoff": probe_handoff_payload_by_phase.get(HandoffPhaseKind.INSERTION_COMPLETE),
                     },
                 )
             )
-        if capture_failure_reason is not None and not capture_failed_emitted:
+
+        if probe_state.capture_failure_reason is not None and not capture_failed_emitted:
             events.append(
                 _build_event(
                     i,
@@ -612,17 +815,18 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
                     "mars_probe_capture_failed",
                     "critical",
                     payload={
-                        "failure_reason": capture_failure_reason,
-                        "stage_dv_used_mps": stage_dv_used_mps,
+                        "failure_reason": probe_state.capture_failure_reason,
+                        "stage_dv_used_mps": probe_state.stage_dv_used_mps,
                     },
                 )
             )
             capture_failed_emitted = True
+
         if (
             i == samples
-            and capture_success_tick is None
+            and probe_state.capture_success_tick is None
             and not capture_failed_emitted
-            and any(body.name == "mars_probe" for body in bodies)
+            and any(body.name == "mars_probe" for body in probe_state.bodies)
         ):
             events.append(
                 _build_event(
@@ -632,42 +836,13 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
                     "critical",
                     payload={
                         "failure_reason": "circularization_timeout",
-                        "stage_dv_used_mps": stage_dv_used_mps,
+                        "stage_dv_used_mps": probe_state.stage_dv_used_mps,
                     },
                 )
             )
             capture_failed_emitted = True
-        if i == samples // 3:
-            events.append(_build_event(i, sim_time_s, "midcourse_correction", "warning"))
-        if i == (2 * samples) // 3:
-            events.append(_build_event(i, sim_time_s, "jupiter_soi_entry", "warning"))
-        if i == max(samples - max(1, samples // 20), 1):
-            events.append(_build_event(i, sim_time_s, "arrival_insertion_burn_start", "warning"))
-        if i == samples:
-            events.append(_build_event(i, sim_time_s, "arrival_insertion_burn_complete", "critical"))
 
-        body_json: list[dict[str, Any]] = []
-        for body in bodies:
-            if body.name == "sun":
-                role = "orbit"
-            elif body.name in PLANET_ORBITAL_ELEMENTS:
-                role = "orbit"
-            elif body.name == "mars_probe":
-                role = "probe"
-            else:
-                role = "vehicle"
-
-            body_json.append(
-                {
-                    "body_id": body.name,
-                    "visualization_role": role,
-                    "position_m": {
-                        "x": body.state.position.x,
-                        "y": body.state.position.y,
-                        "z": body.state.position.z,
-                    },
-                }
-            )
+        body_json = _build_body_json_payload(probe_state.bodies)
 
         frames.append(
             {
@@ -676,6 +851,7 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
                 "tick_id": i,
                 "sim_time_s": sim_time_s,
                 "sequence": i,
+                "body_id_catalog": body_catalog_tracker.emit_frame_payload(),
                 "bodies": body_json,
                 "events": events,
                 "maneuver_records": frame_maneuver_records,
@@ -683,7 +859,7 @@ def generate_frames(samples: int, run_id: str) -> list[dict[str, Any]]:
         )
 
         if i < samples:
-            bodies = integrator.step(bodies, dt_s)
+            probe_state.bodies = integrator.step(probe_state.bodies, dt_s)
 
     return frames
 
@@ -718,7 +894,7 @@ def main() -> int:
     )
     parser.add_argument("--out", type=Path, required=True, help="Output replay JSONL path.")
     parser.add_argument("--samples", type=int, default=360, help="Transfer samples (>=32).")
-    parser.add_argument("--run-id", type=str, default="earth_jupiter_hohmann_demo")
+    parser.add_argument("--run-id", type=str, default="ex-r10p5-001-earth-jupiter-transfer")
     parser.add_argument(
         "--render-config-out",
         type=Path,

@@ -17,6 +17,14 @@
   - wired desktop bootstrap to replay-only mode (`--replay <path>`) and explicit live-mode guard (`--live` unsupported in R8.05)
   - added C++ replay-ingest tests in `c/brambhand/src/test/test_replay_ingest.cpp` for parse success, run-id consistency, and monotonic sequence validation
   - extended replay ingest parsing to include body-position samples from `SimulationFrame.bodies[*].position_m` for trajectory consumers
+  - replay ingest now consumes canonical simulation-side body-id lifecycle metadata from `body_id_catalog` (`initial_body_ids` + `created_body_ids`/`destroyed_body_ids`) and no longer discovers IDs by scanning per-frame body arrays
+  - added incremental replay ingest API (`load_replay_jsonl_incremental`) with deterministic chunk callbacks for large-file chunk/stream processing
+  - added concurrent desktop ingest mode (`--concurrent-ingest`) with bounded producer/consumer queue controls (`--ingest-chunk-frames`, `--ingest-queue-max-chunks`) and queue/backpressure telemetry output
+  - expanded deterministic ingest tests for callback-abort handling and concurrent producer/consumer ordering parity versus sequential workflow extraction under bounded-queue pressure
+  - extracted desktop concurrent-ingest orchestration from bootstrap into dedicated module (`src/bin/desktop/replay_ingest_pipeline.*`) with direct pipeline tests (`test_replay_ingest_pipeline.cpp`) to reduce `main.cpp` coupling
+  - extracted render-config vs replay-body-catalog validation into dedicated module (`src/bin/desktop/render_config_validation.*`) and added direct tests (`test_render_config_validation.cpp`) to further reduce desktop bootstrap coupling
+  - replaced ad-hoc desktop argument loop with reusable CLI options parser module moved into shared client-common layer (`include/brambhand/client/common/desktop_cli_options.hpp`, `src/lib/client/desktop_cli_options.cpp`) using standard C++ utilities (`std::span`, `std::string_view`, `std::from_chars`) with direct parser tests (`test_desktop_cli_options.cpp`)
+  - introduced generic CLI token parser core (`include/brambhand/client/common/cli_parse.hpp`, `src/lib/client/cli_parse.cpp`) and wired desktop options parsing on top of it; added generic parser tests (`test_cli_parse.cpp`) to enable reuse across additional native CLIs
 - R8.05 compact trajectory infographic-panel baseline:
   - added deterministic panel contracts/builders in `c/brambhand/include/brambhand/client/desktop/trajectory_infographic.hpp` + `c/brambhand/src/lib/client/trajectory_infographic.cpp`
   - panel emits shared `current/planned` curve layers and object-icon markers (`ship` / `ghost_ship`) with deterministic color semantics matching R8 trajectory contracts
@@ -31,7 +39,9 @@
   - added SDL3-based replay window renderer in `c/brambhand/src/bin/desktop/replay_window.cpp` to draw 2D `current/planned` trajectory curves, object markers, and event-severity timeline bars
   - wired `brambhand_desktop` to open a replay visualization window by default (replay-only), with `--no-window` option for non-interactive runs
   - updated desktop CMake wiring to link SDL3 via `find_package(SDL3)` with pkg-config fallback
-- Examples: added `examples/earth_jupiter_hohmann_replay_demo.py` to generate replay JSONL for immediate 2D Earth->Jupiter Hohmann-transfer visualization in desktop replay mode (kept out of main CLI surface)
+- Examples: added `examples/ex_r10p5_001_earth_jupiter_transfer.py` (`EX-R10.5-001`) to generate replay JSONL for immediate 2D Earth->Jupiter Hohmann-transfer visualization in desktop replay mode (kept out of main CLI surface)
+  - removed legacy wrapper `examples/earth_jupiter_hohmann_replay_demo.py` after canonical migration verification to keep example inventory single-source
+  - demo replay now exports canonical body-id lifecycle metadata under `body_id_catalog` (initial set + per-frame create/destroy diffs) so desktop ingestion consumes simulation-side diffs without manual reconstruction
   - demo replay now includes Sun + all 8 planets with time-varying orbital positions so planetary markers move over replay time
   - demo replay now includes staging events for departure/coast/Jupiter approach and an additional mission branch (`mars_probe_undock` + `mars_probe_orbit_insertion`) while the main vehicle remains on Jupiter transfer
   - fixed Mars-probe branch continuity: probe now undocks from the main vehicle, transits toward Mars, then enters Mars orbit (no sudden ghost appearance at Mars)
@@ -47,16 +57,34 @@
   - renderer now auto-discovers body IDs from replay frames, assigns deterministic per-body colors, and renders traces/markers/legend for arbitrary body counts
   - sidebar wording updated to generic replay semantics (no mission-specific assumptions)
   - desktop replay window now starts resizable + maximized for immediate full-view operation
+- Desktop renderer backend-mode guardrails:
+  - added explicit desktop flag `--renderer quicklook_2d|vulkan_3d` in `c/brambhand/src/bin/desktop/main.cpp`
+  - introduced enum-based renderer interface layer (`DesktopRendererMode`, `DesktopRendererAvailability`, `DesktopReplayRenderer`, parse/resolve/create flow) in `c/brambhand/src/bin/desktop/renderer_backend.*` so backend selection is not hardcoded string branching in bootstrap
+  - moved quicklook renderer execution behind concrete renderer class (`Quicklook2DReplayRenderer`) rather than direct free-function wiring from bootstrap
+  - introduced renderer-agnostic render-semantics interface (`client/common/render_semantics.*`) with concrete config-driven implementation; quicklook renderer now consumes semantics interface for trajectory/object-role decisions
+  - introduced UI layout policy abstraction for quicklook renderer (`src/bin/desktop/ui_layout.*`) so panel layout decisions are interface-driven and can vary by renderer capability profile
+  - further extracted quicklook renderer policy concerns behind interfaces (`quicklook_trace_policy.*`, `quicklook_sidebar_policy.*`) so trajectory-discontinuity filtering/alpha and sidebar section behavior are concrete policies rather than hardwired loop logic
+  - added renderer capability-profile interface (`renderer_capability_profile.*`) to map renderer mode -> policy bundles, preparing backend-specific UI behavior for future Vulkan/3D renderer without bootstrap contract changes
+  - extracted renderer-mode parse/availability/resolve logic into dedicated module (`renderer_mode.*`) and added C++ tests for parse/resolve behavior and planned-backend fallback semantics
+  - abstracted draw-path framework calls behind canvas interface (`quicklook_canvas.hpp`, `sdl_quicklook_canvas.*`): draw functions now target renderer-agnostic canvas primitives, reducing coupling to SDL and easing future GTK-backed implementation
+  - abstracted window/event/timing runtime loop behind `quicklook_runtime.hpp` with SDL adapter (`sdl_quicklook_runtime.cpp`), removing direct SDL loop/event dependencies from replay renderer logic
+  - moved shared point/bounds/view transform logic into common module (`client/common/plot_geometry.*`) and added C++ geometry test coverage
+  - made numeric geometry primitives alignment-explicit (`PlotBounds`, `ViewRect`, `ViewPoint`) with compile-time size guards, and grouped hot per-frame renderer loop state into cache-line-aligned `QuicklookFrameState`
+  - reduced branch density in hot numeric helpers: LUT-based hex parsing and streamlined HSV sector mapping in quicklook color conversion
+  - added C++ capability-profile tests validating policy-bundle provisioning for quicklook and planned-vulkan modes
+  - parsing (`parse_renderer_mode`) and availability/fallback policy (`resolve_renderer_mode`) are explicitly split
+  - `vulkan_3d` is currently guarded (R8.5 target) with optional `--allow-renderer-fallback` to run `quicklook_2d`
+  - updated docs (`DESIGN.md`, `docs/RUNTIME_INTERFACES.md`, `README.md`) to make ingest/view-contract vs renderer-backend split explicit for future STL/3D/ray-march extension
 - R10.5 maneuver-foundation progress tracking:
   - added `trajectory` maneuver contracts + executor coverage alignment in TODO tracking (`schema`, `deterministic timing`, `impulsive/finite-burn execution`)
   - added replay continuity validator `validate_replay_probe_continuity(...)` and test coverage for maneuver-record-aware discontinuity detection
-  - updated `examples/earth_jupiter_hohmann_replay_demo.py` to persist per-frame `maneuver_records` and expose `--strict-continuity` gate for uncommanded probe-jump detection
+  - updated `examples/ex_r10p5_001_earth_jupiter_transfer.py` to persist per-frame `maneuver_records` and expose `--strict-continuity` gate for uncommanded probe-jump detection
   - added baseline targeting helpers in `trajectory/targeting_baseline.py`: two-body Lambert initial guess (`lambert_initial_guess_two_body`) and bounded single-shoot miss-distance correction (`single_shoot_velocity_correction`) plus two-body propagation helper
   - introduced general targeting-provider contracts (`TrajectoryTargetingProvider` + request payload dataclasses) and a concrete baseline implementation (`TwoBodyBaselineTargetingProvider`) so R11 optimizer-backed providers can be added without breaking current interfaces
   - added explicit optimizer-backend adapter seam (`TargetingOptimizationBackend`, `OptimizerBackedTargetingProvider`) so future R11 solver integrations can plug into current targeting call sites without interface churn
   - added baseline capture targeting helpers (`CaptureInsertionConstraints`, `build_capture_targeting_solution`, `evaluate_capture_insertion_constraints`) for periapsis/apoapsis insertion constraints in non-optimizer flows
   - added SOI/handoff metadata contracts in `trajectory/handoff_contracts.py` with a general provider interface (`SOIHandoffMetadataProvider`) plus a specific baseline implementation (`TwoBodySOIHandoffMetadataProvider`)
-  - mission-phase events now carry structured handoff payloads for `encounter`, `capture_start`, and `insertion_complete` in `examples/earth_jupiter_hohmann_replay_demo.py`
+  - mission-phase events now carry structured handoff payloads for `encounter`, `capture_start`, and `insertion_complete` in `examples/ex_r10p5_001_earth_jupiter_transfer.py`
   - added guidance-seed regression tests in `python/brambhand/tests/test_targeting_baseline.py` for deterministic Lambert reproducibility, miss-distance convergence envelopes, and capture-targeting constraint behavior
   - added SOI/handoff contract tests in `python/brambhand/tests/test_soi_handoff_contracts.py`
 

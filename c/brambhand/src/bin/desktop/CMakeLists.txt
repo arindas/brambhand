@@ -1,6 +1,16 @@
 add_executable(brambhand_desktop
   main.cpp
+  renderer_mode.cpp
+  renderer_backend.cpp
+  renderer_capability_profile.cpp
+  render_config_validation.cpp
+  replay_ingest_pipeline.cpp
   replay_window.cpp
+  sdl_quicklook_canvas.cpp
+  sdl_quicklook_runtime.cpp
+  quicklook_trace_policy.cpp
+  quicklook_sidebar_policy.cpp
+  ui_layout.cpp
 )
 
 find_package(SDL3 QUIET)
