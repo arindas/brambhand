@@ -8,9 +8,7 @@ class Quicklook2DReplayRenderer final : public DesktopReplayRenderer {
  public:
   [[nodiscard]] DesktopRendererMode mode() const override;
   [[nodiscard]] bool run(
-      const ReplayQuicklookWorkflowOutput& workflow,
-      const std::vector<brambhand::client::common::SimulationFrame>& frames,
-      const std::vector<std::string>& body_ids,
+      const std::shared_ptr<DesktopReplayFrameStreamState>& stream_state,
       const brambhand::client::common::ReplayRenderConfig& render_config) override;
 };
 

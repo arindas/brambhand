@@ -1,7 +1,10 @@
 #include <cstddef>
 #include <iostream>
+#include <memory>
+#include <mutex>
 #include <set>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "brambhand/client/common/render_config.hpp"
@@ -59,21 +62,101 @@ int main(int argc, char** argv) {
     return 2;
   }
 
-  const auto ingest_result = brambhand::client::desktop::ingest_replay_for_desktop(
-      *opts.replay_path,
-      brambhand::client::desktop::DesktopReplayIngestOptions{
-          .concurrent = opts.concurrent_ingest,
-          .chunk_size_frames = opts.ingest_chunk_frames,
-          .queue_max_chunks = opts.ingest_queue_max_chunks,
-      },
-      opts.concurrent_ingest
-          ? brambhand::client::desktop::DesktopReplayFramesUpdatedCallback{
-                [](const std::vector<brambhand::client::common::SimulationFrame>& frames) {
-                  (void)brambhand::client::desktop::build_replay_quicklook_workflow(frames);
-                }}
-          : brambhand::client::desktop::DesktopReplayFramesUpdatedCallback{});
-  const auto& replay_report = ingest_result.report;
+  auto stream_state = std::make_shared<brambhand::client::desktop::DesktopReplayFrameStreamState>();
+  brambhand::client::desktop::DesktopReplayIngestOutput ingest_result{};
+  std::thread ingest_thread;
 
+  const auto ingest_options = brambhand::client::desktop::DesktopReplayIngestOptions{
+      .concurrent = opts.concurrent_ingest,
+      .chunk_size_frames = opts.ingest_chunk_frames,
+      .queue_max_chunks = opts.ingest_queue_max_chunks,
+  };
+
+  const bool stream_into_active_renderer = opts.concurrent_ingest && !opts.no_window;
+  if (stream_into_active_renderer) {
+    ingest_thread = std::thread([&]() {
+      ingest_result = brambhand::client::desktop::ingest_replay_for_desktop(
+          *opts.replay_path,
+          ingest_options,
+          brambhand::client::desktop::DesktopReplayFramesUpdatedCallback{
+              [stream_state](
+                  const std::vector<brambhand::client::common::SimulationFrame>& frames,
+                  const std::vector<std::string>& body_ids) {
+                const auto workflow =
+                    brambhand::client::desktop::build_replay_quicklook_workflow(frames);
+                std::lock_guard<std::mutex> lock(stream_state->mutex);
+                stream_state->workflow = workflow;
+                stream_state->frames = frames;
+                stream_state->body_ids = body_ids;
+                stream_state->version += 1;
+              }});
+
+      {
+        std::lock_guard<std::mutex> lock(stream_state->mutex);
+        stream_state->ingest_complete = true;
+        stream_state->version += 1;
+      }
+    });
+  } else {
+    ingest_result = brambhand::client::desktop::ingest_replay_for_desktop(
+        *opts.replay_path,
+        ingest_options,
+        brambhand::client::desktop::DesktopReplayFramesUpdatedCallback{});
+
+    if (!ingest_result.report.ok()) {
+      std::cerr << "replay ingest failed: " << ingest_result.report.error << "\n";
+      return 1;
+    }
+
+    const auto workflow =
+        brambhand::client::desktop::build_replay_quicklook_workflow(ingest_result.report.frames);
+    {
+      std::lock_guard<std::mutex> lock(stream_state->mutex);
+      stream_state->workflow = workflow;
+      stream_state->frames = ingest_result.report.frames;
+      stream_state->body_ids = ingest_result.report.body_ids;
+      stream_state->ingest_complete = true;
+      stream_state->version = 1;
+    }
+  }
+
+  brambhand::client::desktop::DesktopShellConfig config{};
+  config.backend = brambhand::client::desktop::DesktopPlatformBackend::SDL3;
+  config.imgui_docking_enabled = true;
+
+  brambhand::client::desktop::DesktopShell shell(config);
+  if (!shell.initialize()) {
+    if (ingest_thread.joinable()) {
+      ingest_thread.join();
+    }
+    std::cerr << "desktop shell initialization failed: " << shell.telemetry().last_error << "\n";
+    return 1;
+  }
+  (void)shell.pump_frame();
+  shell.shutdown();
+
+  if (!opts.no_window) {
+    const auto renderer = brambhand::client::desktop::create_desktop_replay_renderer(
+        renderer_resolution.effective);
+    if (renderer == nullptr ||
+        !renderer->run(
+            stream_state,
+            render_config_report.config)) {
+      if (ingest_thread.joinable()) {
+        ingest_thread.join();
+      }
+      std::cerr << "failed to open replay window for renderer="
+                << brambhand::client::desktop::renderer_mode_name(renderer_resolution.effective)
+                << "\n";
+      return 1;
+    }
+  }
+
+  if (ingest_thread.joinable()) {
+    ingest_thread.join();
+  }
+
+  const auto& replay_report = ingest_result.report;
   if (!replay_report.ok()) {
     std::cerr << "replay ingest failed: " << replay_report.error << "\n";
     return 1;
@@ -117,18 +200,6 @@ int main(int argc, char** argv) {
   const auto workflow =
       brambhand::client::desktop::build_replay_quicklook_workflow(replay_report.frames);
 
-  brambhand::client::desktop::DesktopShellConfig config{};
-  config.backend = brambhand::client::desktop::DesktopPlatformBackend::SDL3;
-  config.imgui_docking_enabled = true;
-
-  brambhand::client::desktop::DesktopShell shell(config);
-  if (!shell.initialize()) {
-    std::cerr << "desktop shell initialization failed: " << shell.telemetry().last_error << "\n";
-    return 1;
-  }
-  (void)shell.pump_frame();
-  shell.shutdown();
-
   std::cout << "brambhand_desktop replay mode, run_id=" << frame.run_id
             << ", loaded_frames=" << replay_report.frames.size() << "\n";
   std::cout << "desktop shell backend="
@@ -159,22 +230,6 @@ int main(int argc, char** argv) {
               << ", severity:" << first.severity << ", color:" << first.color_hex << "}";
   }
   std::cout << "\n";
-
-  if (!opts.no_window) {
-    const auto renderer = brambhand::client::desktop::create_desktop_replay_renderer(
-        renderer_resolution.effective);
-    if (renderer == nullptr ||
-        !renderer->run(
-            workflow,
-            replay_report.frames,
-            replay_report.body_ids,
-            render_config_report.config)) {
-      std::cerr << "failed to open replay window for renderer="
-                << brambhand::client::desktop::renderer_mode_name(renderer_resolution.effective)
-                << "\n";
-      return 1;
-    }
-  }
 
   return 0;
 }

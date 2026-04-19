@@ -23,7 +23,9 @@ struct DesktopReplayIngestTelemetry {
 };
 
 using DesktopReplayFramesUpdatedCallback =
-    std::function<void(const std::vector<brambhand::client::common::SimulationFrame>& frames)>;
+    std::function<void(
+        const std::vector<brambhand::client::common::SimulationFrame>& frames,
+        const std::vector<std::string>& body_ids)>;
 
 struct DesktopReplayIngestOutput {
   brambhand::client::common::ReplayIngestReport report;

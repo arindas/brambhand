@@ -91,7 +91,7 @@ Current `brambhand_desktop` flags:
 - `--allow-renderer-fallback`
   - allows `--renderer vulkan_3d` requests to fall back to `quicklook_2d`
 - `--concurrent-ingest`
-  - enables chunked replay ingestion + concurrent quicklook-workflow preparation
+  - enables chunked replay ingestion while incrementally refreshing the active quicklook renderer playback state (or workflow-prep path when `--no-window`)
   - emits ingest telemetry (`chunk_frames`, `queue_max_chunks`, `chunks_processed`, `queue_high_watermark`)
 - `--ingest-chunk-frames <N>`
   - max frames per ingest chunk in concurrent mode

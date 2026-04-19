@@ -56,8 +56,10 @@ TEST(ReplayIngestPipeline, ConcurrentIngestMatchesSequentialOrdering) {
           .chunk_size_frames = 4,
           .queue_max_chunks = 1,
       },
-      [&](const std::vector<brambhand::client::common::SimulationFrame>& frames) {
+      [&](const std::vector<brambhand::client::common::SimulationFrame>& frames,
+          const std::vector<std::string>& body_ids) {
         callback_count += 1;
+        EXPECT_FALSE(body_ids.empty());
         (void)brambhand::client::desktop::build_replay_quicklook_workflow(frames);
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
       });

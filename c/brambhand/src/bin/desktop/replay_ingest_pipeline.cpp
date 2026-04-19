@@ -18,7 +18,7 @@ DesktopReplayIngestOutput ingest_replay_for_desktop(
   if (!options.concurrent) {
     output.report = brambhand::client::common::load_replay_jsonl(replay_path);
     if (output.report.ok() && on_frames_updated) {
-      on_frames_updated(output.report.frames);
+      on_frames_updated(output.report.frames, output.report.body_ids);
     }
     return output;
   }
@@ -90,7 +90,7 @@ DesktopReplayIngestOutput ingest_replay_for_desktop(
         std::make_move_iterator(chunk.frames.end()));
 
     if (on_frames_updated) {
-      on_frames_updated(streamed_frames);
+      on_frames_updated(streamed_frames, chunk.cumulative_body_ids);
     }
   }
 

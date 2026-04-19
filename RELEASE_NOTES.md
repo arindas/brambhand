@@ -20,6 +20,7 @@
   - replay ingest now consumes canonical simulation-side body-id lifecycle metadata from `body_id_catalog` (`initial_body_ids` + `created_body_ids`/`destroyed_body_ids`) and no longer discovers IDs by scanning per-frame body arrays
   - added incremental replay ingest API (`load_replay_jsonl_incremental`) with deterministic chunk callbacks for large-file chunk/stream processing
   - added concurrent desktop ingest mode (`--concurrent-ingest`) with bounded producer/consumer queue controls (`--ingest-chunk-frames`, `--ingest-queue-max-chunks`) and queue/backpressure telemetry output
+  - when running with windowed quicklook + concurrent ingest, replay chunks now stream directly into the active renderer loop (incremental workflow/body-catalog refresh while ingest continues) instead of callback-only headless prep
   - expanded deterministic ingest tests for callback-abort handling and concurrent producer/consumer ordering parity versus sequential workflow extraction under bounded-queue pressure
   - extracted desktop concurrent-ingest orchestration from bootstrap into dedicated module (`src/bin/desktop/replay_ingest_pipeline.*`) with direct pipeline tests (`test_replay_ingest_pipeline.cpp`) to reduce `main.cpp` coupling
   - extracted render-config vs replay-body-catalog validation into dedicated module (`src/bin/desktop/render_config_validation.*`) and added direct tests (`test_render_config_validation.cpp`) to further reduce desktop bootstrap coupling

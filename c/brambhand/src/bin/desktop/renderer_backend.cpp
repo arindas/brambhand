@@ -12,9 +12,7 @@ class Vulkan3DReplayRenderer final : public DesktopReplayRenderer {
   }
 
   [[nodiscard]] bool run(
-      const ReplayQuicklookWorkflowOutput&,
-      const std::vector<brambhand::client::common::SimulationFrame>&,
-      const std::vector<std::string>&,
+      const std::shared_ptr<DesktopReplayFrameStreamState>&,
       const brambhand::client::common::ReplayRenderConfig&) override {
     return false;
   }

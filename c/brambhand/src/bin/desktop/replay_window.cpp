@@ -522,41 +522,31 @@ DesktopRendererMode Quicklook2DReplayRenderer::mode() const {
 }
 
 bool Quicklook2DReplayRenderer::run(
-    const ReplayQuicklookWorkflowOutput& workflow,
-    const std::vector<brambhand::client::common::SimulationFrame>& frames,
-    const std::vector<std::string>& body_ids,
+    const std::shared_ptr<DesktopReplayFrameStreamState>& stream_state,
     const brambhand::client::common::ReplayRenderConfig& render_config) {
+  if (stream_state == nullptr) {
+    return false;
+  }
+
   const auto runtime = create_sdl_quicklook_runtime();
   if (runtime == nullptr ||
       !runtime->initialize("brambhand replay quicklook", 1280, 720)) {
     return false;
   }
 
-  const auto bounds_opt = compute_bounds(workflow, frames);
-  if (!bounds_opt.has_value()) {
-    runtime->shutdown();
-    return false;
-  }
-  const PlotBounds base_bounds = *bounds_opt;
-
   const auto render_semantics =
       brambhand::client::common::create_replay_render_semantics(render_config);
-  std::vector<std::string> orbit_body_ids;
-  orbit_body_ids.reserve(body_ids.size());
-  for (const auto& id : body_ids) {
-    if (render_semantics->is_dim_trajectory_body(id)) {
-      orbit_body_ids.push_back(id);
-    }
-  }
 
-  const auto focus_point = find_focus_point(frames, render_config);
-  const double base_center_x = 0.5 * (base_bounds.min_x + base_bounds.max_x);
-  const double base_center_y = 0.5 * (base_bounds.min_y + base_bounds.max_y);
+  ReplayQuicklookWorkflowOutput workflow{};
+  std::vector<brambhand::client::common::SimulationFrame> frames;
+  std::vector<std::string> body_ids;
+  std::vector<std::string> orbit_body_ids;
+  std::optional<PlotBounds> base_bounds;
+  std::size_t snapshot_version = static_cast<std::size_t>(-1);
+  bool focus_initialized = false;
 
   QuicklookFrameState frame_state{};
   frame_state.last_advance_ticks = runtime->ticks_ms();
-  frame_state.pan_x = focus_point.has_value() ? (focus_point->first - base_center_x) : 0.0;
-  frame_state.pan_y = focus_point.has_value() ? (focus_point->second - base_center_y) : 0.0;
 
   const auto capability_profile =
       create_renderer_capability_profile(DesktopRendererMode::Quicklook2D);
@@ -571,6 +561,40 @@ bool Quicklook2DReplayRenderer::run(
 
   bool running = true;
   while (running) {
+    {
+      std::lock_guard<std::mutex> lock(stream_state->mutex);
+      if (snapshot_version != stream_state->version) {
+        workflow = stream_state->workflow;
+        frames = stream_state->frames;
+        body_ids = stream_state->body_ids;
+        snapshot_version = stream_state->version;
+
+        if (!frames.empty()) {
+          if (frame_state.frame_index >= frames.size()) {
+            frame_state.frame_index = frames.size() - 1;
+          }
+
+          base_bounds = compute_bounds(workflow, frames);
+          if (base_bounds.has_value() && !focus_initialized) {
+            const auto focus_point = find_focus_point(frames, render_config);
+            const double base_center_x = 0.5 * (base_bounds->min_x + base_bounds->max_x);
+            const double base_center_y = 0.5 * (base_bounds->min_y + base_bounds->max_y);
+            frame_state.pan_x = focus_point.has_value() ? (focus_point->first - base_center_x) : 0.0;
+            frame_state.pan_y = focus_point.has_value() ? (focus_point->second - base_center_y) : 0.0;
+            focus_initialized = true;
+          }
+        }
+
+        orbit_body_ids.clear();
+        orbit_body_ids.reserve(body_ids.size());
+        for (const auto& id : body_ids) {
+          if (render_semantics->is_dim_trajectory_body(id)) {
+            orbit_body_ids.push_back(id);
+          }
+        }
+      }
+    }
+
     const auto input = runtime->poll_input();
     if (input.quit_requested) {
       running = false;
@@ -588,8 +612,12 @@ bool Quicklook2DReplayRenderer::run(
       frame_state.zoom_level = std::max(0.2, frame_state.zoom_level / 1.1);
     }
 
-    const double span_x = (base_bounds.max_x - base_bounds.min_x) / frame_state.zoom_level;
-    const double span_y = (base_bounds.max_y - base_bounds.min_y) / frame_state.zoom_level;
+    const double span_x = base_bounds.has_value()
+                              ? (base_bounds->max_x - base_bounds->min_x) / frame_state.zoom_level
+                              : (1.0 / frame_state.zoom_level);
+    const double span_y = base_bounds.has_value()
+                              ? (base_bounds->max_y - base_bounds->min_y) / frame_state.zoom_level
+                              : (1.0 / frame_state.zoom_level);
     const double pan_step_x = 0.04 * span_x;
     const double pan_step_y = 0.04 * span_y;
     if (input.pan_left) {
@@ -641,49 +669,54 @@ bool Quicklook2DReplayRenderer::run(
     canvas.set_draw_color(CanvasColor{.r = 60, .g = 66, .b = 80, .a = 255});
     canvas.draw_rect(viewport);
 
-    const PlotBounds view_bounds = brambhand::client::common::make_view_bounds(
-        base_bounds,
-        frame_state.zoom_level,
-        frame_state.pan_x,
-        frame_state.pan_y);
-
-    for (const auto& layer : workflow.trajectory_panel.curve_layers) {
-      draw_curve_layer(canvas, layer, view_bounds, viewport);
-    }
-
     const brambhand::client::common::SimulationFrame* active_frame = nullptr;
-    if (!frames.empty()) {
-      for (const auto& id : orbit_body_ids) {
-        draw_trace_for_body(
-            canvas,
-            frames,
-            frames.size() - 1,
-            id,
-            view_bounds,
-            viewport,
-            color_for_id(id),
-            trace_policy->dim_trace_alpha(),
-            *trace_policy);
+    if (base_bounds.has_value()) {
+      const PlotBounds view_bounds = brambhand::client::common::make_view_bounds(
+          *base_bounds,
+          frame_state.zoom_level,
+          frame_state.pan_x,
+          frame_state.pan_y);
+
+      for (const auto& layer : workflow.trajectory_panel.curve_layers) {
+        draw_curve_layer(canvas, layer, view_bounds, viewport);
       }
 
-      for (const auto& id : body_ids) {
-        draw_trace_for_body(
-            canvas,
-            frames,
-            frame_state.frame_index,
-            id,
-            view_bounds,
-            viewport,
-            color_for_id(id),
-            trace_policy->active_trace_alpha(),
-            *trace_policy);
-      }
+      if (!frames.empty()) {
+        for (const auto& id : orbit_body_ids) {
+          draw_trace_for_body(
+              canvas,
+              frames,
+              frames.size() - 1,
+              id,
+              view_bounds,
+              viewport,
+              color_for_id(id),
+              trace_policy->dim_trace_alpha(),
+              *trace_policy);
+        }
 
-      active_frame = &frames[frame_state.frame_index];
-      for (const auto& body : active_frame->bodies) {
-        const auto marker_kind = render_semantics->role_for(body.body_id);
-        draw_body_marker(canvas, body, view_bounds, viewport, 3.0F, false, marker_kind);
+        for (const auto& id : body_ids) {
+          draw_trace_for_body(
+              canvas,
+              frames,
+              frame_state.frame_index,
+              id,
+              view_bounds,
+              viewport,
+              color_for_id(id),
+              trace_policy->active_trace_alpha(),
+              *trace_policy);
+        }
+
+        active_frame = &frames[frame_state.frame_index];
+        for (const auto& body : active_frame->bodies) {
+          const auto marker_kind = render_semantics->role_for(body.body_id);
+          draw_body_marker(canvas, body, view_bounds, viewport, 3.0F, false, marker_kind);
+        }
       }
+    } else {
+      canvas.set_draw_color(CanvasColor{.r = 184, .g = 198, .b = 222, .a = 255});
+      canvas.draw_text(viewport.x + 18.0F, viewport.y + 18.0F, "Streaming replay ingest...");
     }
 
     draw_sidebar(

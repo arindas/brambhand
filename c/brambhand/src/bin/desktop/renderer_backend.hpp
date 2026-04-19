@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <vector>
@@ -12,15 +13,22 @@
 
 namespace brambhand::client::desktop {
 
+struct DesktopReplayFrameStreamState {
+  std::mutex mutex;
+  ReplayQuicklookWorkflowOutput workflow;
+  std::vector<brambhand::client::common::SimulationFrame> frames;
+  std::vector<std::string> body_ids;
+  bool ingest_complete{false};
+  std::size_t version{0};
+};
+
 class DesktopReplayRenderer {
  public:
   virtual ~DesktopReplayRenderer() = default;
 
   [[nodiscard]] virtual DesktopRendererMode mode() const = 0;
   [[nodiscard]] virtual bool run(
-      const ReplayQuicklookWorkflowOutput& workflow,
-      const std::vector<brambhand::client::common::SimulationFrame>& frames,
-      const std::vector<std::string>& body_ids,
+      const std::shared_ptr<DesktopReplayFrameStreamState>& stream_state,
       const brambhand::client::common::ReplayRenderConfig& render_config) = 0;
 };
 
