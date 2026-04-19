@@ -31,6 +31,13 @@ message EventFrame {
   bytes payload_json = 5;
 }
 
+message BodyIdCatalog {
+  uint32 schema_version = 1;
+  repeated string initial_body_ids = 2;
+  repeated string created_body_ids = 3;
+  repeated string destroyed_body_ids = 4;
+}
+
 message TopologyInterface {
   string interface_id = 1;
   string body_a_id = 2;
@@ -56,6 +63,7 @@ message SimulationFrame {
   repeated BodyState bodies = 6;
   repeated EventFrame events = 7;
   TopologyFrame topology = 8;
+  BodyIdCatalog body_id_catalog = 9;
 }
 
 message StreamRequest {

@@ -7,6 +7,8 @@ This document defines the concrete runtime bridge contract for the desktop clien
 - Protobuf: `interfaces/runtime_bridge.proto`
 - Package: `brambhand.runtime.v1`
 - Service: `RuntimeBridge.StreamSimulation`
+- Key message parity:
+  - `SimulationFrame.body_id_catalog` uses the same init+diff lifecycle contract as replay JSONL
 
 ## Transport modes
 
