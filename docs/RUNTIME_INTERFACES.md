@@ -97,6 +97,12 @@ Current `brambhand_desktop` flags:
   - max frames per ingest chunk in concurrent mode
 - `--ingest-queue-max-chunks <N>`
   - bounded producer/consumer queue depth for concurrent ingest mode
+
+Tuning harness:
+- `brambhand_replay_ingest_benchmark`
+  - sweeps chunk-size/queue-depth candidate pairs and emits CSV telemetry rows
+  - supports preset profiles (`interactive|balanced|throughput|all`) and custom candidate lists
+  - see `docs/REPLAY_INGEST_TUNING.md`
 - `--strict-render-config`
   - fails if configured body IDs are missing from replay
 - `--no-window`

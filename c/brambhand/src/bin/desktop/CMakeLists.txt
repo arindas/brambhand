@@ -13,6 +13,17 @@ add_executable(brambhand_desktop
   ui_layout.cpp
 )
 
+add_executable(brambhand_replay_ingest_benchmark
+  replay_ingest_benchmark.cpp
+  replay_ingest_benchmark_options.cpp
+  replay_ingest_pipeline.cpp
+)
+
+target_link_libraries(brambhand_replay_ingest_benchmark
+  PRIVATE
+    brambhand_client
+)
+
 find_package(SDL3 QUIET)
 if(SDL3_FOUND)
   target_link_libraries(brambhand_desktop

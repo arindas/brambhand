@@ -47,6 +47,7 @@ if(BUILD_TESTING)
     src/test/test_trajectory_infographic.cpp
     src/test/test_replay_quicklook_workflow.cpp
     src/test/test_replay_ingest_pipeline.cpp
+    src/test/test_replay_ingest_benchmark_options.cpp
     src/test/test_render_config_validation.cpp
     src/test/test_desktop_cli_options.cpp
     src/test/test_renderer_mode.cpp
@@ -54,6 +55,7 @@ if(BUILD_TESTING)
     src/bin/desktop/renderer_mode.cpp
     src/bin/desktop/render_config_validation.cpp
     src/bin/desktop/replay_ingest_pipeline.cpp
+    src/bin/desktop/replay_ingest_benchmark_options.cpp
     src/bin/desktop/renderer_capability_profile.cpp
     src/bin/desktop/quicklook_trace_policy.cpp
     src/bin/desktop/quicklook_sidebar_policy.cpp
